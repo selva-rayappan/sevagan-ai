@@ -1,0 +1,24 @@
+{
+  "name": "sevagan-ai",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:api": "npm --workspace=backend run start:dev",
+    "dev:web": "npm --workspace=frontend run dev",
+    "build:api": "npm --workspace=backend run build",
+    "build:web": "npm --workspace=frontend run build",
+    "test:api": "npm --workspace=backend run test",
+    "test:api:cov": "npm --workspace=backend run test:cov",
+    "lint": "npm --workspaces run lint",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "prisma:generate": "npm --workspace=backend run prisma:generate",
+    "prisma:migrate": "npm --workspace=backend run prisma:migrate",
+    "prisma:seed": "npm --workspace=backend run prisma:seed"
+  }
+}

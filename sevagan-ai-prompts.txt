@@ -1,0 +1,15 @@
+Read:
+
+docs/SEVAGAN_CLAUDE_CODE_MASTER_SPEC.md
+docs/SEVAGAN_EXECUTION_PLAN.md
+docs/SEVAGAN_TASK_BACKLOG.md
+
+Rules:
+
+1. Master Spec is the source of truth.
+2. Execution Plan determines implementation order.
+3. Task Backlog determines current work.
+4. Update Task Backlog after every completed task.
+5. DO NOT violate any business rule defined in the Master Spec.
+
+Implement the next pending task from the backlog.

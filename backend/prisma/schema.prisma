@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Language {
+  EN
+  TA
+}
+
+enum JobStatus {
+  NEW
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum CommissionType {
+  FLAT
+  PERCENTAGE
+}
+
+enum TechnicianStatus {
+  AVAILABLE
+  BUSY
+  OFFLINE
+}
+
+enum SettlementStatus {
+  PENDING
+  PAID
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  ESCALATED
+}
+
+enum AdminRole {
+  ADMIN
+  OPERATOR
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String?
+  phone     String   @unique
+  address   String?
+  language  Language @default(EN)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  jobs    Job[]
+  ratings Rating[]
+
+  @@map("customers")
+}
+
+model Technician {
+  id          String           @id @default(uuid())
+  name        String
+  phone       String           @unique
+  status      TechnicianStatus @default(AVAILABLE)
+  rating      Decimal          @default(5.0) @db.Decimal(3, 2)
+  trustScore  Int              @default(100) @map("trust_score")
+  serviceArea String           @map("service_area")
+  language    Language         @default(EN)
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  skills      TechnicianSkill[]
+  assignments Assignment[]
+  ratings     Rating[]
+  settlements TechnicianSettlement[]
+
+  @@index([status, serviceArea])
+  @@map("technicians")
+}
+
+model ServiceCategory {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+  active      Boolean @default(true)
+
+  technicianSkills TechnicianSkill[]
+  jobs             Job[]
+
+  @@map("service_categories")
+}
+
+model TechnicianSkill {
+  id           String @id @default(uuid())
+  technicianId String @map("technician_id")
+  categoryId   String @map("category_id")
+
+  technician Technician      @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  category   ServiceCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([technicianId, categoryId])
+  @@map("technician_skills")
+}
+
+model Job {
+  id                String       @id @default(uuid())
+  jobNumber         String       @unique @map("job_number")
+  customerId        String       @map("customer_id")
+  serviceCategoryId String       @map("service_category_id")
+  status            JobStatus    @default(NEW)
+  description       String?
+  location          String
+  scheduledTime     DateTime?    @map("scheduled_time")
+  jobAmount         Decimal?     @map("job_amount") @db.Decimal(10, 2)
+  paymentMode       PaymentMode? @map("payment_mode")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  serviceCategory ServiceCategory @relation(fields: [serviceCategoryId], references: [id])
+  assignment      Assignment?
+  invoice         Invoice?
+  commission      JobCommission?
+  rating          Rating?
+  dispute         Dispute?
+
+  @@index([status])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("jobs")
+}
+
+model Assignment {
+  id           String    @id @default(uuid())
+  jobId        String    @unique @map("job_id")
+  technicianId String    @map("technician_id")
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  acceptedAt   DateTime? @map("accepted_at")
+
+  job        Job        @relation(fields: [jobId], references: [id])
+  technician Technician @relation(fields: [technicianId], references: [id])
+
+  @@index([technicianId])
+  @@map("assignments")
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique @map("invoice_number")
+  jobId         String        @unique @map("job_id")
+  amount        Decimal       @db.Decimal(10, 2)
+  status        InvoiceStatus @default(DRAFT)
+  pdfUrl        String?       @map("pdf_url")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  job     Job      @relation(fields: [jobId], references: [id])
+  payment Payment?
+
+  @@map("invoices")
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  invoiceId String        @unique @map("invoice_id")
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMode
+  status    PaymentStatus @default(PENDING)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+model CommissionRule {
+  id              String         @id @default(uuid())
+  paymentMode     PaymentMode    @map("payment_mode")
+  commissionType  CommissionType @map("commission_type")
+  commissionValue Decimal        @map("commission_value") @db.Decimal(10, 4)
+  effectiveFrom   DateTime       @default(now()) @map("effective_from")
+  active          Boolean        @default(true)
+
+  @@index([paymentMode, active])
+  @@map("commission_rules")
+}
+
+model JobCommission {
+  id               String      @id @default(uuid())
+  jobId            String      @unique @map("job_id")
+  jobAmount        Decimal     @map("job_amount") @db.Decimal(10, 2)
+  commissionAmount Decimal     @map("commission_amount") @db.Decimal(10, 2)
+  technicianAmount Decimal     @map("technician_amount") @db.Decimal(10, 2)
+  paymentMode      PaymentMode @map("payment_mode")
+  createdAt        DateTime    @default(now()) @map("created_at")
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@map("job_commissions")
+}
+
+model TechnicianSettlement {
+  id               String           @id @default(uuid())
+  technicianId     String           @map("technician_id")
+  grossAmount      Decimal          @map("gross_amount") @db.Decimal(10, 2)
+  commissionAmount Decimal          @map("commission_amount") @db.Decimal(10, 2)
+  netAmount        Decimal          @map("net_amount") @db.Decimal(10, 2)
+  status           SettlementStatus @default(PENDING)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  paidAt           DateTime?        @map("paid_at")
+
+  technician Technician @relation(fields: [technicianId], references: [id])
+
+  @@index([technicianId, status])
+  @@map("technician_settlements")
+}
+
+model Rating {
+  id           String  @id @default(uuid())
+  jobId        String  @unique @map("job_id")
+  customerId   String  @map("customer_id")
+  technicianId String  @map("technician_id")
+  rating       Int
+  comments     String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  job        Job        @relation(fields: [jobId], references: [id])
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  technician Technician @relation(fields: [technicianId], references: [id])
+
+  @@index([technicianId])
+  @@map("ratings")
+}
+
+model Dispute {
+  id               String        @id @default(uuid())
+  jobId            String        @unique @map("job_id")
+  customerAmount   Decimal       @map("customer_amount") @db.Decimal(10, 2)
+  technicianAmount Decimal       @map("technician_amount") @db.Decimal(10, 2)
+  status           DisputeStatus @default(OPEN)
+  notes            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+  resolvedAt       DateTime?     @map("resolved_at")
+
+  job Job @relation(fields: [jobId], references: [id])
+
+  @@index([status])
+  @@map("disputes")
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String
+  role         AdminRole @default(OPERATOR)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}

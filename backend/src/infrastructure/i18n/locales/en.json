@@ -1,0 +1,64 @@
+{
+  "customer": {
+    "welcome": "Welcome to Sevagan! 🙏\nHow can we help you today?\n\nType HELP to see what we can do.",
+    "select_service": "Please select a service:\n\n1. Electrical ⚡\n2. Plumbing 🔧\n3. AC Service ❄️\n4. Carpentry 🪚\n5. Painting 🖌️\n6. Appliance Repair ⚙️\n7. RO Service 💧\n8. CCTV Installation 📷\n\nType the number of the service you need.",
+    "ask_location": "Please share your location or type your area name.\n(e.g., Virudhunagar, Sattur Road)",
+    "ask_scheduled_time": "When do you need this service?\n\nExamples:\n• Today 4 PM\n• Tomorrow 10 AM\n• ASAP",
+    "job_created": "✅ Your request is confirmed!\n\nJob No: {{jobNumber}}\nService: {{service}}\nLocation: {{location}}\nTime: {{scheduledTime}}\n\nWe are finding the best technician for you. You will be notified shortly.",
+    "job_assigned": "🔧 Technician Assigned!\n\n👤 {{technicianName}}\n📅 Arriving at {{scheduledTime}}\n\nJob: {{jobNumber}}\n\nYou will be notified when they are on the way.",
+    "technician_on_way": "🚗 {{technicianName}} is on the way to your location!\n\nJob: {{jobNumber}}",
+    "job_started": "🔨 Work has started!\n\nTechnician: {{technicianName}}\nJob: {{jobNumber}}\n\nWe will notify you when the work is complete.",
+    "confirm_amount": "✅ Work is complete!\n\nTechnician {{technicianName}} reported:\n💰 Amount: ₹{{amount}}\n💳 Payment: {{paymentMode}}\n\nIs this correct?\n\n1 ✅ Yes, Correct\n2 ❌ No, Incorrect",
+    "amount_confirmed": "✅ Amount confirmed. Thank you for using Sevagan!\n\nPlease rate {{technicianName}}'s service:\n\n5 ⭐⭐⭐⭐⭐ Excellent\n4 ⭐⭐⭐⭐ Good\n3 ⭐⭐⭐ Average\n2 ⭐⭐ Poor\n1 ⭐ Very Poor\n\nReply with a number (1-5).",
+    "amount_disputed": "⚠️ Dispute raised for Job {{jobNumber}}.\n\nYour reported amount: ₹{{customerAmount}}\nTechnician reported: ₹{{technicianAmount}}\n\nOur team will contact you within 2 hours to resolve this.",
+    "rate_technician": "⭐ How would you rate {{technicianName}}'s service?\n\nReply with a number:\n5 ⭐⭐⭐⭐⭐ Excellent\n4 ⭐⭐⭐⭐ Good\n3 ⭐⭐⭐ Average\n2 ⭐⭐ Poor\n1 ⭐ Very Poor",
+    "rating_received": "🙏 Thank you for rating {{technicianName}} — {{rating}} ⭐\n\nYour feedback helps us maintain quality.\n\nJob {{jobNumber}} is now complete. Have a great day!",
+    "job_status": "📋 Job Status\n\nJob No: {{jobNumber}}\nService: {{service}}\nStatus: {{status}}\nLocation: {{location}}\n{{technicianInfo}}",
+    "job_cancelled": "❌ Job {{jobNumber}} has been cancelled.\n\nIf you need service in future, just message us. We are here 24/7!",
+    "help": "📱 Sevagan Help\n\nTo book a service, just describe what you need!\nExample: \"I need an electrician\"\n\nCommands:\n• TRACK JOB123 — Check job status\n• CANCEL JOB123 — Cancel a job\n• HELP — Show this message\n\nWe serve Virudhunagar district.\nWorking hours: 7 AM – 9 PM",
+    "unknown_command": "Sorry, I did not understand that. 🙏\n\nType HELP to see available commands, or simply describe the service you need.",
+    "language_set": "Language set to English. ✅",
+    "select_language": "Please select your language:\n\n1. English\n2. தமிழ் (Tamil)",
+    "no_technician_available": "🔍 We are working on finding the right technician for your request. Our team will connect you shortly. We apologize for the wait!"
+  },
+  "technician": {
+    "job_offer": "🔔 New Job Available!\n\nCustomer: {{customerName}}\n📍 Location: {{location}}\n🔧 Service: {{service}}\n📅 Time: {{scheduledTime}}\n\nReply:\n1 ✅ Accept\n2 ❌ Reject\n\n⏰ Please respond within 15 minutes.",
+    "job_accepted": "✅ Job Accepted!\n\nJob No: {{jobNumber}}\nCustomer: {{customerName}}\nLocation: {{location}}\nTime: {{scheduledTime}}\n\nWhen you arrive and start work, send:\nSTART\n\nWhen work is done, send:\nCOMPLETE 1200 CASH  (or UPI)",
+    "job_rejected": "❌ Job {{jobNumber}} rejected. We will assign another technician.\n\nYou will receive the next available job shortly.",
+    "job_started": "🔨 Job {{jobNumber}} started. Good luck!\n\nWhen work is complete, send:\nCOMPLETE {{amount}} CASH  (replace with actual amount)\nor\nCOMPLETE {{amount}} UPI",
+    "job_completed": "✅ Job {{jobNumber}} marked complete!\n\n💰 Job Amount: ₹{{amount}}\n📱 Payment Mode: {{paymentMode}}\n\nYour Earnings:\nGross: ₹{{amount}}\nCommission: ₹{{commission}}\nNet: ₹{{netAmount}}\n\nWaiting for customer confirmation.",
+    "customer_confirmed": "✅ Customer confirmed the amount. Payment verified!\n\nJob {{jobNumber}} is fully complete.",
+    "customer_disputed": "⚠️ Customer has raised a dispute for Job {{jobNumber}}.\n\nReported amount: ₹{{technicianAmount}}\nCustomer says: ₹{{customerAmount}}\n\nOur team will contact you to resolve this.",
+    "settlement_processed": "💸 Settlement Processed!\n\nPeriod: {{period}}\nJobs Completed: {{jobCount}}\n\nGross Earnings: ₹{{grossAmount}}\nTotal Commission: ₹{{commissionAmount}}\nNet Payout: ₹{{netAmount}}\n\nPayment will be transferred to your UPI within 24 hours.",
+    "welcome": "Welcome to Sevagan Technician Network! 🙏\n\nYou are now registered as a service technician.\nService: {{service}}\nArea: {{serviceArea}}\n\nYou will receive job notifications on this number.\n\nFor help, type HELP.",
+    "help": "📱 Sevagan Technician Help\n\nCommands:\n• START — Mark job as started (when you arrive)\n• COMPLETE 1200 CASH — Mark job done with amount & payment mode\n• COMPLETE 1200 UPI — Mark job done with UPI payment\n• STATUS — Check your active job status\n• JOBS — View recent job history\n• HELP — Show this message\n\nFor support: Contact your area manager.",
+    "unknown_command": "Sorry, I did not understand that. 🙏\n\nType HELP to see available commands.",
+    "no_active_job": "ℹ️ You have no active job at the moment.\n\nYou will be notified when a new job is available.",
+    "offer_expired": "⏰ The job offer has expired.\n\nWe will assign the job to another available technician. You will receive the next job shortly.",
+    "photo_received": "📸 Photo received and saved for Job {{jobNumber}}. Thank you!",
+    "job_history": "📋 Your Recent Jobs\n\n{{jobList}}\n\nKeep up the great work! 👍",
+    "status_awaiting_confirmation": "⏳ Waiting for customer to confirm amount for Job {{jobNumber}}.\n\nAmount: ₹{{amount}} ({{paymentMode}})"
+  },
+  "service": {
+    "electrical": "Electrical",
+    "plumbing": "Plumbing",
+    "ac_service": "AC Service",
+    "carpentry": "Carpentry",
+    "painting": "Painting",
+    "appliance_repair": "Appliance Repair",
+    "ro_service": "RO Service",
+    "cctv_installation": "CCTV Installation"
+  },
+  "job_status": {
+    "NEW": "New — Finding Technician",
+    "ASSIGNED": "Assigned — Technician On The Way",
+    "ACCEPTED": "Accepted — Confirmed",
+    "IN_PROGRESS": "In Progress",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled"
+  },
+  "payment_mode": {
+    "CASH": "Cash",
+    "UPI": "UPI"
+  }
+}
