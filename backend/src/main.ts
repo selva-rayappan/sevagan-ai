@@ -3,8 +3,10 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { SanitizePipe } from './common/pipes/sanitize.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -17,11 +19,16 @@ async function bootstrap() {
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
 
   // Security
-  app.use(helmet());
+  app.use(
+    helmet({
+      hsts: nodeEnv === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
+    }),
+  );
+  app.use(cookieParser());
 
   // CORS — tighten in production
   app.enableCors({
-    origin: nodeEnv === 'production' ? ['https://admin.sevagan.ai'] : true,
+    origin: nodeEnv === 'production' ? [`https://${configService.get<string>('adminDomain', 'admin.sevagan.ai')}`] : true,
     credentials: true,
   });
 
@@ -31,6 +38,7 @@ async function bootstrap() {
 
   // Global pipes, filters, interceptors
   app.useGlobalPipes(
+    new SanitizePipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,

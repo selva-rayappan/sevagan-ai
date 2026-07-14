@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await apiClient.post('/api/v1/auth/login', { email, password });
-      auth.setTokens(res.data.accessToken, res.data.refreshToken);
+      auth.setToken(res.data.accessToken);
       router.push('/dashboard');
     } catch {
       setError('Invalid email or password');

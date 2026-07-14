@@ -3,6 +3,9 @@ import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { WebhookHmacGuard } from './webhook-hmac.guard';
 
+const mockAuditLog = jest.fn().mockResolvedValue(undefined);
+const mockAuditService = { log: mockAuditLog } as any;
+
 const buildContext = (overrides: {
   signature?: string;
   rawBody?: Buffer;
@@ -22,13 +25,15 @@ const buildContext = (overrides: {
   const mockRequest = {
     headers: { 'x-hub-signature-256': signature },
     rawBody,
+    ip: '127.0.0.1',
+    path: '/api/v1/whatsapp/webhook',
   };
 
   const mockExecutionContext = {
     switchToHttp: () => ({ getRequest: () => mockRequest }),
   } as any;
 
-  return { guard: new WebhookHmacGuard(mockConfigService), context: mockExecutionContext };
+  return { guard: new WebhookHmacGuard(mockConfigService, mockAuditService), context: mockExecutionContext };
 };
 
 const buildSignature = (secret: string, body: Buffer) =>
@@ -38,6 +43,10 @@ describe('WebhookHmacGuard', () => {
   const secret = 'test-secret';
   const body = Buffer.from('{"object":"whatsapp_business_account"}');
   const validSignature = buildSignature(secret, body);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it('returns true for a valid HMAC signature', () => {
     const { guard, context } = buildContext({ signature: validSignature, rawBody: body });
@@ -50,6 +59,14 @@ describe('WebhookHmacGuard', () => {
       rawBody: body,
     });
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+  });
+
+  it('logs rejected attempts to the audit log', () => {
+    const { guard, context } = buildContext({ rawBody: body });
+    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'WEBHOOK_SIGNATURE_REJECTED', entityType: 'WhatsAppWebhook' }),
+    );
   });
 
   it('throws UnauthorizedException when signature is missing', () => {

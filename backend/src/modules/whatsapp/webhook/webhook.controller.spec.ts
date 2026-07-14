@@ -5,6 +5,7 @@ import { WebhookController } from './webhook.controller';
 import { CustomerBotService } from '../customer-bot/customer-bot.service';
 import { TechnicianBotService } from '../technician-bot/technician-bot.service';
 import { TechniciansRepository } from '../../technicians/technicians.repository';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
 import {
   InboundWhatsAppMessage,
   WhatsAppStatusUpdate,
@@ -14,6 +15,7 @@ const mockConfigGet = jest.fn();
 const mockHandleMessage = jest.fn().mockResolvedValue(undefined);
 const mockTechHandleMessage = jest.fn().mockResolvedValue(undefined);
 const mockFindByPhone = jest.fn().mockResolvedValue(null); // default: not a technician
+const mockAuditLog = jest.fn().mockResolvedValue(undefined);
 
 describe('WebhookController', () => {
   let controller: WebhookController;
@@ -37,6 +39,10 @@ describe('WebhookController', () => {
         {
           provide: TechniciansRepository,
           useValue: { findByPhone: mockFindByPhone },
+        },
+        {
+          provide: AuditService,
+          useValue: { log: mockAuditLog },
         },
       ],
     }).compile();

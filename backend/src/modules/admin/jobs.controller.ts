@@ -1,13 +1,19 @@
-import { Body, Controller, Get, Param, Post, Query, Version } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseInterceptors, Version } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { JobStatus } from '../../domain/enums';
 import { AssignmentEngineService } from '../assignment-engine/assignment-engine.service';
+import { CurrentUser, CurrentUserPayload } from '../auth/current-user.decorator';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
+import { ManualAssignDto } from './dto/jobs.dto';
 
+@UseInterceptors(AuditInterceptor)
 @Controller('admin/jobs')
 export class JobsAdminController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly assignmentEngine: AssignmentEngineService,
+    private readonly auditService: AuditService,
   ) {}
 
   @Get()
@@ -63,7 +69,7 @@ export class JobsAdminController {
 
   @Post(':id/assign')
   @Version('1')
-  async manualAssign(@Param('id') id: string, @Body() body: { technicianId: string }) {
+  async manualAssign(@Param('id') id: string, @Body() body: ManualAssignDto, @CurrentUser() user: CurrentUserPayload) {
     const job = await this.prisma.job.findUniqueOrThrow({
       where: { id },
       include: { customer: true },
@@ -75,12 +81,32 @@ export class JobsAdminController {
     }
     await this.prisma.job.update({ where: { id }, data: { status: JobStatus.NEW as any } });
     await this.assignmentEngine.tryAssignJob(id, job.customer.phone);
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'MANUAL_ASSIGN_JOB',
+      entityType: 'Job',
+      entityId: id,
+      metadata: { requestedTechnicianId: body.technicianId },
+    });
+
     return { message: 'Assignment triggered' };
   }
 
   @Post(':id/cancel')
   @Version('1')
-  async cancel(@Param('id') id: string) {
-    return this.prisma.job.update({ where: { id }, data: { status: JobStatus.CANCELLED as any } });
+  async cancel(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    const job = await this.prisma.job.update({ where: { id }, data: { status: JobStatus.CANCELLED as any } });
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'CANCEL_JOB',
+      entityType: 'Job',
+      entityId: id,
+    });
+
+    return job;
   }
 }

@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
 import { JwtPayload } from './jwt.strategy';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   async login(email: string, password: string) {
@@ -20,19 +22,57 @@ export class AuthService {
     const passwordMatch = await bcrypt.compare(password, admin.passwordHash);
     if (!passwordMatch) throw new UnauthorizedException('Invalid credentials');
 
-    return this.generateTokens({ sub: admin.id, email: admin.email, role: admin.role });
+    await this.auditService.log({
+      actorId: admin.id,
+      actorType: 'ADMIN_USER',
+      action: 'LOGIN',
+      entityType: 'AdminUser',
+      entityId: admin.id,
+    });
+
+    return this.generateTokens({
+      sub: admin.id,
+      email: admin.email,
+      role: admin.role,
+      tokenVersion: admin.tokenVersion,
+    });
   }
 
   async refreshToken(token: string) {
+    let payload: JwtPayload;
     try {
       const secret = this.configService.get<string>('jwt.refreshSecret', 'sevagan-refresh-secret-change-in-prod');
-      const payload = this.jwtService.verify<JwtPayload>(token, { secret });
-      const admin = await this.prisma.adminUser.findUnique({ where: { id: payload.sub } });
-      if (!admin || !admin.active) throw new UnauthorizedException();
-      return this.generateTokens({ sub: admin.id, email: admin.email, role: admin.role });
+      payload = this.jwtService.verify<JwtPayload>(token, { secret });
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    const admin = await this.prisma.adminUser.findUnique({ where: { id: payload.sub } });
+    if (!admin || !admin.active) throw new UnauthorizedException('Invalid refresh token');
+    if (admin.tokenVersion !== payload.tokenVersion) {
+      throw new UnauthorizedException('Refresh token has been revoked');
+    }
+
+    // Rotation: bump tokenVersion so the presented refresh token (and any other
+    // outstanding access token) can never be reused after this point.
+    const rotated = await this.prisma.adminUser.update({
+      where: { id: admin.id },
+      data: { tokenVersion: { increment: 1 } },
+    });
+
+    return this.generateTokens({
+      sub: rotated.id,
+      email: rotated.email,
+      role: rotated.role,
+      tokenVersion: rotated.tokenVersion,
+    });
+  }
+
+  async logout(adminId: string) {
+    await this.prisma.adminUser.update({
+      where: { id: adminId },
+      data: { tokenVersion: { increment: 1 } },
+    });
   }
 
   private generateTokens(payload: JwtPayload) {

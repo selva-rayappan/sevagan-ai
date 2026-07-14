@@ -1,6 +1,7 @@
 export const appConfig = () => ({
   port: parseInt(process.env.API_PORT ?? '3001', 10),
   nodeEnv: process.env.NODE_ENV ?? 'development',
+  adminDomain: process.env.ADMIN_DOMAIN ?? 'admin.sevagan.ai',
 
   database: {
     url: process.env.DATABASE_URL,
@@ -36,5 +37,10 @@ export const appConfig = () => ({
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
     ollamaModel: process.env.OLLAMA_MODEL ?? 'qwen3',
     openaiApiKey: process.env.OPENAI_API_KEY,
+  },
+
+  payment: {
+    razorpayLinkUrl: process.env.RAZORPAY_LINK_URL ?? 'https://razorpay.me/@yarlenterprises',
+    upiVpa: process.env.UPI_VPA ?? 'sevagan@upi',
   },
 });

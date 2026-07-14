@@ -1,24 +1,19 @@
 const TOKEN_KEY = 'sevagan_token';
-const REFRESH_KEY = 'sevagan_refresh';
 
+// The refresh token lives in an HTTP-only cookie set by the backend — it is
+// never accessible to (or stored by) client-side JS.
 export const auth = {
-  setTokens(accessToken: string, refreshToken: string) {
+  setToken(accessToken: string) {
     if (typeof window === 'undefined') return;
     localStorage.setItem(TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
   },
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem(TOKEN_KEY);
   },
-  getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(REFRESH_KEY);
-  },
   clear() {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
   },
   isLoggedIn(): boolean {
     return !!this.getToken();

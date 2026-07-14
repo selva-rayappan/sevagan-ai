@@ -14,6 +14,7 @@ import {
   Version,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Public } from '../../auth/public.decorator';
 import { WebhookHmacGuard } from '../guards/webhook-hmac.guard';
@@ -67,6 +68,7 @@ export class WebhookController {
   @Post()
   @Version('1')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
   @UseGuards(WebhookHmacGuard)
   handleWebhook(
     @Body() payload: WhatsAppWebhookPayload,

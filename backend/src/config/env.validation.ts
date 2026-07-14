@@ -35,6 +35,70 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   JWT_EXPIRES_IN: string = '15m';
+
+  // WhatsApp
+  @IsString()
+  @IsOptional()
+  WA_PHONE_NUMBER_ID: string;
+
+  @IsString()
+  @IsOptional()
+  WA_ACCESS_TOKEN: string;
+
+  @IsString()
+  @IsOptional()
+  WA_APP_SECRET: string;
+
+  @IsString()
+  @IsOptional()
+  WA_WEBHOOK_VERIFY_TOKEN: string;
+
+  // MinIO
+  @IsString()
+  @IsOptional()
+  MINIO_ENDPOINT: string;
+
+  @IsInt()
+  @IsOptional()
+  MINIO_PORT: number;
+
+  @IsString()
+  @IsOptional()
+  MINIO_USE_SSL: string;
+
+  @IsString()
+  @IsOptional()
+  MINIO_ACCESS_KEY: string;
+
+  @IsString()
+  @IsOptional()
+  MINIO_SECRET_KEY: string;
+
+  @IsString()
+  @IsOptional()
+  MINIO_BUCKET_NAME: string;
+
+  // AI
+  @IsString()
+  @IsOptional()
+  OLLAMA_BASE_URL: string;
+
+  @IsString()
+  @IsOptional()
+  OLLAMA_MODEL: string;
+
+  @IsString()
+  @IsOptional()
+  OPENAI_API_KEY: string;
+
+  // Payments
+  @IsString()
+  @IsOptional()
+  RAZORPAY_LINK_URL: string;
+
+  @IsString()
+  @IsOptional()
+  ADMIN_DOMAIN: string;
 }
 
 export function validate(config: Record<string, unknown>) {

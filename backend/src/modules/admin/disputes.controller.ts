@@ -1,10 +1,19 @@
-import { Body, Controller, Get, Param, Post, Query, Version } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseInterceptors, Version } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
-import { DisputeStatus } from '../../domain/enums';
+import { DisputeStatus, AdminRole } from '../../domain/enums';
+import { Roles } from '../auth/roles.decorator';
+import { CurrentUser, CurrentUserPayload } from '../auth/current-user.decorator';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
+import { ResolveDisputeDto } from './dto/disputes.dto';
 
+@UseInterceptors(AuditInterceptor)
 @Controller('admin/disputes')
 export class DisputesAdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get()
   @Version('1')
@@ -25,10 +34,11 @@ export class DisputesAdminController {
     });
   }
 
+  @Roles(AdminRole.ADMIN)
   @Post(':id/resolve')
   @Version('1')
-  async resolve(@Param('id') id: string, @Body() body: { notes?: string }) {
-    return this.prisma.dispute.update({
+  async resolve(@Param('id') id: string, @Body() body: ResolveDisputeDto, @CurrentUser() user: CurrentUserPayload) {
+    const dispute = await this.prisma.dispute.update({
       where: { id },
       data: {
         status: DisputeStatus.RESOLVED as any,
@@ -36,5 +46,16 @@ export class DisputesAdminController {
         resolvedAt: new Date(),
       },
     });
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'RESOLVE_DISPUTE',
+      entityType: 'Dispute',
+      entityId: id,
+      metadata: { notes: body.notes },
+    });
+
+    return dispute;
   }
 }

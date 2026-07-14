@@ -22,6 +22,11 @@ import { AssignmentEngineModule } from './modules/assignment-engine/assignment-e
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { InvoiceModule } from './modules/invoice/invoice.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { AIModule } from './infrastructure/ai/ai.module';
+import { AuditModule } from './infrastructure/audit/audit.module';
 import { appConfig } from './config/app.config';
 import { validate } from './config/env.validation';
 
@@ -46,6 +51,8 @@ import { validate } from './config/env.validation';
     TranslationModule,
     MessagingModule,
     MinioModule,
+    AIModule,
+    AuditModule,
 
     // Feature modules
     HealthModule,
@@ -64,6 +71,9 @@ import { validate } from './config/env.validation';
     AuthModule,
     DashboardModule,
     AdminModule,
+    InvoiceModule,
+    PaymentModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

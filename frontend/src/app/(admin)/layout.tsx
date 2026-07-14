@@ -4,15 +4,18 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { auth } from '@/lib/auth';
+import apiClient from '@/lib/api';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Users,
   Wrench,
   Briefcase,
+  FileText,
   Banknote,
   PercentCircle,
   AlertTriangle,
+  BarChart3,
   LogOut,
 } from 'lucide-react';
 
@@ -21,9 +24,11 @@ const NAV = [
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/technicians', label: 'Technicians', icon: Wrench },
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
+  { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/settlements', label: 'Settlements', icon: Banknote },
   { href: '/commission', label: 'Commission', icon: PercentCircle },
   { href: '/disputes', label: 'Disputes', icon: AlertTriangle },
+  { href: '/reports', label: 'Reports', icon: BarChart3 },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -37,8 +42,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [router]);
 
   function logout() {
-    auth.clear();
-    router.push('/login');
+    apiClient.post('/api/v1/auth/logout').catch(() => undefined).finally(() => {
+      auth.clear();
+      router.push('/login');
+    });
   }
 
   return (

@@ -1,9 +1,17 @@
-import { Body, Controller, Get, Param, Patch, Query, Version } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query, UseInterceptors, Version } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { CurrentUser, CurrentUserPayload } from '../auth/current-user.decorator';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
+import { UpdateCustomerDto } from './dto/customers.dto';
 
+@UseInterceptors(AuditInterceptor)
 @Controller('admin/customers')
 export class CustomersAdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get()
   @Version('1')
@@ -32,7 +40,18 @@ export class CustomersAdminController {
 
   @Patch(':id')
   @Version('1')
-  async update(@Param('id') id: string, @Body() body: { name?: string; address?: string }) {
-    return this.prisma.customer.update({ where: { id }, data: body });
+  async update(@Param('id') id: string, @Body() body: UpdateCustomerDto, @CurrentUser() user: CurrentUserPayload) {
+    const customer = await this.prisma.customer.update({ where: { id }, data: body });
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'UPDATE_CUSTOMER',
+      entityType: 'Customer',
+      entityId: id,
+      metadata: { ...body },
+    });
+
+    return customer;
   }
 }

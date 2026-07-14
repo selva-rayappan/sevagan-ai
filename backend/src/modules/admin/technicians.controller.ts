@@ -1,14 +1,20 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Version } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseInterceptors, Version } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TechniciansRepository } from '../technicians/technicians.repository';
-import { Language, TechnicianStatus } from '../../domain/enums';
+import { Language } from '../../domain/enums';
 import {
   WHATSAPP_PROVIDER,
   WhatsAppProvider,
 } from '../../infrastructure/messaging/whatsapp.provider.interface';
 import { TranslationService } from '../../infrastructure/i18n/translation.service';
+import { CurrentUser, CurrentUserPayload } from '../auth/current-user.decorator';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
+import { AddSkillDto, CreateTechnicianDto, UpdateTechnicianDto } from './dto/technicians.dto';
+import { normalizePhone } from '../../common/utils/phone.utils';
 
+@UseInterceptors(AuditInterceptor)
 @Controller('admin/technicians')
 export class TechniciansAdminController {
   constructor(
@@ -16,6 +22,7 @@ export class TechniciansAdminController {
     private readonly techniciansRepo: TechniciansRepository,
     @Inject(WHATSAPP_PROVIDER) private readonly whatsapp: WhatsAppProvider,
     private readonly translation: TranslationService,
+    private readonly auditService: AuditService,
   ) {}
 
   @Get()
@@ -40,19 +47,11 @@ export class TechniciansAdminController {
 
   @Post()
   @Version('1')
-  async create(
-    @Body()
-    body: {
-      name: string;
-      phone: string;
-      serviceArea: string;
-      language?: string;
-      categoryIds?: string[];
-    },
-  ) {
+  async create(@Body() body: CreateTechnicianDto, @CurrentUser() user: CurrentUserPayload) {
+    const phone = normalizePhone(body.phone);
     const technician = await this.techniciansRepo.create({
       name: body.name,
-      phone: body.phone,
+      phone,
       serviceArea: body.serviceArea,
       language: (body.language as Language) ?? Language.EN,
     });
@@ -72,13 +71,22 @@ export class TechniciansAdminController {
 
     await this.whatsapp
       .sendText({
-        to: body.phone,
+        to: phone,
         text: this.translation.translate('technician.welcome', lang, {
           service: primaryCategory?.name ?? 'Home Services',
           serviceArea: body.serviceArea,
         }),
       })
       .catch(() => undefined);
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'CREATE_TECHNICIAN',
+      entityType: 'Technician',
+      entityId: technician.id,
+      metadata: { name: body.name, phone, serviceArea: body.serviceArea },
+    });
 
     return this.prisma.technician.findUnique({
       where: { id: technician.id },
@@ -100,16 +108,24 @@ export class TechniciansAdminController {
 
   @Patch(':id')
   @Version('1')
-  async update(
-    @Param('id') id: string,
-    @Body() body: { name?: string; serviceArea?: string; status?: string; active?: boolean },
-  ) {
-    return this.techniciansRepo.update(id, body as any);
+  async update(@Param('id') id: string, @Body() body: UpdateTechnicianDto, @CurrentUser() user: CurrentUserPayload) {
+    const technician = await this.techniciansRepo.update(id, body);
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'UPDATE_TECHNICIAN',
+      entityType: 'Technician',
+      entityId: id,
+      metadata: { ...body },
+    });
+
+    return technician;
   }
 
   @Post(':id/skills')
   @Version('1')
-  async addSkill(@Param('id') technicianId: string, @Body() body: { categoryId: string }) {
+  async addSkill(@Param('id') technicianId: string, @Body() body: AddSkillDto) {
     return this.prisma.technicianSkill.upsert({
       where: { technicianId_categoryId: { technicianId, categoryId: body.categoryId } },
       create: { technicianId, categoryId: body.categoryId },

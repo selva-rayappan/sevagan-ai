@@ -8,6 +8,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  tokenVersion: number;
 }
 
 @Injectable()
@@ -26,6 +27,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const admin = await this.prisma.adminUser.findUnique({ where: { id: payload.sub } });
     if (!admin || !admin.active) throw new UnauthorizedException();
+    if (admin.tokenVersion !== payload.tokenVersion) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
     return { id: admin.id, email: admin.email, role: admin.role, name: admin.name };
   }
 }

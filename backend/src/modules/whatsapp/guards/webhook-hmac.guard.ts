@@ -9,12 +9,16 @@ import { ConfigService } from '@nestjs/config';
 import { RawBodyRequest } from '@nestjs/common';
 import { Request } from 'express';
 import * as crypto from 'crypto';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
 
 @Injectable()
 export class WebhookHmacGuard implements CanActivate {
   private readonly logger = new Logger(WebhookHmacGuard.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<RawBodyRequest<Request>>();
@@ -27,35 +31,45 @@ export class WebhookHmacGuard implements CanActivate {
         this.logger.warn('WA_APP_SECRET not set — skipping HMAC verification (dev mode only)');
         return true;
       }
-      throw new UnauthorizedException('Webhook secret not configured');
+      this.reject(request, 'Webhook secret not configured');
     }
 
     const signature = request.headers['x-hub-signature-256'] as string | undefined;
     const rawBody = request.rawBody;
 
     if (!signature || !rawBody) {
-      throw new UnauthorizedException('Missing webhook signature or body');
+      this.reject(request, 'Missing webhook signature or body');
     }
 
     const expected = `sha256=${crypto
       .createHmac('sha256', appSecret)
-      .update(rawBody)
+      .update(rawBody as Buffer)
       .digest('hex')}`;
 
     // Lengths must match before timingSafeEqual to avoid buffer size mismatch throw
-    if (signature.length !== expected.length) {
-      throw new UnauthorizedException('Invalid webhook signature');
+    if ((signature as string).length !== expected.length) {
+      this.reject(request, 'Invalid webhook signature');
     }
 
     const isValid = crypto.timingSafeEqual(
-      Buffer.from(signature, 'utf8'),
+      Buffer.from(signature as string, 'utf8'),
       Buffer.from(expected, 'utf8'),
     );
 
     if (!isValid) {
-      throw new UnauthorizedException('Invalid webhook signature');
+      this.reject(request, 'Invalid webhook signature');
     }
 
     return true;
+  }
+
+  private reject(request: RawBodyRequest<Request>, reason: string): never {
+    this.auditService.log({
+      actorType: 'UNKNOWN',
+      action: 'WEBHOOK_SIGNATURE_REJECTED',
+      entityType: 'WhatsAppWebhook',
+      metadata: { reason, ip: request.ip, path: request.path },
+    });
+    throw new UnauthorizedException(reason);
   }
 }
