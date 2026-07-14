@@ -124,6 +124,23 @@ docker exec sevagan-postgres dropdb -U sevagan sevagan_restore_test
 
 ---
 
+## 6b. Starting/Stopping the EC2 Instance (Cost Control)
+
+Run these from your **local machine** (not the server) — they use the AWS CLI to stop/start billing for compute, while the Elastic IP and EBS volumes (and everything in them) are preserved.
+
+```bash
+aws configure   # once, with credentials that can manage this instance
+cp scripts/ec2-control.env.example scripts/ec2-control.env
+# fill in INSTANCE_ID (EC2 console -> Instances), AWS_REGION, SSH_KEY_PATH
+
+./scripts/ec2-stop.sh    # gracefully stops the Docker stack, then stops the instance
+./scripts/ec2-start.sh   # starts the instance, waits for it, brings the stack back up
+```
+
+`ec2-stop.sh` runs `docker compose stop` (not `down`) over SSH before stopping the instance, so Postgres/Redis/MinIO shut down cleanly rather than being killed mid-write by the EC2 stop signal. `ec2-start.sh` waits for the instance to pass status checks and SSH to come up, then explicitly runs `docker compose up -d` — containers stopped via `stop` don't auto-restart on daemon boot even with `restart: unless-stopped`, so this step is required, not optional.
+
+---
+
 ## 7. Redeploying After Code Changes
 
 ```bash
