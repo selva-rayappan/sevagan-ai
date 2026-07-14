@@ -110,6 +110,23 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  seed:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: builder
+    container_name: sevagan-seed
+    env_file:
+      - /etc/sevagan/.env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sevagan:${POSTGRES_PASSWORD}@postgres:5432/sevagan
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run prisma:seed
+    profiles: ['seed']
+
   web:
     build:
       context: ./frontend

@@ -52,8 +52,9 @@ IMAGE_TAG=latest
 ## 3. First Deploy (HTTP bootstrap → HTTPS)
 
 ```bash
-sudo mkdir -p /etc/sevagan && sudo chmod 700 /etc/sevagan
-# create /etc/sevagan/.env as above
+sudo mkdir -p /etc/sevagan && sudo chown $USER:$USER /etc/sevagan && chmod 700 /etc/sevagan
+# create /etc/sevagan/.env as above (owned by your deploy user, not root —
+# scripts/deploy.sh runs as that user, not via sudo, so it needs read access)
 
 ./scripts/deploy.sh        # no cert yet -> nginx runs the HTTP-only bootstrap config
 ./scripts/init-ssl.sh      # issues Let's Encrypt certs via the one-off certbot service
@@ -62,11 +63,11 @@ sudo mkdir -p /etc/sevagan && sudo chmod 700 /etc/sevagan
 
 `scripts/deploy.sh` is the whole release process: pulls latest code, regenerates `infrastructure/nginx/nginx.conf.generated` from whichever template applies (bootstrap vs. full TLS, auto-detected by cert presence), rebuilds images, runs `prisma migrate deploy`, restarts the stack, prunes old images.
 
-Seed data (categories, commission rules, default admin) runs as part of the Prisma migrate step only if you also run:
+Seed data (categories, commission rules, default admin) is **not** run automatically. The production `api` image has `devDependencies` (including `ts-node`, which the seed script needs) pruned out, so seed via the `builder`-stage `seed` service instead:
 ```bash
-docker compose -f docker-compose.prod.yml run --rm api npm run prisma:seed
+docker compose -f docker-compose.prod.yml --profile seed run --rm seed
 ```
-Run this once, on first deploy only — it's not idempotent-safe to re-run against a populated database.
+Run this once, on first deploy only — it's not idempotent-safe to re-run against a populated database. Default admin login afterwards: `admin@sevagan.ai` / `Admin@123!` — **change this password immediately** via the database or a future admin-management endpoint.
 
 ---
 

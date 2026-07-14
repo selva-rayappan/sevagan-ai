@@ -13,11 +13,12 @@ EXPOSE 3001
 CMD ["npm", "run", "start:dev"]
 
 # ─── Builder ───────────────────────────────────────────────────────────────────
+# Keeps full (dev) dependencies — also used directly for one-off tasks like
+# `npm run prisma:seed` (ts-node) that the pruned production image can't run.
 FROM base AS builder
 COPY . .
 RUN npx prisma generate
 RUN npm run build
-RUN npm prune --omit=dev
 
 # ─── Production ────────────────────────────────────────────────────────────────
 FROM node:22-alpine AS production
@@ -27,9 +28,9 @@ RUN apk add --no-cache openssl && \
     adduser --system --uid 1001 nestjs
 
 COPY --from=builder --chown=nestjs:nestjs /app/dist ./dist
-COPY --from=builder --chown=nestjs:nestjs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nestjs /app/prisma ./prisma
 COPY --chown=nestjs:nestjs package*.json ./
+RUN npm install --omit=dev --ignore-scripts && npx prisma generate && chown -R nestjs:nestjs node_modules
 
 ENV NODE_ENV=production
 USER nestjs
