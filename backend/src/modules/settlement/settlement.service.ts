@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { TechnicianSettlement } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { SettlementStatus } from '../../domain/enums';
@@ -14,6 +14,14 @@ export class SettlementService {
     periodStart: Date,
     periodEnd: Date,
   ): Promise<TechnicianSettlement> {
+    const technician = await this.prisma.technician.findUnique({
+      where: { id: technicianId },
+    });
+
+    if (!technician) {
+      throw new NotFoundException(`Technician with ID ${technicianId} not found`);
+    }
+
     const commissions = await this.prisma.jobCommission.findMany({
       where: {
         createdAt: { gte: periodStart, lte: periodEnd },

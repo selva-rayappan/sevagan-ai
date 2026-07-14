@@ -40,3 +40,10 @@ export interface SendImageOptions {
   mediaId: string;
   caption?: string;
 }
+
+export interface SendDocumentOptions {
+  to: string;
+  link: string;
+  filename: string;
+  caption?: string;
+}

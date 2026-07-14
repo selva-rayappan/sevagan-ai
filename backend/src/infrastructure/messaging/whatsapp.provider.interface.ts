@@ -1,4 +1,5 @@
 import {
+  SendDocumentOptions,
   SendImageOptions,
   SendInteractiveButtonsOptions,
   SendInteractiveListOptions,
@@ -17,6 +18,7 @@ export interface WhatsAppProvider {
   sendInteractiveButtons(options: SendInteractiveButtonsOptions): Promise<void>;
   sendInteractiveList(options: SendInteractiveListOptions): Promise<void>;
   sendImage(options: SendImageOptions): Promise<void>;
+  sendDocument(options: SendDocumentOptions): Promise<void>;
   markAsRead(messageId: string): Promise<void>;
   downloadMedia(mediaId: string): Promise<Buffer>;
 }

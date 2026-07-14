@@ -19,6 +19,11 @@ import { ConversationStateService } from '../conversation/conversation-state.ser
 import { ConversationSession, ConversationState } from '../conversation/conversation-state.types';
 import { TechnicianSessionService } from '../technician-bot/technician-session.service';
 import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
+import { InvoiceService } from '../../invoice/invoice.service';
+import { PaymentService } from '../../payment/payment.service';
+import { IntentClassifierService, Intent } from '../../ai-dispatcher/intent-classifier.service';
+import { CategoryMapperService } from '../../ai-dispatcher/category-mapper.service';
+import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.service';
 
 const SERVICE_MENU: Record<string, string> = {
   '1': 'Electrical',
@@ -48,6 +53,11 @@ export class CustomerBotService {
     private readonly trustScoreService: TrustScoreService,
     private readonly technicianSessionService: TechnicianSessionService,
     private readonly assignmentEngine: AssignmentEngineService,
+    private readonly invoiceService: InvoiceService,
+    private readonly paymentService: PaymentService,
+    private readonly intentClassifier: IntentClassifierService,
+    private readonly categoryMapper: CategoryMapperService,
+    private readonly languageDetector: LanguageDetectorService,
     private readonly translation: TranslationService,
   ) {}
 
@@ -107,7 +117,77 @@ export class CustomerBotService {
       return true;
     }
 
-    return false;
+    return this.tryAiDispatch(session, text, customer);
+  }
+
+  /**
+   * Free-text fallback for IDLE/AWAITING_SERVICE: answers FAQs, resolves TRACK/CANCEL
+   * phrased in natural language, and matches a service category from free text.
+   * Numeric input is left untouched so the numbered menus always take priority.
+   */
+  private async tryAiDispatch(
+    session: ConversationSession,
+    text: string,
+    customer: Customer,
+  ): Promise<boolean> {
+    const trimmed = text.trim();
+    if (
+      ![ConversationState.IDLE, ConversationState.AWAITING_SERVICE].includes(session.state) ||
+      trimmed.length < 2 ||
+      /^\d+$/.test(trimmed)
+    ) {
+      return false;
+    }
+
+    try {
+      const detectedLanguage = await this.languageDetector.detectLanguage(trimmed);
+      const result = await this.intentClassifier.classifyIntent(trimmed, detectedLanguage);
+
+      switch (result.intent) {
+        case Intent.FAQ_HOURS:
+          await this.whatsapp.sendText({ to: session.phone, text: this.translation.translate('faq.hours', session.language) });
+          return true;
+        case Intent.FAQ_PRICING:
+          await this.whatsapp.sendText({ to: session.phone, text: this.translation.translate('faq.pricing', session.language) });
+          return true;
+        case Intent.FAQ_COVERAGE:
+          await this.whatsapp.sendText({ to: session.phone, text: this.translation.translate('faq.coverage', session.language) });
+          return true;
+        case Intent.TRACK_JOB:
+          if (!result.extractedJobNumber) return false;
+          await this.handleTrackCommand(session.phone, result.extractedJobNumber, session.language);
+          return true;
+        case Intent.CANCEL_JOB:
+          if (!result.extractedJobNumber) return false;
+          await this.handleCancelCommand(session.phone, result.extractedJobNumber, session.language, customer.id);
+          return true;
+        case Intent.REQUEST_SERVICE:
+          if (session.state !== ConversationState.AWAITING_SERVICE) return false;
+          return this.tryAiServiceMatch(session, trimmed);
+        default:
+          return false;
+      }
+    } catch (err) {
+      this.logger.warn(`AI dispatch failed, falling back to standard flow: ${(err as Error).message}`);
+      return false;
+    }
+  }
+
+  private async tryAiServiceMatch(session: ConversationSession, text: string): Promise<boolean> {
+    const match = await this.categoryMapper.mapToCategory(text);
+    if (!match || match.confidence < 0.6) {
+      return false;
+    }
+
+    session.selectedCategoryId = match.categoryId;
+    session.selectedCategoryName = match.categoryName;
+    session.state = ConversationState.AWAITING_LOCATION;
+
+    await this.whatsapp.sendText({
+      to: session.phone,
+      text: this.translation.translate('customer.ask_location', session.language),
+    });
+    return true;
   }
 
   private async routeByState(
@@ -392,6 +472,11 @@ export class CustomerBotService {
       // Notify technician and free them up
       await this.notifyTechnicianConfirmed(ctx);
 
+      // Generate invoice and record payment (fire-and-forget)
+      this.generateInvoiceAndPayment(ctx, session.phone, session.language).catch((err) => {
+        this.logger.error(`Invoice/payment failed for job ${ctx.jobId}: ${(err as Error).message}`);
+      });
+
     } else if (normalized === '2') {
       const amount = parseFloat(ctx.amount);
       await this.disputesRepository.create(ctx.jobId, amount, amount).catch((err) => {
@@ -521,5 +606,34 @@ export class CustomerBotService {
 
   private categoryNameToKey(name: string): string {
     return name.toLowerCase().replace(/\s+/g, '_');
+  }
+
+  private async generateInvoiceAndPayment(
+    ctx: NonNullable<ConversationSession['activeJobContext']>,
+    customerPhone: string,
+    customerLang: Language,
+  ): Promise<void> {
+    try {
+      const invoice = await this.invoiceService.generateInvoice(ctx.jobId);
+      const amount = parseFloat(ctx.amount);
+
+      if (ctx.paymentMode === 'UPI') {
+        await this.paymentService.recordUpiPayment(invoice.id, amount);
+
+        // Send Razorpay payment link
+        const paymentLink = this.paymentService.generatePaymentLink(amount, ctx.jobNumber);
+        await this.whatsapp.sendText({
+          to: customerPhone,
+          text: this.translation.translate('customer.payment_link', customerLang, {
+            amount: ctx.amount,
+            paymentLink,
+          }),
+        });
+      } else {
+        await this.paymentService.recordCashPayment(invoice.id, amount);
+      }
+    } catch (err) {
+      this.logger.error(`generateInvoiceAndPayment failed: ${(err as Error).message}`);
+    }
   }
 }

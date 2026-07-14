@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { WhatsAppProvider } from './whatsapp.provider.interface';
 import {
+  SendDocumentOptions,
   SendImageOptions,
   SendInteractiveButtonsOptions,
   SendInteractiveListOptions,
@@ -104,6 +105,16 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       to,
       type: 'image',
       image: { id: mediaId, ...(caption && { caption }) },
+    });
+  }
+
+  async sendDocument({ to, link, filename, caption }: SendDocumentOptions): Promise<void> {
+    await this.post('/messages', {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'document',
+      document: { link, filename, ...(caption && { caption }) },
     });
   }
 

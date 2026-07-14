@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { SettlementService } from './settlement.service';
 import { SettlementStatus } from '../../domain/enums';
 
@@ -5,6 +6,7 @@ const mockFindManyCommissions = jest.fn();
 const mockCreateSettlement = jest.fn();
 const mockUpdateSettlement = jest.fn();
 const mockFindManySettlements = jest.fn();
+const mockFindUniqueTechnician = jest.fn();
 
 const mockPrisma = {
   jobCommission: { findMany: mockFindManyCommissions },
@@ -13,6 +15,7 @@ const mockPrisma = {
     update: mockUpdateSettlement,
     findMany: mockFindManySettlements,
   },
+  technician: { findUnique: mockFindUniqueTechnician },
 } as any;
 
 describe('SettlementService', () => {
@@ -23,6 +26,7 @@ describe('SettlementService', () => {
   beforeEach(() => {
     service = new SettlementService(mockPrisma);
     jest.clearAllMocks();
+    mockFindUniqueTechnician.mockResolvedValue({ id: 'tech-1', name: 'Kumar' });
   });
 
   describe('generateSettlementForTechnician()', () => {
@@ -76,6 +80,13 @@ describe('SettlementService', () => {
           },
         },
       });
+    });
+
+    it('throws NotFoundException if the technician does not exist', async () => {
+      mockFindUniqueTechnician.mockResolvedValue(null);
+      await expect(
+        service.generateSettlementForTechnician('invalid-tech', periodStart, periodEnd)
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

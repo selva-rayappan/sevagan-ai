@@ -16,6 +16,11 @@ import { DisputesRepository } from '../../disputes/disputes.repository';
 import { TrustScoreService } from '../../trust-score/trust-score.service';
 import { TechnicianSessionService } from '../technician-bot/technician-session.service';
 import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
+import { InvoiceService } from '../../invoice/invoice.service';
+import { PaymentService } from '../../payment/payment.service';
+import { IntentClassifierService, Intent } from '../../ai-dispatcher/intent-classifier.service';
+import { CategoryMapperService } from '../../ai-dispatcher/category-mapper.service';
+import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.service';
 
 // ─── Mock factories ──────────────────────────────────────────────────────────
 
@@ -103,6 +108,35 @@ const mockAssignmentEngineService = {
   tryAssignJob: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockGenerateInvoice = jest.fn().mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-20260630-0001' });
+const mockInvoiceService = {
+  generateInvoice: mockGenerateInvoice,
+};
+
+const mockRecordCashPayment = jest.fn().mockResolvedValue({ id: 'pay-1' });
+const mockRecordUpiPayment = jest.fn().mockResolvedValue({ id: 'pay-1' });
+const mockGeneratePaymentLink = jest.fn().mockReturnValue('https://razorpay.me/example?amount=500');
+const mockPaymentService = {
+  recordCashPayment: mockRecordCashPayment,
+  recordUpiPayment: mockRecordUpiPayment,
+  generatePaymentLink: mockGeneratePaymentLink,
+};
+
+const mockClassifyIntent = jest.fn().mockResolvedValue({ intent: Intent.UNKNOWN, confidence: 0, detectedLanguage: Language.EN });
+const mockIntentClassifier = {
+  classifyIntent: mockClassifyIntent,
+};
+
+const mockMapToCategory = jest.fn().mockResolvedValue(null);
+const mockCategoryMapper = {
+  mapToCategory: mockMapToCategory,
+};
+
+const mockDetectLanguage = jest.fn().mockResolvedValue(Language.EN);
+const mockLanguageDetector = {
+  detectLanguage: mockDetectLanguage,
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const makeCustomer = (overrides = {}): any => ({
@@ -167,6 +201,11 @@ describe('CustomerBotService', () => {
         { provide: TrustScoreService, useValue: mockTrustScoreService },
         { provide: TechnicianSessionService, useValue: mockTechnicianSessionService },
         { provide: AssignmentEngineService, useValue: mockAssignmentEngineService },
+        { provide: InvoiceService, useValue: mockInvoiceService },
+        { provide: PaymentService, useValue: mockPaymentService },
+        { provide: IntentClassifierService, useValue: mockIntentClassifier },
+        { provide: CategoryMapperService, useValue: mockCategoryMapper },
+        { provide: LanguageDetectorService, useValue: mockLanguageDetector },
       ],
     }).compile();
 
@@ -302,6 +341,133 @@ describe('CustomerBotService', () => {
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: ConversationState.AWAITING_SERVICE }),
       );
+    });
+
+    it('matches a free-text service description via the AI category mapper', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
+      mockClassifyIntent.mockResolvedValueOnce({ intent: Intent.REQUEST_SERVICE, confidence: 0.9, detectedLanguage: Language.EN });
+      mockMapToCategory.mockResolvedValueOnce({ categoryId: 'cat-1', categoryName: 'Electrical', confidence: 0.85 });
+
+      await service.handleMessage(makeTextMessage('my fan is not working'), 'Rajesh');
+
+      expect(mockMapToCategory).toHaveBeenCalledWith('my fan is not working');
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: ConversationState.AWAITING_LOCATION,
+          selectedCategoryId: 'cat-1',
+          selectedCategoryName: 'Electrical',
+        }),
+      );
+    });
+
+    it('falls back to the standard unknown-service flow when AI confidence is too low', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
+      mockClassifyIntent.mockResolvedValueOnce({ intent: Intent.REQUEST_SERVICE, confidence: 0.4, detectedLanguage: Language.EN });
+      mockMapToCategory.mockResolvedValueOnce({ categoryId: 'cat-1', categoryName: 'Electrical', confidence: 0.2 });
+
+      await service.handleMessage(makeTextMessage('hmm not sure what I need'), 'Rajesh');
+
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: ConversationState.AWAITING_SERVICE }),
+      );
+    });
+
+    it('does not call the AI dispatcher for numeric menu input', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
+      mockFindByName.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
+
+      await service.handleMessage(makeTextMessage('1'), 'Rajesh');
+
+      expect(mockClassifyIntent).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── AI dispatch fallback ───────────────────────────────────────────────────
+
+  describe('AI dispatch fallback', () => {
+    it('answers an hours FAQ from IDLE without changing state', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.IDLE }));
+      mockClassifyIntent.mockResolvedValueOnce({ intent: Intent.FAQ_HOURS, confidence: 0.9, detectedLanguage: Language.EN });
+
+      await service.handleMessage(makeTextMessage('what are your working hours?'), 'Rajesh');
+
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919876543210' }),
+      );
+      expect(mockSendInteractiveButtons).not.toHaveBeenCalled();
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: ConversationState.IDLE }),
+      );
+    });
+
+    it('answers a pricing FAQ', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.IDLE }));
+      mockClassifyIntent.mockResolvedValueOnce({ intent: Intent.FAQ_PRICING, confidence: 0.9, detectedLanguage: Language.EN });
+
+      await service.handleMessage(makeTextMessage('how much does it cost?'), 'Rajesh');
+
+      expect(mockSendText).toHaveBeenCalled();
+      expect(mockSendInteractiveButtons).not.toHaveBeenCalled();
+    });
+
+    it('answers a coverage FAQ', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.IDLE }));
+      mockClassifyIntent.mockResolvedValueOnce({ intent: Intent.FAQ_COVERAGE, confidence: 0.9, detectedLanguage: Language.EN });
+
+      await service.handleMessage(makeTextMessage('do you serve Sivakasi?'), 'Rajesh');
+
+      expect(mockSendText).toHaveBeenCalled();
+      expect(mockSendInteractiveButtons).not.toHaveBeenCalled();
+    });
+
+    it('routes a natural-language track request to the track flow', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.IDLE }));
+      mockClassifyIntent.mockResolvedValueOnce({
+        intent: Intent.TRACK_JOB,
+        confidence: 0.9,
+        detectedLanguage: Language.EN,
+        extractedJobNumber: 'JOB-20260630-0001',
+      });
+      mockFindByJobNumber.mockResolvedValue({
+        jobNumber: 'JOB-20260630-0001',
+        status: 'ASSIGNED',
+        location: 'Virudhunagar',
+        serviceCategory: { name: 'Electrical' },
+      });
+
+      await service.handleMessage(makeTextMessage('where is my job JOB-20260630-0001'), 'Rajesh');
+
+      expect(mockFindByJobNumber).toHaveBeenCalledWith('JOB-20260630-0001');
+    });
+
+    it('falls back to standard flow when AI dispatch throws', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.IDLE }));
+      mockClassifyIntent.mockRejectedValueOnce(new Error('AI service unavailable'));
+
+      await service.handleMessage(makeTextMessage('hello there'), 'Rajesh');
+
+      expect(mockSendInteractiveButtons).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919876543210' }),
+      );
+    });
+
+    it('does not invoke AI dispatch outside IDLE/AWAITING_SERVICE states', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(
+        makeSession({ state: ConversationState.AWAITING_LOCATION, selectedCategoryId: 'cat-1', selectedCategoryName: 'Electrical' }),
+      );
+
+      await service.handleMessage(makeTextMessage('near the bus stand'), 'Rajesh');
+
+      expect(mockClassifyIntent).not.toHaveBeenCalled();
     });
   });
 

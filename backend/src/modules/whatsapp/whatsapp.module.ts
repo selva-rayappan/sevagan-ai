@@ -15,6 +15,9 @@ import { TrustScoreModule } from '../trust-score/trust-score.module';
 import { RatingsModule } from '../ratings/ratings.module';
 import { DisputesModule } from '../disputes/disputes.module';
 import { AssignmentEngineModule } from '../assignment-engine/assignment-engine.module';
+import { InvoiceModule } from '../invoice/invoice.module';
+import { PaymentModule } from '../payment/payment.module';
+import { AIDispatcherModule } from '../ai-dispatcher/ai-dispatcher.module';
 
 @Module({
   imports: [
@@ -29,6 +32,9 @@ import { AssignmentEngineModule } from '../assignment-engine/assignment-engine.m
     DisputesModule,
     TechnicianSessionModule,
     AssignmentEngineModule,
+    InvoiceModule,
+    PaymentModule,
+    AIDispatcherModule,
   ],
   controllers: [WebhookController],
   providers: [

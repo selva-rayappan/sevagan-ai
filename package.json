@@ -20,5 +20,10 @@
     "prisma:generate": "npm --workspace=backend run prisma:generate",
     "prisma:migrate": "npm --workspace=backend run prisma:migrate",
     "prisma:seed": "npm --workspace=backend run prisma:seed"
+  },
+  "dependencies": {
+    "@ngrok/ngrok": "^1.7.0",
+    "choco": "^0.2.1",
+    "ngrok": "^5.0.0-beta.2"
   }
 }

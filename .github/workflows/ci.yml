@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  backend:
+    name: Backend — lint, test, build
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET: ci-jwt-secret
+      JWT_REFRESH_SECRET: ci-jwt-refresh-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Lint
+        run: npm --workspace=backend run lint
+
+      - name: Test with coverage (80% gate)
+        run: npm run test:api:cov
+
+      - name: Build
+        run: npm run build:api
+
+  frontend:
+    name: Frontend — lint, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm --workspace=frontend run lint
+
+      - name: Build
+        run: npm run build:web

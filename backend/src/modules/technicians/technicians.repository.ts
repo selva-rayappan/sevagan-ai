@@ -16,6 +16,7 @@ export interface AdminUpdateTechnicianData {
   phone?: string;
   serviceArea?: string;
   language?: Language;
+  status?: TechnicianStatus;
   active?: boolean;
 }
 

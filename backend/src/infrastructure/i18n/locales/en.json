@@ -19,7 +19,10 @@
     "unknown_command": "Sorry, I did not understand that. 🙏\n\nType HELP to see available commands, or simply describe the service you need.",
     "language_set": "Language set to English. ✅",
     "select_language": "Please select your language:\n\n1. English\n2. தமிழ் (Tamil)",
-    "no_technician_available": "🔍 We are working on finding the right technician for your request. Our team will connect you shortly. We apologize for the wait!"
+    "no_technician_available": "🔍 We are working on finding the right technician for your request. Our team will connect you shortly. We apologize for the wait!",
+    "invoice_sent": "📄 Your invoice {{invoiceNumber}} has been sent. Thank you for using Sevagan Homeservices!",
+    "payment_link": "💳 Pay ₹{{amount}} online using the link below:\n\n{{paymentLink}}\n\nPayment is secure via Razorpay.",
+    "payment_confirmed": "✅ Payment received. Thank you!"
   },
   "technician": {
     "job_offer": "🔔 New Job Available!\n\nCustomer: {{customerName}}\n📍 Location: {{location}}\n🔧 Service: {{service}}\n📅 Time: {{scheduledTime}}\n\nReply:\n1 ✅ Accept\n2 ❌ Reject\n\n⏰ Please respond within 15 minutes.",
@@ -60,5 +63,10 @@
   "payment_mode": {
     "CASH": "Cash",
     "UPI": "UPI"
+  },
+  "faq": {
+    "hours": "🕐 We operate 7 AM to 9 PM, Monday to Sunday.\n\nFor emergencies, please describe your issue and we will try our best to help.",
+    "pricing": "💰 Pricing depends on the service type and scope of work. Please create a service request and the technician will provide an estimate on-site.\n\nWe believe in transparent pricing with no hidden charges.",
+    "coverage": "📍 We currently serve Virudhunagar and surrounding areas including Sattur, Aruppukottai, Sivakasi, and Rajapalayam.\n\nMore cities coming soon!"
   }
 }
