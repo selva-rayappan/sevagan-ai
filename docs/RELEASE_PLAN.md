@@ -55,7 +55,7 @@ Deliverables:
 - Customer receives notifications on technician actions
 - Amount confirmation flow
 
-**Status:** ❌ Next up
+**Status:** ✅ Complete
 
 ---
 
@@ -68,7 +68,7 @@ Deliverables:
 - Assignment engine: auto-assign top-ranked available technician
 - Re-assignment on rejection
 
-**Status:** ❌
+**Status:** ✅ Complete
 
 ---
 
@@ -84,7 +84,7 @@ Deliverables:
 - Settlement management
 - Commission configuration
 
-**Status:** ❌
+**Status:** ✅ Complete
 
 ---
 
@@ -97,7 +97,7 @@ Deliverables:
 - AI Dispatcher: intent classification (Ollama primary, OpenAI fallback)
 - AI FAQ responses
 
-**Status:** ❌
+**Status:** ✅ Complete
 
 ---
 
@@ -105,13 +105,15 @@ Deliverables:
 **Goal:** Reportable data and production-hardened security.
 
 Deliverables:
-- Revenue reports (daily/weekly/monthly)
-- Job and technician performance reports
-- RBAC (Admin vs Operator roles)
-- Audit logs for sensitive actions
-- Penetration test checklist completed
+- Revenue reports (daily/weekly/monthly) — ✅ done
+- Job and technician performance reports — ✅ done
+- RBAC (Admin vs Operator roles) — ✅ done
+- Audit logs for sensitive actions — ✅ done
+- Rate limiting on auth endpoints — ✅ done (also fixed a pre-existing gap: ThrottlerGuard was never enforcing)
+- OWASP Top 10 review — ✅ done, see `docs/SECURITY_REVIEW.md`
+- Penetration test checklist completed — ❌ pending (deferred to pre-launch, Phase 13)
 
-**Status:** ❌
+**Status:** ✅ Complete (formal penetration test deferred to pre-launch)
 
 ---
 
@@ -127,7 +129,7 @@ Deliverables:
 - Monitoring set up (Uptime Robot or similar)
 - Runbook written for common ops tasks
 
-**Status:** ❌
+**Status:** ❌ Not Started
 
 ---
 

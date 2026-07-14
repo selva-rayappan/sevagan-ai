@@ -1,219 +1,151 @@
 # Deployment Guide — Sevagan
 
-**Target:** AWS EC2 (Ubuntu 22.04), Docker Compose  
-**Domain:** sevagan.ai (or sub-domains)
+**Target:** AWS EC2 (Ubuntu 22.04), Docker Compose (`docker-compose.prod.yml`)
+**Domain:** sevagan.in (or your domain — `api.<domain>` + `admin.<domain>`)
 
 ---
 
-## Prerequisites
+## 1. EC2 Setup
 
-- EC2 instance (t3.medium minimum — Ollama needs ≥4 GB RAM)
-- Docker + Docker Compose installed
-- Domain pointed to EC2 IP
-- Meta WhatsApp Business Account (Production tier)
+1. Launch **Ubuntu 22.04 LTS**, `t3.medium` minimum (2 vCPU / 4 GB — Ollama needs headroom).
+2. Security Group: inbound `22` (your IP only), `80`, `443`; deny all other inbound.
+3. Allocate and associate an **Elastic IP**.
+4. Point DNS A records for `api.<domain>` and `admin.<domain>` at the Elastic IP.
+5. Attach an IAM role with no permissions (nothing on this host calls AWS APIs directly) — avoids static credentials on the box.
+6. Install Docker and prerequisites:
+   ```bash
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo usermod -aG docker $USER
+   sudo apt-get install -y docker-compose-plugin git gettext-base   # gettext-base -> envsubst
+   ```
+7. `git clone` the repo to `/opt/sevagan` and `cd` into it.
 
 ---
 
-## 1. Server Setup
+## 2. Environment Secrets
+
+Create `/etc/sevagan/.env` (`chmod 600`):
 
 ```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-
-# Install Docker Compose plugin
-sudo apt install docker-compose-plugin -y
-
-# Verify
-docker --version
-docker compose version
+POSTGRES_PASSWORD=<strong random>
+REDIS_PASSWORD=<strong random>
+MINIO_ROOT_USER=<strong random>
+MINIO_ROOT_PASSWORD=<strong random>
+JWT_SECRET=$(openssl rand -hex 32)
+JWT_REFRESH_SECRET=$(openssl rand -hex 32)   # must differ from JWT_SECRET
+WA_PHONE_NUMBER_ID=<production phone number id>
+WA_ACCESS_TOKEN=<permanent access token>
+WA_APP_SECRET=<app secret>
+WA_WEBHOOK_VERIFY_TOKEN=<custom verify token>
+OPENAI_API_KEY=<openai key>
+RAZORPAY_LINK_URL=<razorpay payment link base>
+API_DOMAIN=api.sevagan.in
+ADMIN_DOMAIN=admin.sevagan.in
+LETSENCRYPT_EMAIL=selvakumar.rayappan@gmail.com
+IMAGE_TAG=latest
 ```
 
+`docker-compose.prod.yml` loads this via `env_file` for the `api` container; `scripts/*.sh` `source` it directly for the shell-level values (domains, image tag, cert email).
+
 ---
 
-## 2. Deploy Application
+## 3. First Deploy (HTTP bootstrap → HTTPS)
 
 ```bash
-# Clone repo
-git clone https://github.com/your-org/sevagan-ai.git
-cd sevagan-ai
+sudo mkdir -p /etc/sevagan && sudo chmod 700 /etc/sevagan
+# create /etc/sevagan/.env as above
 
-# Configure environment
-cp .env.example .env
-nano .env   # Fill in production values (see section 4)
-
-# Start all services
-docker compose up -d
-
-# Run database migrations
-docker compose exec api npx prisma migrate deploy
-
-# Seed initial data
-docker compose exec api npm run prisma:seed
-
-# Verify health
-curl http://localhost:3001/api/v1/health
+./scripts/deploy.sh        # no cert yet -> nginx runs the HTTP-only bootstrap config
+./scripts/init-ssl.sh      # issues Let's Encrypt certs via the one-off certbot service
+./scripts/deploy.sh        # re-run -> detects certs -> switches nginx to the full TLS config
 ```
 
----
+`scripts/deploy.sh` is the whole release process: pulls latest code, regenerates `infrastructure/nginx/nginx.conf.generated` from whichever template applies (bootstrap vs. full TLS, auto-detected by cert presence), rebuilds images, runs `prisma migrate deploy`, restarts the stack, prunes old images.
 
-## 3. Nginx + SSL (Let's Encrypt)
-
+Seed data (categories, commission rules, default admin) runs as part of the Prisma migrate step only if you also run:
 ```bash
-# Install Certbot
-sudo apt install certbot -y
-
-# Obtain certificate (stop nginx first)
-docker compose stop nginx
-sudo certbot certonly --standalone -d admin.sevagan.ai -d api.sevagan.ai
-
-# Certificates at: /etc/letsencrypt/live/admin.sevagan.ai/
-
-# Update nginx volume in docker-compose.yml:
-# - /etc/letsencrypt:/etc/letsencrypt:ro
-
-# Start nginx
-docker compose up -d nginx
-
-# Auto-renew (cron)
-echo "0 12 * * * root certbot renew --quiet --deploy-hook 'docker compose -f /path/to/sevagan-ai/docker-compose.yml restart nginx'" | sudo tee /etc/cron.d/certbot-renew
+docker compose -f docker-compose.prod.yml run --rm api npm run prisma:seed
 ```
+Run this once, on first deploy only — it's not idempotent-safe to re-run against a populated database.
 
 ---
 
-## 4. Environment Variables (Production)
+## 4. SSL Renewal
+
+Certs are valid 90 days; `certbot renew` no-ops unless within 30 days of expiry, so daily is safe:
 
 ```bash
-NODE_ENV=production
-API_PORT=3001
-
-# Database — use strong passwords
-DATABASE_URL=postgresql://sevagan:STRONG_PASS@postgres:5432/sevagan
-
-# Redis
-REDIS_URL=redis://redis:6379
-
-# JWT — generate with: openssl rand -hex 64
-JWT_SECRET=<generated-secret>
-JWT_EXPIRES_IN=7d
-
-# WhatsApp (Meta Production credentials)
-WA_PHONE_NUMBER_ID=<production-phone-number-id>
-WA_ACCESS_TOKEN=<permanent-access-token>
-WA_APP_SECRET=<app-secret>
-WA_WEBHOOK_VERIFY_TOKEN=<custom-verify-token>
-
-# MinIO
-MINIO_ENDPOINT=minio
-MINIO_PORT=9000
-MINIO_USE_SSL=false
-MINIO_ACCESS_KEY=sevagan
-MINIO_SECRET_KEY=<strong-minio-password>
-MINIO_BUCKET_NAME=sevagan-uploads
-
-# AI
-OLLAMA_BASE_URL=http://ollama:11434
-OLLAMA_MODEL=qwen3
-OPENAI_API_KEY=<openai-key>
-
-# Admin Dashboard
-NEXT_PUBLIC_API_URL=https://api.sevagan.ai
-NEXTAUTH_SECRET=<generated-secret>
-NEXTAUTH_URL=https://admin.sevagan.ai
+sudo crontab -e
+# add:
+0 3 * * * /opt/sevagan/scripts/renew-ssl.sh >> /var/log/sevagan-renew.log 2>&1
 ```
 
 ---
 
 ## 5. Meta WhatsApp Webhook Configuration
 
-1. Go to Meta Developer Console → Your App → WhatsApp → Configuration
-2. Set Webhook URL: `https://api.sevagan.ai/api/v1/webhooks/whatsapp`
-3. Set Verify Token: value of `WA_WEBHOOK_VERIFY_TOKEN` in `.env`
-4. Subscribe to: `messages`
-5. Verify the webhook (Meta sends GET with `hub.challenge`)
+1. Meta Developer Console → Your App → WhatsApp → Configuration.
+2. Webhook URL: `https://api.sevagan.in/api/v1/webhooks/whatsapp`.
+3. Verify Token: must match `WA_WEBHOOK_VERIFY_TOKEN` in `/etc/sevagan/.env`.
+4. Subscribe to field: `messages`.
+5. Confirm verification succeeds (Meta sends a GET with `hub.challenge`), then send a test WhatsApp message and check `docker compose -f docker-compose.prod.yml logs -f api`.
 
 ---
 
 ## 6. Backups
 
-### PostgreSQL
 ```bash
-# Daily backup cron
-echo "0 2 * * * docker exec sevagan-postgres pg_dump -U sevagan sevagan | gzip > /backups/sevagan-\$(date +\%Y\%m\%d).sql.gz" | sudo tee /etc/cron.d/pg-backup
-
-# Restore
-gunzip < backup.sql.gz | docker exec -i sevagan-postgres psql -U sevagan sevagan
+sudo crontab -e
+# add:
+0 2 * * * /opt/sevagan/scripts/backup-db.sh >> /var/log/sevagan-backup.log 2>&1
 ```
 
-### MinIO
-```bash
-# Sync MinIO data to S3 (optional)
-mc mirror minio/sevagan-uploads s3/sevagan-uploads-backup
-```
+`scripts/backup-db.sh` dumps `pg_dump | gzip`, uploads to the `sevagan-backups` MinIO bucket (create it once: `docker compose -f docker-compose.prod.yml exec minio mc mb /data/sevagan-backups` or via the MinIO console), and prunes local copies older than 30 days.
 
----
-
-## 7. Updates / Redeployment
+**Restore test** (run once after the first backup, then periodically):
 
 ```bash
-cd sevagan-ai
-
-# Pull latest code
-git pull origin master
-
-# Rebuild images
-docker compose build api web
-
-# Apply migrations (zero-downtime)
-docker compose exec api npx prisma migrate deploy
-
-# Restart services (rolling)
-docker compose up -d --no-deps api
-docker compose up -d --no-deps web
+docker exec sevagan-postgres createdb -U sevagan sevagan_restore_test
+gunzip -c /var/backups/sevagan/sevagan_<timestamp>.sql.gz | \
+  docker exec -i sevagan-postgres psql -U sevagan -d sevagan_restore_test
+docker exec sevagan-postgres psql -U sevagan -d sevagan_restore_test -c 'SELECT count(*) FROM "Job";'
+# compare against the live database, then:
+docker exec sevagan-postgres dropdb -U sevagan sevagan_restore_test
 ```
 
 ---
 
-## 8. Monitoring
+## 7. Redeploying After Code Changes
 
-**Uptime Robot** (free tier):
-- Monitor: `https://api.sevagan.ai/api/v1/health`
-- Alert: SMS/email on downtime
-
-**Docker logs:**
 ```bash
-docker compose logs -f api        # API logs
-docker compose logs -f web        # Frontend logs
-docker compose logs -f postgres   # DB logs
+cd /opt/sevagan
+./scripts/deploy.sh
 ```
 
----
-
-## 9. Rollback
+## 8. Rollback
 
 ```bash
-# Roll back to previous image tag
-docker compose down
 git checkout <previous-commit-or-tag>
-docker compose up -d
-
-# If migration needs rollback, apply manually:
-docker compose exec api npx prisma migrate resolve --rolled-back <migration-name>
+./scripts/deploy.sh
+# if a migration needs rollback, resolve it manually first:
+docker compose -f docker-compose.prod.yml exec api npx prisma migrate resolve --rolled-back <migration-name>
 ```
+
+---
+
+## 9. Monitoring
+
+- Add `https://api.sevagan.in/api/v1/health` to UptimeRobot (free tier), 5-minute interval, alert to `selvakumar.rayappan@gmail.com`.
+- `docker compose -f docker-compose.prod.yml ps` — the `api` service has a built-in Docker healthcheck.
+- Logs: `docker compose -f docker-compose.prod.yml logs -f <service>`. All services use the `json-file` driver capped at 10 MB × 3 files.
 
 ---
 
 ## 10. Ollama Model Pull (First Run)
 
 ```bash
-# After `docker compose up -d`:
 docker exec -it sevagan-ollama ollama pull qwen3
-
-# Verify model loaded
 docker exec sevagan-ollama ollama list
 ```
 
-Ollama model data is persisted in `ollama_data` Docker volume.
+Model data persists in the `ollama_data` volume.

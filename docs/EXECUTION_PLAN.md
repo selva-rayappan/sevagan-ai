@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-06-15)
+## Progress Overview (Last Updated: 2026-07-14)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -21,11 +21,11 @@
 | Phase 6 | Commission, Trust Score & Settlement Engines | ✅ COMPLETE |
 | Phase 7 | Assignment Engine | ✅ COMPLETE |
 | Phase 8 | Admin Dashboard (Frontend + Backend APIs) | ✅ COMPLETE |
-| Phase 9 | Invoice & Payments | ❌ NOT STARTED |
-| Phase 10 | AI Dispatcher | ❌ NOT STARTED |
-| Phase 11 | Reports | ❌ NOT STARTED |
-| Phase 12 | Security | ❌ NOT STARTED |
-| Phase 13 | Production Deployment | ❌ NOT STARTED |
+| Phase 9 | Invoice & Payments | ✅ COMPLETE |
+| Phase 10 | AI Dispatcher | ✅ COMPLETE |
+| Phase 11 | Reports | ✅ COMPLETE |
+| Phase 12 | Security | ✅ COMPLETE |
+| Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
 
 ---
 
@@ -76,7 +76,7 @@
 - ✅ `nginx/nginx.conf` proxying
 
 #### 1.3 CI Bootstrap
-- ❌ GitHub Actions workflow not created
+- ✅ `.github/workflows/ci.yml` — backend (prisma generate, lint, `test:cov` enforcing the 80% gate, `nest build`) and frontend (lint, `next build`) jobs on push/PR to `master`
 
 #### Acceptance Criteria
 - ✅ `docker compose up` starts all services
@@ -298,64 +298,163 @@
 - ✅ Creating technician from dashboard sends WhatsApp onboarding message via translation service
 - ✅ Manual assignment triggers AssignmentEngineService
 - ✅ **224 tests, 24 suites — all passing**
+- ✅ Unit tests backfilled 2026-06-30 for all 7 admin controllers, the auth module (controller/service/guard/strategy), and the dashboard module — these had zero coverage despite the original sign-off; see Phase 9 note (now resolved)
 
 ---
 
-## Phase 9 — Invoice & Payments ❌ NOT STARTED
+## Phase 9 — Invoice & Payments ✅ COMPLETE
 
 **Goal:** PDF invoice generated on completion; sent to customer via WhatsApp.
 
-- ❌ PDF generation (pdfkit or puppeteer)
-- ❌ Store PDF in MinIO
-- ❌ Send PDF via WhatsApp document message
-- ❌ `InvoiceService`, `PaymentService`
+#### 9.1 Invoice Generation
+- ✅ `PdfGeneratorService` — bilingual (EN/TA) PDF invoice via `pdfkit`
+- ✅ `InvoiceService.generateInvoice(jobId)` — idempotent (returns existing invoice if already generated), generates invoice number `INV-YYYYMMDD-NNNN` via Redis counter
+- ✅ PDF uploaded to MinIO (`invoices/{invoiceNumber}.pdf`), 7-day presigned URL sent to customer via `sendDocument`
+- ✅ Invoice status DRAFT → SENT on successful delivery; invoice record persists even if PDF generation fails (retryable via `getInvoicePdfUrl`)
+
+#### 9.2 Payments
+- ✅ `PaymentService.recordCashPayment` (status COMPLETED) / `recordUpiPayment` (status PENDING)
+- ✅ `generatePaymentLink` — Razorpay payment link, base URL configurable via `RAZORPAY_LINK_URL` env var (not hardcoded)
+- ✅ Wired into `CustomerBotService` — on amount confirmation (reply '1'), invoice + payment generated fire-and-forget; UPI jobs get a payment link sent via WhatsApp
+
+#### 9.3 Admin
+- ✅ `GET /api/v1/admin/invoices`, `GET /:id`, `GET /:id/pdf` (redirect to presigned URL), `POST /:id/confirm-payment`
+
+#### Acceptance Criteria
+- ✅ Invoice generated and WhatsApp document sent on job completion confirmation
+- ✅ CASH payment recorded as COMPLETED; UPI payment recorded as PENDING with payment link sent
+- ✅ Admin can confirm a pending UPI payment, marking invoice PAID
+- ✅ **263 tests, 31 suites — all passing**; invoice/payment modules at 100% statement coverage
+
+> Note (resolved 2026-06-30): Phase 8 admin controllers, auth, and dashboard modules originally shipped with zero unit tests despite the Phase 8 sign-off, keeping the workspace below the 80% coverage gate. Backfilled 63 new tests (301 → 364) across `modules/admin/*.controller.spec.ts`, `modules/auth/*.spec.ts`, `modules/dashboard/*.spec.ts`, and extended `technicians.repository.spec.ts`. `npm run test:cov` now passes cleanly (96.6% stmts / 88% branches / 93.6% functions / 97% lines, 364 tests, 50 suites).
 
 ---
 
-## Phase 10 — AI Dispatcher ❌ NOT STARTED
+## Phase 10 — AI Dispatcher ✅ COMPLETE
 
 **Goal:** Ollama-powered intent classification and FAQ responses.
 
-- ❌ `AIDispatcherService` with Ollama client + OpenAI fallback
-- ❌ Intent classification: free text → service category
-- ❌ Language auto-detection
-- ❌ FAQ responses: hours, pricing, coverage
+#### 10.1 AI Provider Abstraction
+- ✅ `AIProvider` interface; `OllamaProvider` (primary) + `OpenAIProvider` (fallback)
+- ✅ `AIService.chat()` — tries Ollama first, falls back to OpenAI on failure, throws only if both fail
+- ✅ `AIModule` (global), configured via `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OPENAI_API_KEY`
+
+#### 10.2 Intent Classification & Category Mapping
+- ✅ `IntentClassifierService.classifyIntent(message, language)` — classifies into REQUEST_SERVICE / TRACK_JOB / CANCEL_JOB / FAQ_HOURS / FAQ_PRICING / FAQ_COVERAGE / UNKNOWN, extracts job number when present
+- ✅ `CategoryMapperService.mapToCategory(message)` — maps free text (EN or TA) to a `ServiceCategory` via DB lookup
+
+#### 10.3 Language Auto-Detection
+- ✅ `LanguageDetectorService.detectLanguage(text)` — Tamil-Unicode heuristic first, AI fallback only for ambiguous mixed-script input
+
+#### 10.4 CustomerBotService Integration
+- ✅ Wired as a free-text fallback in `IDLE` / `AWAITING_SERVICE` states (numbered-menu input is untouched — pure-digit replies always skip AI dispatch)
+- ✅ FAQ intents answered directly from `faq.hours` / `faq.pricing` / `faq.coverage` (EN+TA) without changing conversation state
+- ✅ Natural-language `TRACK_JOB` / `CANCEL_JOB` (with extracted job number) routed to the existing track/cancel handlers
+- ✅ `REQUEST_SERVICE` in `AWAITING_SERVICE` resolves a free-text service description to a category (confidence ≥ 0.6) and advances straight to location capture, skipping the numbered menu
+- ✅ All AI failures caught and logged — falls back to the standard state-machine flow, never blocks the conversation
+
+#### Acceptance Criteria
+- ✅ "What are your working hours?" answered directly via FAQ, no state change
+- ✅ "My fan is not working" in AWAITING_SERVICE resolves to Electrical and advances to location capture
+- ✅ "Where is JOB-XXXXXXXX-XXXX" routes to the existing track flow
+- ✅ Ollama outage transparently falls back to OpenAI; both providers down falls back to standard menu-driven flow
+- ✅ **301 tests, 37 suites — all passing**; AI infra + ai-dispatcher modules at 100% statement coverage
 
 ---
 
-## Phase 11 — Reports ❌ NOT STARTED
+## Phase 11 — Reports ✅ COMPLETE
 
 **Goal:** Admin can view revenue, job, and technician performance reports.
 
-- ❌ `GET /reports/revenue?period=daily|weekly|monthly`
-- ❌ `GET /reports/jobs` — by status, category
-- ❌ `GET /reports/technicians` — ratings, trust scores, job counts
-- ❌ Frontend: charts + export CSV
+#### 11.1 Backend — `ReportsModule`
+- ✅ `GET /api/v1/reports/revenue?period=daily|weekly|monthly` — zero-filled time-bucketed revenue + commission, summed from `JobCommission` (30 days / 12 weeks / 12 months lookback); invalid `period` rejected with 400
+- ✅ `GET /api/v1/reports/jobs?from=&to=` — job counts grouped by `status` and by `serviceCategory` (via `Prisma.groupBy`), optional date-range filter
+- ✅ `GET /api/v1/reports/technicians` — active technicians ranked by `trustScore` desc, with rating and completed/total assignment counts
+
+#### 11.2 Frontend — `/reports`
+- ✅ Revenue line chart (Recharts) with Daily/Weekly/Monthly toggle
+- ✅ Jobs-by-status bar chart and jobs-by-category pie chart
+- ✅ Technician performance table ranked by trust score
+- ✅ Client-side CSV export (no backend endpoint needed) on all three sections via `exportToCsv()` in `lib/utils.ts`
+- ✅ Added to admin sidebar nav; `recharts` added as a frontend dependency
+
+#### Acceptance Criteria
+- ✅ Revenue report returns a full bucket range even with no data (zero-filled, not sparse)
+- ✅ Jobs report groups accurately by status and category, including a graceful "Unknown" fallback for a since-deleted category
+- ✅ Technician report reflects live trust scores and job counts
+- ✅ Each report section exports to CSV from the browser
+- ✅ **383 tests, 52 suites — all passing**; `reports` module at 100% statement coverage; clean `next build`
 
 ---
 
-## Phase 12 — Security ❌ NOT STARTED
+## Phase 12 — Security ✅ COMPLETE
 
 **Goal:** Production-hardened security controls.
 
-- ❌ JWT + RBAC (Admin vs Operator)
-- ❌ Audit logs for all sensitive actions (`AuditLog` table)
-- ❌ Rate limiting on auth endpoints (stricter than default)
-- ❌ Input sanitization audit
-- ❌ Security review against OWASP Top 10
+#### 12.1 RBAC (Admin vs Operator)
+- ✅ `@Roles()` decorator + `RolesGuard`, registered globally as `APP_GUARD` (after `JwtAuthGuard`)
+- ✅ `AdminRole.ADMIN`-only: commission rule creation, settlement generate/pay, invoice payment confirmation, dispute resolution, audit log viewing
+- ✅ `AdminRole.OPERATOR` retains operational access: customers, technicians, jobs, service categories
+
+#### 12.2 Audit Logging
+- ✅ `AuditLog` table migrated (`20260630163120_add_audit_log`)
+- ✅ `AuditService` (global, `infrastructure/audit/`) — `log()` never throws, fire-and-forget safe
+- ✅ Wired into 11 sensitive mutations: login, commission rule creation, settlement generate/pay, invoice payment confirmation, dispute resolution, technician create/update, customer update, job manual-assign/cancel
+- ✅ `GET /api/v1/admin/audit-logs` (ADMIN-only, paginated, filterable by `entityType`/`actorId`)
+
+#### 12.3 Rate Limiting
+- ✅ **Fixed a pre-existing gap:** `ThrottlerModule` was configured but `ThrottlerGuard` was never registered — rate limiting was completely inert. Now registered globally.
+- ✅ `/auth/login` and `/auth/refresh` restricted to **10 req/min** via `@Throttle()` (per `.claude/task-backlog.md` spec — corrected from an initial 5/min)
+- ✅ WhatsApp webhook POST handler explicitly throttled to 300 req/min (previously fell through to the 30/min global default)
+
+#### 12.4 Input Sanitization Audit
+- ✅ Replaced unvalidated inline `@Body()` interface types with `class-validator`-decorated DTOs across all 6 admin controllers + auth controller (8 new DTO files) — closes a mass-assignment gap where arbitrary fields could reach `prisma.update({ data: body })`
+- ✅ Confirmed zero raw SQL (`$queryRaw`/`$executeRaw`) anywhere in the codebase
+- ✅ Global `SanitizePipe` trims whitespace and strips HTML tags from every string in request bodies, ahead of `ValidationPipe`
+- ✅ E.164-tolerant Indian phone validator (`IsIndianPhone`) on technician creation, normalized via `normalizePhone()` before persistence
+
+#### 12.5 JWT Hardening
+- ✅ Refresh token moved from JSON body to an `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production), scoped to `/api/v1/auth`
+- ✅ `AdminUser.tokenVersion` (new column) embedded in every JWT and checked on every request; refresh and logout both increment it, immediately invalidating **all** outstanding access and refresh tokens for that admin — true server-side revocation, not just client-side token discard
+- ✅ Verified live: refresh rotates the cookie and instantly 401s the pre-rotation access token; logout 401s the just-issued access token on the next request
+
+#### 12.6 Webhook & Audit Coverage
+- ✅ `WebhookHmacGuard` logs every rejected signature attempt to `AuditLog` (`WEBHOOK_SIGNATURE_REJECTED`, with reason/IP/path)
+- ✅ `AuditInterceptor` applied to every mutating admin controller — guarantees blanket `AuditLog` coverage for all `POST`/`PATCH`/`PUT`/`DELETE` admin calls alongside the 11 existing action-specific manual logs
+
+#### 12.7 HTTPS Enforcement
+- ✅ Production nginx config (`infrastructure/nginx/nginx.prod.conf.template`, Phase 13) redirects HTTP→HTTPS and sets HSTS on both domains; `helmet({ hsts })` also enabled when `NODE_ENV=production`
+- ✅ Dev-mode `infrastructure/nginx/nginx.conf` intentionally stays HTTP-only
+
+#### 12.8 OWASP Top 10 Review
+- ✅ Full assessment written up in `docs/SECURITY_REVIEW.md`, covering A01–A10 with findings, fixes, and residual gaps carried into Phase 13; addendum (2026-07-14) documents the items above
+
+#### Acceptance Criteria
+- ✅ OPERATOR role blocked (403) from financial/config endpoints; ADMIN unaffected
+- ✅ Repeated login attempts beyond 10/min are throttled (429) — verified live
+- ✅ Every sensitive admin action produces a queryable `AuditLog` row with actor, action, and entity
+- ✅ Admin DTOs reject malformed/extra fields via the global `ValidationPipe`
+- ✅ Unauthenticated request to any admin route returns `401`; invalid/revoked JWT returns `401` — verified live
+- ✅ **427 tests, 59 suites — all passing**
 
 ---
 
-## Phase 13 — Production Deployment ❌ NOT STARTED
+## Phase 13 — Production Deployment 🔄 IN PROGRESS
 
 **Goal:** Live on EC2, accepting real customers.
 
-- ❌ EC2 provisioned (t3.medium+)
-- ❌ Docker Compose deployed
-- ❌ Nginx + Let's Encrypt SSL
-- ❌ DNS: `api.sevagan.ai`, `admin.sevagan.ai`
-- ❌ Meta WhatsApp Production tier approved
-- ❌ Backups configured (PostgreSQL + MinIO)
+All deployable artifacts are built and committed; execution against a real AWS account/domain is pending.
+
+- ✅ `docker-compose.prod.yml`, production Dockerfiles (multi-stage, non-root, `devDependencies` pruned), pinned image versions, `json-file` log rotation on every service
+- ✅ `infrastructure/nginx/nginx.prod.conf.template` (full TLS) + `nginx.bootstrap.conf.template` (HTTP-only, used for first-run ACME challenge) — `scripts/deploy.sh` auto-selects based on cert presence
+- ✅ `scripts/deploy.sh`, `scripts/init-ssl.sh`, `scripts/renew-ssl.sh`, `scripts/backup-db.sh` — one-off `certbot/certbot` compose service, no host-level certbot install needed
+- ✅ `docs/DEPLOYMENT.md` — full guided walkthrough (EC2 setup, secrets, first deploy, SSL renewal cron, Meta webhook registration, backup/restore test procedure, monitoring)
+- ❌ EC2 provisioned (t3.medium+) — requires real AWS access
+- ❌ Docker Compose deployed to the live host
+- ❌ DNS: `api.sevagan.in`, `admin.sevagan.in` pointed at the host
+- ❌ Let's Encrypt certs issued (script ready, needs live DNS)
+- ❌ Meta WhatsApp Production tier webhook registered (needs live HTTPS endpoint)
+- ❌ Backups running on a live host (script + cron documented, not yet executing anywhere)
 - ❌ Monitoring: Uptime Robot on `/health`
 - ❌ Operations runbook
 

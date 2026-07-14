@@ -1,0 +1,47 @@
+worker_processes auto;
+
+events {
+    worker_connections 1024;
+}
+
+# HTTP-only config used before Let's Encrypt certificates exist.
+# Serves the ACME challenge so certbot can issue the first certificate;
+# scripts/deploy.sh switches to nginx.prod.conf.template once certs are present.
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+
+    upstream api {
+        server api:3001;
+    }
+
+    upstream web {
+        server web:3000;
+    }
+
+    server {
+        listen 80;
+        server_name ${API_DOMAIN} ${ADMIN_DOMAIN};
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        location /api/ {
+            proxy_pass http://api;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location / {
+            proxy_pass http://web;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
