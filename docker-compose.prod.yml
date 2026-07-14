@@ -132,12 +132,16 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
+      args:
+        # NEXT_PUBLIC_API_URL is inlined into the client bundle at build time.
+        # Changing PUBLIC_API_URL in /etc/sevagan/.env requires rebuilding this
+        # image (a plain restart won't pick it up) — deploy.sh always rebuilds.
+        NEXT_PUBLIC_API_URL: ${PUBLIC_API_URL}
     image: sevagan-web:${IMAGE_TAG:-latest}
     container_name: sevagan-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
     depends_on:
       - api
     logging:

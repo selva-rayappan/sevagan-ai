@@ -41,6 +41,14 @@ OPENAI_API_KEY=<openai key>
 RAZORPAY_LINK_URL=<razorpay payment link base>
 API_DOMAIN=api.sevagan.in
 ADMIN_DOMAIN=admin.sevagan.in
+# Full URL the browser calls the API at — baked into the web image at BUILD
+# time (Next.js inlines NEXT_PUBLIC_* vars), so changing this needs a rebuild
+# (`docker compose -f docker-compose.prod.yml build web`), not just a restart.
+# Before you have a domain/SSL, use the bare EC2 IP, e.g. http://203.0.113.5 —
+# bootstrap nginx serves both the dashboard and API on that one host/port, so
+# it's same-origin and needs no CORS config. Switch to https://api.sevagan.in
+# once real domains + SSL are live.
+PUBLIC_API_URL=https://api.sevagan.in
 LETSENCRYPT_EMAIL=selvakumar.rayappan@gmail.com
 IMAGE_TAG=latest
 ```
