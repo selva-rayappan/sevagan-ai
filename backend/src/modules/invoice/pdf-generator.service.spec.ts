@@ -1,3 +1,5 @@
+import * as fontkit from 'fontkit';
+import * as path from 'path';
 import { PdfGeneratorService, InvoicePdfData } from './pdf-generator.service';
 import { Language } from '../../domain/enums';
 
@@ -44,5 +46,21 @@ describe('PdfGeneratorService', () => {
     await expect(
       service.generateInvoicePdf({ ...baseData, customerName: '' }),
     ).resolves.toBeInstanceOf(Buffer);
+  });
+
+  it('embeds a font with real Tamil and rupee-sign glyphs, not just Latin-only Helvetica', () => {
+    // Regression guard: PDFKit's built-in Helvetica has zero Tamil coverage —
+    // using it for Tamil invoices silently renders missing-glyph boxes
+    // instead of throwing, so a buffer-only PDF test wouldn't have caught it.
+    const font = fontkit.openSync(
+      path.join(process.cwd(), 'assets', 'fonts', 'NotoSansTamil-Regular.woff'),
+    );
+    const tamilChar = 'வ'.codePointAt(0)!;
+    const rupeeSign = '₹'.codePointAt(0)!;
+
+    expect(font.hasGlyphForCodePoint(tamilChar)).toBe(true);
+    expect(font.hasGlyphForCodePoint(rupeeSign)).toBe(true);
+    expect(font.glyphForCodePoint(tamilChar).id).toBeGreaterThan(0);
+    expect(font.glyphForCodePoint(rupeeSign).id).toBeGreaterThan(0);
   });
 });

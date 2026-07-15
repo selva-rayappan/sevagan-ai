@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as PDFDocument from 'pdfkit';
+import * as path from 'path';
 import { Language } from '../../domain/enums';
 
 export interface InvoicePdfData {
@@ -18,6 +19,10 @@ export interface InvoicePdfData {
   language: Language;
 }
 
+const FONTS_DIR = path.join(process.cwd(), 'assets', 'fonts');
+const TAMIL_REGULAR = path.join(FONTS_DIR, 'NotoSansTamil-Regular.woff');
+const TAMIL_BOLD = path.join(FONTS_DIR, 'NotoSansTamil-Bold.woff');
+
 @Injectable()
 export class PdfGeneratorService {
   async generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
@@ -31,15 +36,26 @@ export class PdfGeneratorService {
 
       const isTA = data.language === Language.TA;
 
+      // PDFKit's built-in Standard-14 fonts (Helvetica etc.) are Latin-only —
+      // Tamil text renders as missing-glyph boxes/garbage unless we embed a
+      // font with Tamil coverage instead.
+      if (isTA) {
+        doc.registerFont('Body', TAMIL_REGULAR);
+        doc.registerFont('Body-Bold', TAMIL_BOLD);
+      } else {
+        doc.registerFont('Body', 'Helvetica');
+        doc.registerFont('Body-Bold', 'Helvetica-Bold');
+      }
+
       // ── Header ──────────────────────────────────────────────────────────
       doc
         .fontSize(24)
-        .font('Helvetica-Bold')
+        .font('Body-Bold')
         .text('SEVAGAN HOMESERVICES', { align: 'center' });
 
       doc
         .fontSize(10)
-        .font('Helvetica')
+        .font('Body')
         .text(isTA ? 'வீட்டு சேவை நிபுணர்கள்' : 'Home Service Experts', { align: 'center' });
 
       doc.moveDown(0.5);
@@ -55,12 +71,12 @@ export class PdfGeneratorService {
       // ── Invoice Info ────────────────────────────────────────────────────
       doc
         .fontSize(16)
-        .font('Helvetica-Bold')
+        .font('Body-Bold')
         .fillColor('#1e293b')
         .text(isTA ? 'விலைப்பட்டியல்' : 'INVOICE', { align: 'left' });
 
       doc.moveDown(0.5);
-      doc.fontSize(10).font('Helvetica').fillColor('#334155');
+      doc.fontSize(10).font('Body').fillColor('#334155');
 
       this.addRow(doc, isTA ? 'விலைப்பட்டியல் எண்' : 'Invoice Number', data.invoiceNumber);
       this.addRow(doc, isTA ? 'தேதி' : 'Date', data.invoiceDate.toLocaleDateString('en-IN'));
@@ -71,12 +87,12 @@ export class PdfGeneratorService {
       // ── Customer Details ────────────────────────────────────────────────
       doc
         .fontSize(12)
-        .font('Helvetica-Bold')
+        .font('Body-Bold')
         .fillColor('#1e293b')
         .text(isTA ? 'வாடிக்கையாளர் விவரங்கள்' : 'Customer Details');
 
       doc.moveDown(0.3);
-      doc.fontSize(10).font('Helvetica').fillColor('#334155');
+      doc.fontSize(10).font('Body').fillColor('#334155');
 
       this.addRow(doc, isTA ? 'பெயர்' : 'Name', data.customerName || 'N/A');
       this.addRow(doc, isTA ? 'தொலைபேசி' : 'Phone', data.customerPhone);
@@ -87,12 +103,12 @@ export class PdfGeneratorService {
       // ── Service Details ─────────────────────────────────────────────────
       doc
         .fontSize(12)
-        .font('Helvetica-Bold')
+        .font('Body-Bold')
         .fillColor('#1e293b')
         .text(isTA ? 'சேவை விவரங்கள்' : 'Service Details');
 
       doc.moveDown(0.3);
-      doc.fontSize(10).font('Helvetica').fillColor('#334155');
+      doc.fontSize(10).font('Body').fillColor('#334155');
 
       this.addRow(doc, isTA ? 'சேவை' : 'Service', data.serviceCategory);
       this.addRow(doc, isTA ? 'தொழில்நுட்பர்' : 'Technician', data.technicianName);
@@ -112,12 +128,12 @@ export class PdfGeneratorService {
 
       doc
         .fontSize(12)
-        .font('Helvetica-Bold')
+        .font('Body-Bold')
         .fillColor('#1e293b')
         .text(isTA ? 'தொகை விவரம்' : 'Amount Breakdown');
 
       doc.moveDown(0.3);
-      doc.fontSize(10).font('Helvetica').fillColor('#334155');
+      doc.fontSize(10).font('Body').fillColor('#334155');
 
       this.addRow(doc, isTA ? 'மொத்த தொகை' : 'Total Amount', `₹${data.jobAmount.toFixed(2)}`);
       this.addRow(doc, isTA ? 'சேவை கட்டணம்' : 'Service Fee', `₹${data.commissionAmount.toFixed(2)}`);
@@ -125,7 +141,7 @@ export class PdfGeneratorService {
       doc.moveDown(0.5);
       doc
         .fontSize(14)
-        .font('Helvetica-Bold')
+        .font('Body-Bold')
         .fillColor('#2563eb');
       this.addRow(doc, isTA ? 'செலுத்தவேண்டிய தொகை' : 'Amount Paid', `₹${data.jobAmount.toFixed(2)}`);
 
@@ -142,7 +158,7 @@ export class PdfGeneratorService {
       doc.moveDown(0.5);
       doc
         .fontSize(8)
-        .font('Helvetica')
+        .font('Body')
         .fillColor('#64748b')
         .text(
           isTA

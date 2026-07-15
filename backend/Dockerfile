@@ -29,6 +29,7 @@ RUN apk add --no-cache openssl && \
 
 COPY --from=builder --chown=nestjs:nestjs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nestjs /app/prisma ./prisma
+COPY --from=builder --chown=nestjs:nestjs /app/assets ./assets
 COPY --chown=nestjs:nestjs package*.json ./
 RUN npm install --omit=dev --ignore-scripts && npx prisma generate && chown -R nestjs:nestjs node_modules
 
