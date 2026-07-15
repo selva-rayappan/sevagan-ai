@@ -41,7 +41,9 @@ export const appConfig = () => ({
   },
 
   payment: {
-    razorpayLinkUrl: process.env.RAZORPAY_LINK_URL ?? 'https://razorpay.me/@yarlenterprises',
     upiVpa: process.env.UPI_VPA ?? 'sevagan@upi',
+    razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
+    razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
   },
 });

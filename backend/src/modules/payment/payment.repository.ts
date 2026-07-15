@@ -11,6 +11,7 @@ export class PaymentRepository {
     amount: number;
     method: string;
     status: string;
+    razorpayPaymentLinkId?: string;
   }): Promise<Payment> {
     return this.prisma.payment.create({
       data: {
@@ -18,12 +19,17 @@ export class PaymentRepository {
         amount: data.amount,
         method: data.method as any,
         status: data.status as any,
+        razorpayPaymentLinkId: data.razorpayPaymentLinkId,
       },
     });
   }
 
   async findByInvoiceId(invoiceId: string): Promise<Payment | null> {
     return this.prisma.payment.findUnique({ where: { invoiceId } });
+  }
+
+  async findByRazorpayLinkId(razorpayPaymentLinkId: string): Promise<Payment | null> {
+    return this.prisma.payment.findUnique({ where: { razorpayPaymentLinkId } });
   }
 
   async findById(id: string): Promise<Payment | null> {

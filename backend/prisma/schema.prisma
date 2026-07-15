@@ -189,12 +189,13 @@ model Invoice {
 }
 
 model Payment {
-  id        String        @id @default(uuid())
-  invoiceId String        @unique @map("invoice_id")
-  amount    Decimal       @db.Decimal(10, 2)
-  method    PaymentMode
-  status    PaymentStatus @default(PENDING)
-  createdAt DateTime      @default(now()) @map("created_at")
+  id                     String        @id @default(uuid())
+  invoiceId              String        @unique @map("invoice_id")
+  amount                 Decimal       @db.Decimal(10, 2)
+  method                 PaymentMode
+  status                 PaymentStatus @default(PENDING)
+  razorpayPaymentLinkId  String?       @unique @map("razorpay_payment_link_id")
+  createdAt              DateTime      @default(now()) @map("created_at")
 
   invoice Invoice @relation(fields: [invoiceId], references: [id])
 

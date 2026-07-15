@@ -91,11 +91,6 @@ class EnvironmentVariables {
   @IsOptional()
   OPENAI_API_KEY: string;
 
-  // Payments
-  @IsString()
-  @IsOptional()
-  RAZORPAY_LINK_URL: string;
-
   @IsString()
   @IsOptional()
   ADMIN_DOMAIN: string;

@@ -2,7 +2,15 @@ import { PaymentService } from './payment.service';
 
 const mockCreate = jest.fn();
 const mockUpdateStatus = jest.fn();
-const mockPaymentRepository = { create: mockCreate, updateStatus: mockUpdateStatus } as any;
+const mockFindByRazorpayLinkId = jest.fn();
+const mockPaymentRepository = {
+  create: mockCreate,
+  updateStatus: mockUpdateStatus,
+  findByRazorpayLinkId: mockFindByRazorpayLinkId,
+} as any;
+
+const mockCreatePaymentLink = jest.fn();
+const mockRazorpayService = { createPaymentLink: mockCreatePaymentLink } as any;
 
 const mockGet = jest.fn();
 const mockConfigService = { get: mockGet } as any;
@@ -11,9 +19,9 @@ describe('PaymentService', () => {
   let service: PaymentService;
 
   beforeEach(() => {
-    service = new PaymentService(mockPaymentRepository, mockConfigService);
+    service = new PaymentService(mockPaymentRepository, mockRazorpayService, mockConfigService);
     jest.clearAllMocks();
-    mockGet.mockReturnValue('https://razorpay.me/@yarlenterprises');
+    mockGet.mockReturnValue('sevagan@upi');
   });
 
   describe('recordCashPayment()', () => {
@@ -34,19 +42,27 @@ describe('PaymentService', () => {
   });
 
   describe('recordUpiPayment()', () => {
-    it('creates a UPI payment with PENDING status', async () => {
+    it('creates a real Razorpay payment link and records a PENDING payment referencing it', async () => {
       const payment = { id: 'pay-1' };
+      mockCreatePaymentLink.mockResolvedValue({ id: 'plink_123', shortUrl: 'https://rzp.io/i/abc' });
       mockCreate.mockResolvedValue(payment);
 
-      const result = await service.recordUpiPayment('inv-1', 500);
+      const result = await service.recordUpiPayment('inv-1', 500, 'JOB-20260630-0001', 'Rajesh', '919876543210');
 
-      expect(result).toBe(payment);
+      expect(mockCreatePaymentLink).toHaveBeenCalledWith({
+        amount: 500,
+        jobNumber: 'JOB-20260630-0001',
+        customerName: 'Rajesh',
+        customerPhone: '919876543210',
+      });
       expect(mockCreate).toHaveBeenCalledWith({
         invoiceId: 'inv-1',
         amount: 500,
         method: 'UPI',
         status: 'PENDING',
+        razorpayPaymentLinkId: 'plink_123',
       });
+      expect(result).toEqual({ payment, paymentLinkUrl: 'https://rzp.io/i/abc' });
     });
   });
 
@@ -62,14 +78,43 @@ describe('PaymentService', () => {
     });
   });
 
-  describe('generatePaymentLink()', () => {
-    it('builds a payment link using the configured Razorpay URL', () => {
-      const link = service.generatePaymentLink(500, 'JOB-20260630-0001');
+  describe('confirmPaymentByRazorpayLinkId()', () => {
+    it('confirms the payment matching the Razorpay link id', async () => {
+      mockFindByRazorpayLinkId.mockResolvedValue({ id: 'pay-1', status: 'PENDING' });
+      mockUpdateStatus.mockResolvedValue({ id: 'pay-1', status: 'COMPLETED' });
 
-      expect(mockGet).toHaveBeenCalledWith('payment.razorpayLinkUrl');
-      expect(link).toBe(
-        'https://razorpay.me/@yarlenterprises?amount=500&description=Payment%20for%20JOB-20260630-0001',
-      );
+      const result = await service.confirmPaymentByRazorpayLinkId('plink_123');
+
+      expect(mockFindByRazorpayLinkId).toHaveBeenCalledWith('plink_123');
+      expect(mockUpdateStatus).toHaveBeenCalledWith('pay-1', 'COMPLETED');
+      expect(result).toEqual({ id: 'pay-1', status: 'COMPLETED' });
+    });
+
+    it('returns null when no payment matches the link id', async () => {
+      mockFindByRazorpayLinkId.mockResolvedValue(null);
+
+      const result = await service.confirmPaymentByRazorpayLinkId('plink_unknown');
+
+      expect(result).toBeNull();
+      expect(mockUpdateStatus).not.toHaveBeenCalled();
+    });
+
+    it('does not re-confirm an already-completed payment (webhook redelivery)', async () => {
+      const payment = { id: 'pay-1', status: 'COMPLETED' };
+      mockFindByRazorpayLinkId.mockResolvedValue(payment);
+
+      const result = await service.confirmPaymentByRazorpayLinkId('plink_123');
+
+      expect(result).toBe(payment);
+      expect(mockUpdateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('generateUpiDeepLink()', () => {
+    it('builds a standard UPI deep link using the configured VPA', () => {
+      const link = service.generateUpiDeepLink(500, 'JOB-20260630-0001');
+
+      expect(link).toBe('upi://pay?pa=sevagan@upi&am=500&tn=Payment%20for%20JOB-20260630-0001&cu=INR');
     });
   });
 });

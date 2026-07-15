@@ -48,10 +48,12 @@ const mockConversationState = {
 
 const mockUpsert = jest.fn();
 const mockUpdateLanguage = jest.fn().mockResolvedValue(undefined);
+const mockFindByIdCustomer = jest.fn().mockResolvedValue({ id: 'cust-1', name: 'Rajesh' });
 
 const mockCustomersRepository = {
   upsert: mockUpsert,
   updateLanguage: mockUpdateLanguage,
+  findById: mockFindByIdCustomer,
 };
 
 const mockCreateJob = jest.fn();
@@ -114,12 +116,13 @@ const mockInvoiceService = {
 };
 
 const mockRecordCashPayment = jest.fn().mockResolvedValue({ id: 'pay-1' });
-const mockRecordUpiPayment = jest.fn().mockResolvedValue({ id: 'pay-1' });
-const mockGeneratePaymentLink = jest.fn().mockReturnValue('https://razorpay.me/example?amount=500');
+const mockRecordUpiPayment = jest.fn().mockResolvedValue({
+  payment: { id: 'pay-1' },
+  paymentLinkUrl: 'https://rzp.io/i/example',
+});
 const mockPaymentService = {
   recordCashPayment: mockRecordCashPayment,
   recordUpiPayment: mockRecordUpiPayment,
-  generatePaymentLink: mockGeneratePaymentLink,
 };
 
 const mockClassifyIntent = jest.fn().mockResolvedValue({ intent: Intent.UNKNOWN, confidence: 0, detectedLanguage: Language.EN });

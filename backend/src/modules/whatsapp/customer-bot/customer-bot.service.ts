@@ -626,15 +626,20 @@ export class CustomerBotService {
       const amount = parseFloat(ctx.amount);
 
       if (ctx.paymentMode === 'UPI') {
-        await this.paymentService.recordUpiPayment(invoice.id, amount);
+        const customer = await this.customersRepository.findById(ctx.customerId);
+        const { paymentLinkUrl } = await this.paymentService.recordUpiPayment(
+          invoice.id,
+          amount,
+          ctx.jobNumber,
+          customer?.name ?? 'Sevagan Customer',
+          customerPhone,
+        );
 
-        // Send Razorpay payment link
-        const paymentLink = this.paymentService.generatePaymentLink(amount, ctx.jobNumber);
         await this.whatsapp.sendText({
           to: customerPhone,
           text: this.translation.translate('customer.payment_link', customerLang, {
             amount: ctx.amount,
-            paymentLink,
+            paymentLink: paymentLinkUrl,
           }),
         });
       } else {
