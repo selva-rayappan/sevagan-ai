@@ -32,7 +32,7 @@ done
 
 echo "==> Bringing the Docker stack back up"
 ssh -i "$SSH_KEY_PATH" "${EC2_USER}@${EC2_HOST}" \
-  "cd /opt/sevagan && docker compose -f docker-compose.prod.yml up -d"
+  'cd /opt/sevagan && set -a && source /etc/sevagan/.env && set +a && docker compose -f docker-compose.prod.yml up -d'
 
 echo "==> Waiting for the API to report healthy"
 until curl -sf "http://${EC2_HOST}/api/v1/health" >/dev/null 2>&1; do
