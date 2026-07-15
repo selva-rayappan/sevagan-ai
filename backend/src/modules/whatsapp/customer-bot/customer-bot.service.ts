@@ -85,8 +85,16 @@ export class CustomerBotService {
       return;
     }
 
-    await this.routeByState(session, message, text, customer);
-    await this.conversationState.saveSession(session);
+    try {
+      await this.routeByState(session, message, text, customer);
+    } catch (err) {
+      // A failed outbound WhatsApp send (or any other error mid-handler) must not
+      // strand the customer on their previous state — the session mutation up to
+      // the failure point is still valid and needs to persist regardless.
+      this.logger.error(`routeByState failed for ${from}: ${(err as Error).message}`, (err as Error).stack);
+    } finally {
+      await this.conversationState.saveSession(session);
+    }
   }
 
   private async handleCommand(

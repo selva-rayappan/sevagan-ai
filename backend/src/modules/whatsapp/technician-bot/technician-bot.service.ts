@@ -77,27 +77,36 @@ export class TechnicianBotService {
     }
 
     // Route by state
-    switch (session.state) {
-      case TechnicianConversationState.IDLE:
-        await this.handleIdleState(session, technician.phone);
-        break;
-      case TechnicianConversationState.JOB_OFFER_PENDING:
-        await this.handleOfferResponse(session, text, technician);
-        break;
-      case TechnicianConversationState.JOB_ACCEPTED:
-        await this.handleAcceptedState(session, text, technician);
-        break;
-      case TechnicianConversationState.JOB_IN_PROGRESS:
-        await this.handleInProgressState(session, message, text, technician);
-        break;
-      case TechnicianConversationState.AWAITING_COMPLETION:
-        await this.handleAwaitingCompletionState(session, technician.phone);
-        break;
-      default:
-        await this.handleIdleState(session, technician.phone);
+    try {
+      switch (session.state) {
+        case TechnicianConversationState.IDLE:
+          await this.handleIdleState(session, technician.phone);
+          break;
+        case TechnicianConversationState.JOB_OFFER_PENDING:
+          await this.handleOfferResponse(session, text, technician);
+          break;
+        case TechnicianConversationState.JOB_ACCEPTED:
+          await this.handleAcceptedState(session, text, technician);
+          break;
+        case TechnicianConversationState.JOB_IN_PROGRESS:
+          await this.handleInProgressState(session, message, text, technician);
+          break;
+        case TechnicianConversationState.AWAITING_COMPLETION:
+          await this.handleAwaitingCompletionState(session, technician.phone);
+          break;
+        default:
+          await this.handleIdleState(session, technician.phone);
+      }
+    } catch (err) {
+      // A failed outbound WhatsApp send must not strand the technician on
+      // their previous state — persist whatever the handler already mutated.
+      this.logger.error(
+        `state routing failed for ${technician.phone}: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
+    } finally {
+      await this.techSessionService.saveSession(session);
     }
-
-    await this.techSessionService.saveSession(session);
   }
 
   async sendJobOffer(technician: Technician, job: Job, customer: Customer): Promise<void> {

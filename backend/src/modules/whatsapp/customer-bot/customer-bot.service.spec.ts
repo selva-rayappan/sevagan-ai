@@ -250,6 +250,18 @@ describe('CustomerBotService', () => {
       expect(mockCreateNewSession).toHaveBeenCalledWith('919876543210', Language.EN);
       expect(mockSendInteractiveButtons).toHaveBeenCalled();
     });
+
+    it('still persists the advanced state when the outbound WhatsApp send fails', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.IDLE }));
+      mockSendInteractiveButtons.mockRejectedValueOnce(new Error('Meta API error'));
+
+      await service.handleMessage(makeTextMessage('Hello'), 'Rajesh');
+
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: ConversationState.AWAITING_LANGUAGE }),
+      );
+    });
   });
 
   // ─── Language selection ──────────────────────────────────────────────────────

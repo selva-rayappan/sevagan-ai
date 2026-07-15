@@ -322,6 +322,31 @@ describe('TechnicianBotService', () => {
       );
     });
 
+    it('still persists the advanced state when the outbound WhatsApp send fails', async () => {
+      const session = pendingSession();
+      mockGetSession.mockResolvedValue(session);
+      const assignment = { id: 'assign-1', jobId: 'job-1' };
+      mockFindByJobId.mockResolvedValue(assignment);
+      mockAcceptAssignment.mockResolvedValue({ ...assignment, acceptedAt: new Date() });
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.ACCEPTED });
+      mockUpdateTechStatus.mockResolvedValue(undefined);
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE',
+        phone: '919876543210',
+        language: Language.EN,
+        updatedAt: new Date().toISOString(),
+      });
+      mockSendText.mockRejectedValueOnce(new Error('Meta API error'));
+
+      await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
+
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.JOB_ACCEPTED }),
+      );
+    });
+
     it('accepts job via accept_job button reply', async () => {
       const session = pendingSession();
       mockGetSession.mockResolvedValue(session);
