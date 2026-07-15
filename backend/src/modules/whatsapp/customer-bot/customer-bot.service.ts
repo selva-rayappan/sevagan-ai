@@ -24,6 +24,7 @@ import { PaymentService } from '../../payment/payment.service';
 import { IntentClassifierService, Intent } from '../../ai-dispatcher/intent-classifier.service';
 import { CategoryMapperService } from '../../ai-dispatcher/category-mapper.service';
 import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.service';
+import { generateTimeSlots } from './time-slot.util';
 
 const SERVICE_MENU: Record<string, string> = {
   '1': 'Electrical',
@@ -331,9 +332,13 @@ export class CustomerBotService {
     session.location = location;
     session.state = ConversationState.AWAITING_TIME;
 
+    const slots = generateTimeSlots(new Date(), session.language);
+    session.pendingTimeSlots = slots.map((s) => s.label);
+
+    const menu = slots.map((s, i) => `${i + 1}. ${s.label}`).join('\n');
     await this.whatsapp.sendText({
       to: session.phone,
-      text: this.translation.translate('customer.ask_scheduled_time', session.language),
+      text: `${this.translation.translate('customer.select_time_slot', session.language)}\n\n${menu}`,
     });
   }
 
@@ -342,7 +347,17 @@ export class CustomerBotService {
     text: string,
     customer: Customer,
   ): Promise<void> {
-    const scheduledTimeText = text.trim();
+    const slots = session.pendingTimeSlots ?? [];
+    const choice = parseInt(text.trim(), 10);
+    const scheduledTimeText = slots[choice - 1];
+
+    if (!scheduledTimeText) {
+      await this.whatsapp.sendText({
+        to: session.phone,
+        text: this.translation.translate('customer.invalid_time_slot', session.language),
+      });
+      return;
+    }
 
     const job = await this.jobsService.createJob({
       customerId: customer.id,
@@ -368,6 +383,7 @@ export class CustomerBotService {
     delete session.selectedCategoryId;
     delete session.selectedCategoryName;
     delete session.location;
+    delete session.pendingTimeSlots;
 
     // Trigger auto-assignment asynchronously — customer already got confirmation
     this.assignmentEngine.tryAssignJob(job.id, customer.phone).catch((err: Error) => {

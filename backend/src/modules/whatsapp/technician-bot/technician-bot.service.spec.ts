@@ -322,6 +322,33 @@ describe('TechnicianBotService', () => {
       );
     });
 
+    it('sends the technician name, phone, and job number to the customer on acceptance', async () => {
+      const session = pendingSession();
+      mockGetSession.mockResolvedValue(session);
+      const assignment = { id: 'assign-1', jobId: 'job-1' };
+      mockFindByJobId.mockResolvedValue(assignment);
+      mockAcceptAssignment.mockResolvedValue({ ...assignment, acceptedAt: new Date() });
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.ACCEPTED });
+      mockUpdateTechStatus.mockResolvedValue(undefined);
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE',
+        phone: '919876543210',
+        language: Language.EN,
+        updatedAt: new Date().toISOString(),
+      });
+
+      await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician({ phone: '919100000000' }));
+
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '919876543210',
+          text: expect.stringContaining('+919100000000'),
+        }),
+      );
+    });
+
     it('still persists the advanced state when the outbound WhatsApp send fails', async () => {
       const session = pendingSession();
       mockGetSession.mockResolvedValue(session);
@@ -437,6 +464,46 @@ describe('TechnicianBotService', () => {
       expect(mockSendText).toHaveBeenCalled();
     });
 
+    it('transitions to JOB_IN_PROGRESS on "1" reply', async () => {
+      mockGetSession.mockResolvedValue(acceptedSession());
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.IN_PROGRESS });
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+
+      await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
+
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.IN_PROGRESS);
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.JOB_IN_PROGRESS }),
+      );
+    });
+
+    it('declines on "2" reply: frees the technician, resets the job, and reassigns', async () => {
+      mockGetSession.mockResolvedValue(acceptedSession());
+      mockFindByJobId.mockResolvedValue({ id: 'assign-1', jobId: 'job-1' });
+      mockDeleteById.mockResolvedValue(undefined);
+      mockUpdateStatus.mockResolvedValue({});
+      mockUpdateTechStatus.mockResolvedValue(undefined);
+
+      await service.handleMessage(makeTextMessage('2'), 'Kumar', makeTechnician());
+
+      expect(mockDeleteById).toHaveBeenCalledWith('assign-1');
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.NEW);
+      expect(mockUpdateTechStatus).toHaveBeenCalledWith('tech-1', TechnicianStatus.AVAILABLE);
+      expect(mockAssignmentEngineService.triggerReassignment).toHaveBeenCalledWith('job-1', 'tech-1');
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.IDLE }),
+      );
+    });
+
+    it('declines on the word "decline" too', async () => {
+      mockGetSession.mockResolvedValue(acceptedSession());
+      mockFindByJobId.mockResolvedValue({ id: 'assign-1', jobId: 'job-1' });
+
+      await service.handleMessage(makeTextMessage('decline'), 'Kumar', makeTechnician());
+
+      expect(mockDeleteById).toHaveBeenCalledWith('assign-1');
+    });
+
     it('sends unknown_command for non-START text', async () => {
       mockGetSession.mockResolvedValue(acceptedSession());
 
@@ -530,6 +597,96 @@ describe('TechnicianBotService', () => {
 
       expect(mockSetCompletion).not.toHaveBeenCalled();
       expect(mockSendText).toHaveBeenCalled();
+    });
+
+    it('"1" reply asks for the amount and records CASH as the pending mode', async () => {
+      mockGetSession.mockResolvedValue(inProgressSession());
+
+      await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
+
+      expect(mockSetCompletion).not.toHaveBeenCalled();
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: TechnicianConversationState.AWAITING_PAYMENT_AMOUNT,
+          pendingPaymentMode: 'CASH',
+        }),
+      );
+    });
+
+    it('"2" reply asks for the amount and records UPI as the pending mode', async () => {
+      mockGetSession.mockResolvedValue(inProgressSession());
+
+      await service.handleMessage(makeTextMessage('2'), 'Kumar', makeTechnician());
+
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: TechnicianConversationState.AWAITING_PAYMENT_AMOUNT,
+          pendingPaymentMode: 'UPI',
+        }),
+      );
+    });
+  });
+
+  // ─── AWAITING_PAYMENT_AMOUNT state ────────────────────────────────────────
+
+  describe('AWAITING_PAYMENT_AMOUNT state', () => {
+    const awaitingAmountSession = (pendingPaymentMode: 'CASH' | 'UPI' = 'CASH') =>
+      makeSession({
+        state: TechnicianConversationState.AWAITING_PAYMENT_AMOUNT,
+        activeJobId: 'job-1',
+        activeJobNumber: 'JOB-20260614-0001',
+        customerPhone: '919876543210',
+        pendingPaymentMode,
+      });
+
+    it('completes the job with the pending mode once a valid amount is entered', async () => {
+      mockGetSession.mockResolvedValue(awaitingAmountSession('UPI'));
+      mockSetCompletion.mockResolvedValue({ id: 'job-1' });
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE', phone: '919876543210', language: Language.EN, updatedAt: new Date().toISOString(),
+      });
+
+      await service.handleMessage(makeTextMessage('1500'), 'Kumar', makeTechnician());
+
+      expect(mockSetCompletion).toHaveBeenCalledWith('job-1', 1500, PaymentMode.UPI);
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.AWAITING_COMPLETION }),
+      );
+    });
+
+    it('accepts a decimal amount', async () => {
+      mockGetSession.mockResolvedValue(awaitingAmountSession('CASH'));
+      mockSetCompletion.mockResolvedValue({ id: 'job-1' });
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE', phone: '919876543210', language: Language.EN, updatedAt: new Date().toISOString(),
+      });
+
+      await service.handleMessage(makeTextMessage('750.50'), 'Kumar', makeTechnician());
+
+      expect(mockSetCompletion).toHaveBeenCalledWith('job-1', 750.5, PaymentMode.CASH);
+    });
+
+    it('re-prompts without completing when the reply is not a valid number', async () => {
+      mockGetSession.mockResolvedValue(awaitingAmountSession('CASH'));
+
+      await service.handleMessage(makeTextMessage('not a number'), 'Kumar', makeTechnician());
+
+      expect(mockSetCompletion).not.toHaveBeenCalled();
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919100000000' }),
+      );
+    });
+
+    it('re-prompts on a non-positive amount', async () => {
+      mockGetSession.mockResolvedValue(awaitingAmountSession('CASH'));
+
+      await service.handleMessage(makeTextMessage('0'), 'Kumar', makeTechnician());
+
+      expect(mockSetCompletion).not.toHaveBeenCalled();
     });
   });
 

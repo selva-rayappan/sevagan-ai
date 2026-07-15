@@ -555,7 +555,7 @@ describe('CustomerBotService', () => {
   // ─── Time + job creation ─────────────────────────────────────────────────────
 
   describe('AWAITING_TIME state', () => {
-    it('creates a job and sends confirmation containing the job number', async () => {
+    it('creates a job using the selected slot label and sends confirmation containing the job number', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(
         makeSession({
@@ -563,18 +563,19 @@ describe('CustomerBotService', () => {
           selectedCategoryId: 'cat-1',
           selectedCategoryName: 'AC Service',
           location: 'Virudhunagar',
+          pendingTimeSlots: ['Today, 2 PM - 4 PM', 'Today, 4 PM - 6 PM', 'Tomorrow, 9 AM - 11 AM', 'Tomorrow, 11 AM - 1 PM'],
         }),
       );
       mockCreateJob.mockResolvedValue({ id: 'job-1', jobNumber: 'JOB-20260614-0001' });
 
-      await service.handleMessage(makeTextMessage('Today 4 PM'), 'Rajesh');
+      await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 
       expect(mockCreateJob).toHaveBeenCalledWith(
         expect.objectContaining({
           customerId: 'cust-1',
           serviceCategoryId: 'cat-1',
           location: 'Virudhunagar',
-          scheduledTimeText: 'Today 4 PM',
+          scheduledTimeText: 'Today, 2 PM - 4 PM',
         }),
       );
 
@@ -586,7 +587,27 @@ describe('CustomerBotService', () => {
       );
     });
 
-    it('clears category and location fields from session after job creation', async () => {
+    it('re-prompts without creating a job when the reply is not a valid slot number', async () => {
+      mockUpsert.mockResolvedValue(makeCustomer());
+      mockGetSession.mockResolvedValue(
+        makeSession({
+          state: ConversationState.AWAITING_TIME,
+          selectedCategoryId: 'cat-1',
+          selectedCategoryName: 'AC Service',
+          location: 'Virudhunagar',
+          pendingTimeSlots: ['Today, 2 PM - 4 PM', 'Today, 4 PM - 6 PM', 'Tomorrow, 9 AM - 11 AM', 'Tomorrow, 11 AM - 1 PM'],
+        }),
+      );
+
+      await service.handleMessage(makeTextMessage('9'), 'Rajesh');
+
+      expect(mockCreateJob).not.toHaveBeenCalled();
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919876543210' }),
+      );
+    });
+
+    it('clears category, location, and pending slots from session after job creation', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(
         makeSession({
@@ -594,16 +615,18 @@ describe('CustomerBotService', () => {
           selectedCategoryId: 'cat-2',
           selectedCategoryName: 'Plumbing',
           location: 'Sattur',
+          pendingTimeSlots: ['Today, 2 PM - 4 PM', 'Today, 4 PM - 6 PM', 'Tomorrow, 9 AM - 11 AM', 'Tomorrow, 11 AM - 1 PM'],
         }),
       );
       mockCreateJob.mockResolvedValue({ id: 'job-2', jobNumber: 'JOB-20260614-0002' });
 
-      await service.handleMessage(makeTextMessage('Tomorrow 10 AM'), 'Rajesh');
+      await service.handleMessage(makeTextMessage('2'), 'Rajesh');
 
       const saved = mockSaveSession.mock.calls[0][0] as ConversationSession;
       expect(saved.selectedCategoryId).toBeUndefined();
       expect(saved.selectedCategoryName).toBeUndefined();
       expect(saved.location).toBeUndefined();
+      expect(saved.pendingTimeSlots).toBeUndefined();
     });
   });
 

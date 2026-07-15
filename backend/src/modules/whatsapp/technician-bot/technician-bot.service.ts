@@ -91,6 +91,9 @@ export class TechnicianBotService {
         case TechnicianConversationState.JOB_IN_PROGRESS:
           await this.handleInProgressState(session, message, text, technician);
           break;
+        case TechnicianConversationState.AWAITING_PAYMENT_AMOUNT:
+          await this.handleAwaitingPaymentAmountState(session, text, technician);
+          break;
         case TechnicianConversationState.AWAITING_COMPLETION:
           await this.handleAwaitingCompletionState(session, technician.phone);
           break;
@@ -232,6 +235,7 @@ export class TechnicianBotService {
       to: job.customer.phone,
       text: this.translation.translate('customer.job_assigned', customerLang, {
         technicianName: technician.name,
+        technicianPhone: `+${technician.phone}`,
         scheduledTime: this.extractScheduledTime(job.description),
         jobNumber: job.jobNumber,
       }),
@@ -281,9 +285,11 @@ export class TechnicianBotService {
     text: string,
     technician: Technician,
   ): Promise<void> {
-    const upper = text.toUpperCase().trim();
+    const normalized = text.trim().toLowerCase();
+    const isStart = normalized === '1' || normalized === 'start';
+    const isDecline = normalized === '2' || normalized === 'decline';
 
-    if (upper === 'START') {
+    if (isStart) {
       await this.jobsService.updateStatus(session.activeJobId!, JobStatus.IN_PROGRESS);
       session.state = TechnicianConversationState.JOB_IN_PROGRESS;
 
@@ -291,7 +297,6 @@ export class TechnicianBotService {
         to: technician.phone,
         text: this.translation.translate('technician.job_started', session.language, {
           jobNumber: session.activeJobNumber ?? '',
-          amount: '',
         }),
       });
 
@@ -307,12 +312,48 @@ export class TechnicianBotService {
           }),
         });
       }
+    } else if (isDecline) {
+      await this.declineAfterAccept(session, technician);
     } else {
       await this.whatsapp.sendText({
         to: technician.phone,
         text: this.translation.translate('technician.unknown_command', session.language),
       });
     }
+  }
+
+  /**
+   * Backing out after already accepting (as opposed to rejecting the initial
+   * offer) additionally needs to free the technician back up — acceptJob()
+   * already marked them BUSY.
+   */
+  private async declineAfterAccept(session: TechnicianSession, technician: Technician): Promise<void> {
+    const jobId = session.activeJobId!;
+    const assignment = await this.assignmentsRepository.findByJobId(jobId);
+    if (assignment) {
+      await this.assignmentsRepository.deleteById(assignment.id);
+    }
+
+    await this.jobsService.updateStatus(jobId, JobStatus.NEW);
+    await this.techniciansRepository.updateStatus(technician.id, TechnicianStatus.AVAILABLE);
+
+    await this.whatsapp.sendText({
+      to: technician.phone,
+      text: this.translation.translate('technician.job_rejected', session.language, {
+        jobNumber: session.activeJobNumber ?? '',
+      }),
+    });
+
+    session.state = TechnicianConversationState.IDLE;
+    session.activeJobId = undefined;
+    session.activeJobNumber = undefined;
+    session.activeAssignmentId = undefined;
+    session.customerPhone = undefined;
+    session.offerExpiresAt = undefined;
+
+    this.assignmentEngine.triggerReassignment(jobId, technician.id).catch((err: Error) => {
+      this.logger.error(`Reassignment after post-accept decline failed for job ${jobId}: ${err.message}`);
+    });
   }
 
   private async handleInProgressState(
@@ -327,7 +368,21 @@ export class TechnicianBotService {
       return;
     }
 
-    // COMPLETE command: COMPLETE <amount> <CASH|UPI>
+    const normalized = text.trim().toLowerCase();
+    const isCompleteCash = normalized === '1' || normalized === 'complete cash' || normalized === 'complete_cash';
+    const isCompleteUpi = normalized === '2' || normalized === 'complete upi' || normalized === 'complete_upi';
+
+    if (isCompleteCash || isCompleteUpi) {
+      session.pendingPaymentMode = isCompleteCash ? 'CASH' : 'UPI';
+      session.state = TechnicianConversationState.AWAITING_PAYMENT_AMOUNT;
+      await this.whatsapp.sendText({
+        to: technician.phone,
+        text: this.translation.translate('technician.ask_completion_amount', session.language),
+      });
+      return;
+    }
+
+    // Power-user fallback: COMPLETE <amount> <CASH|UPI> in one message
     const completeMatch = text.toUpperCase().trim().match(/^COMPLETE\s+(\d+(?:\.\d{1,2})?)\s+(CASH|UPI)$/);
     if (completeMatch) {
       const amount = parseFloat(completeMatch[1]);
@@ -437,6 +492,26 @@ export class TechnicianBotService {
       paymentMode,
     };
     await this.customerSessionService.saveSession(customerSession);
+  }
+
+  private async handleAwaitingPaymentAmountState(
+    session: TechnicianSession,
+    text: string,
+    technician: Technician,
+  ): Promise<void> {
+    const amount = parseFloat(text.trim());
+
+    if (!session.pendingPaymentMode || isNaN(amount) || amount <= 0) {
+      await this.whatsapp.sendText({
+        to: technician.phone,
+        text: this.translation.translate('technician.ask_completion_amount', session.language),
+      });
+      return;
+    }
+
+    const paymentMode = session.pendingPaymentMode;
+    session.pendingPaymentMode = undefined;
+    await this.handleCompleteCommand(session, amount, PaymentMode[paymentMode], technician);
   }
 
   private async handleAwaitingCompletionState(
