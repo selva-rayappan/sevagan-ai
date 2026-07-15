@@ -99,6 +99,22 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   ADMIN_DOMAIN: string;
+
+  @IsString()
+  @IsOptional()
+  PUBLIC_API_URL: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_KEY_ID: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_KEY_SECRET: string;
+
+  @IsString()
+  @IsOptional()
+  RAZORPAY_WEBHOOK_SECRET: string;
 }
 
 export function validate(config: Record<string, unknown>) {

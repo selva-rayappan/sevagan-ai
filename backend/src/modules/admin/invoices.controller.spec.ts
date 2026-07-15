@@ -5,8 +5,8 @@ const mockFindAll = jest.fn();
 const mockFindById = jest.fn();
 const mockInvoiceRepository = { findAll: mockFindAll, findById: mockFindById } as any;
 
-const mockGetInvoicePdfUrl = jest.fn();
-const mockInvoiceService = { getInvoicePdfUrl: mockGetInvoicePdfUrl } as any;
+const mockGetInvoicePdfBuffer = jest.fn();
+const mockInvoiceService = { getInvoicePdfBuffer: mockGetInvoicePdfBuffer } as any;
 
 const mockFindByInvoiceId = jest.fn();
 const mockPaymentRepository = { findByInvoiceId: mockFindByInvoiceId } as any;
@@ -23,7 +23,8 @@ const mockUser = { id: 'admin-1', email: 'admin@sevagan.in', role: 'ADMIN', name
 const makeResponse = (): any => ({
   status: jest.fn().mockReturnThis(),
   json: jest.fn().mockReturnThis(),
-  redirect: jest.fn(),
+  set: jest.fn().mockReturnThis(),
+  send: jest.fn().mockReturnThis(),
 });
 
 describe('InvoicesController', () => {
@@ -78,17 +79,24 @@ describe('InvoicesController', () => {
   });
 
   describe('downloadPdf()', () => {
-    it('redirects to the presigned PDF URL when found', async () => {
-      mockGetInvoicePdfUrl.mockResolvedValue('https://minio.local/inv-1.pdf');
+    it('streams the PDF bytes directly when found', async () => {
+      const buffer = Buffer.from('%PDF-fake');
+      mockGetInvoicePdfBuffer.mockResolvedValue({ buffer, invoiceNumber: 'INV-1' });
       const res = makeResponse();
 
       await controller.downloadPdf('inv-1', res);
 
-      expect(res.redirect).toHaveBeenCalledWith('https://minio.local/inv-1.pdf');
+      expect(res.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="INV-1.pdf"',
+        }),
+      );
+      expect(res.send).toHaveBeenCalledWith(buffer);
     });
 
     it('returns 404 when no PDF exists', async () => {
-      mockGetInvoicePdfUrl.mockResolvedValue(null);
+      mockGetInvoicePdfBuffer.mockResolvedValue(null);
       const res = makeResponse();
 
       await controller.downloadPdf('inv-1', res);

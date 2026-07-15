@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Pencil } from 'lucide-react';
 
 interface Category { id: string; name: string; }
 interface Technician {
@@ -11,6 +11,7 @@ interface Technician {
   name: string;
   phone: string;
   status: string;
+  active: boolean;
   trustScore: number;
   rating: string;
   serviceArea: string;
@@ -135,6 +136,149 @@ function CreateModal({
   );
 }
 
+function EditModal({
+  technician,
+  categories,
+  onClose,
+  onSaved,
+}: {
+  technician: Technician;
+  categories: Category[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: technician.name,
+    serviceArea: technician.serviceArea,
+    status: technician.status,
+    active: technician.active,
+  });
+  const [categoryIds, setCategoryIds] = useState<string[]>(technician.skills.map((s) => s.category.id));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  function toggleCategory(id: string) {
+    setCategoryIds((ids) => (ids.includes(id) ? ids.filter((c) => c !== id) : [...ids, id]));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await apiClient.patch(`/api/v1/admin/technicians/${technician.id}`, form);
+
+      const originalIds = technician.skills.map((s) => s.category.id);
+      const toAdd = categoryIds.filter((id) => !originalIds.includes(id));
+      const toRemove = originalIds.filter((id) => !categoryIds.includes(id));
+      await Promise.all([
+        ...toAdd.map((categoryId) =>
+          apiClient.post(`/api/v1/admin/technicians/${technician.id}/skills`, { categoryId }),
+        ),
+        ...toRemove.map((categoryId) =>
+          apiClient.delete(`/api/v1/admin/technicians/${technician.id}/skills/${categoryId}`),
+        ),
+      ]);
+
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed to update technician');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900">Edit Technician</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Service Area (comma-separated localities)</label>
+            <input
+              required
+              value={form.serviceArea}
+              onChange={(e) => setForm((f) => ({ ...f, serviceArea: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={form.status}
+              onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="AVAILABLE">Available</option>
+              <option value="BUSY">Busy</option>
+              <option value="OFFLINE">Offline</option>
+            </select>
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+              />
+              Active
+            </label>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Skills</label>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => toggleCategory(cat.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    categoryIds.includes(cat.id)
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-indigo-400'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          {error && <p className="text-red-600 text-xs">{error}</p>}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {loading ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function TechniciansPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -142,6 +286,7 @@ export default function TechniciansPage() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editing, setEditing] = useState<Technician | null>(null);
   const limit = 20;
 
   const load = () => {
@@ -188,20 +333,21 @@ export default function TechniciansPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Rating</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Skills</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Area</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600"></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-b border-gray-100">
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                   ))}
                 </tr>
               ))
             ) : technicians.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-gray-400">No technicians yet</td>
+                <td colSpan={8} className="px-4 py-10 text-center text-gray-400">No technicians yet</td>
               </tr>
             ) : (
               technicians.map((t) => (
@@ -225,6 +371,15 @@ export default function TechniciansPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{t.serviceArea}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setEditing(t)}
+                      title="Edit technician"
+                      className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -243,6 +398,14 @@ export default function TechniciansPage() {
 
       {showCreate && (
         <CreateModal categories={categories} onClose={() => setShowCreate(false)} onCreated={load} />
+      )}
+      {editing && (
+        <EditModal
+          technician={editing}
+          categories={categories}
+          onClose={() => setEditing(null)}
+          onSaved={load}
+        />
       )}
     </div>
   );

@@ -41,12 +41,16 @@ export class InvoicesController {
 
   @Get(':id/pdf')
   async downloadPdf(@Param('id') id: string, @Res() res: Response) {
-    const url = await this.invoiceService.getInvoicePdfUrl(id);
-    if (!url) {
+    const result = await this.invoiceService.getInvoicePdfBuffer(id);
+    if (!result) {
       res.status(404).json({ message: 'Invoice PDF not found' });
       return;
     }
-    res.redirect(url);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${result.invoiceNumber}.pdf"`,
+    });
+    res.send(result.buffer);
   }
 
   @Roles(AdminRole.ADMIN)

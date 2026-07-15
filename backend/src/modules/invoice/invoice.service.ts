@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Invoice } from '@prisma/client';
 import { RedisService } from '../../infrastructure/cache/redis.service';
 import { MinioService } from '../../infrastructure/storage/minio.service';
@@ -23,6 +24,7 @@ export class InvoiceService {
     private readonly redis: RedisService,
     private readonly prisma: PrismaService,
     private readonly translation: TranslationService,
+    private readonly configService: ConfigService,
     @Inject(WHATSAPP_PROVIDER) private readonly whatsapp: WhatsAppProvider,
   ) {}
 
@@ -92,8 +94,11 @@ export class InvoiceService {
       await this.invoiceRepository.setPdfUrl(invoice.id, minioKey);
       await this.invoiceRepository.updateStatus(invoice.id, 'SENT');
 
-      // Get presigned URL and send to customer
-      const pdfUrl = await this.minioService.getPresignedUrl(minioKey, 604800); // 7-day URL
+      // Publicly reachable link (proxied through our own API) rather than a
+      // presigned MinIO URL — MINIO_ENDPOINT is an internal Docker hostname
+      // Meta's servers can't resolve to fetch the document.
+      const publicApiUrl = this.configService.get<string>('publicApiUrl', 'http://localhost:3001');
+      const pdfUrl = `${publicApiUrl}/api/v1/invoices/${invoice.id}/pdf`;
 
       await this.whatsapp.sendDocument({
         to: job.customer.phone,
@@ -113,10 +118,11 @@ export class InvoiceService {
     return invoice;
   }
 
-  async getInvoicePdfUrl(invoiceId: string): Promise<string | null> {
+  async getInvoicePdfBuffer(invoiceId: string): Promise<{ buffer: Buffer; invoiceNumber: string } | null> {
     const invoice = await this.invoiceRepository.findById(invoiceId);
     if (!invoice?.pdfUrl) return null;
-    return this.minioService.getPresignedUrl(invoice.pdfUrl, 86400); // 24h URL
+    const buffer = await this.minioService.downloadFile(invoice.pdfUrl);
+    return { buffer, invoiceNumber: invoice.invoiceNumber };
   }
 
   private async generateInvoiceNumber(): Promise<string> {

@@ -77,6 +77,7 @@ describe('SettlementService', () => {
           job: {
             assignment: { technicianId: 'tech-1' },
             status: 'COMPLETED',
+            invoice: { payment: { status: 'COMPLETED' } },
           },
         },
       });

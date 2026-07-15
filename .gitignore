@@ -45,3 +45,8 @@ postgres_data/
 redis_data/
 minio_data/
 ollama_data/
+
+# SSH / server access keys — never commit these
+*.pem
+*.ppk
+*.key

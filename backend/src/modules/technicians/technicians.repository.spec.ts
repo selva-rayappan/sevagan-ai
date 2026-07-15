@@ -152,6 +152,38 @@ describe('TechniciansRepository', () => {
         }),
       );
     });
+
+    it('falls back to any available technician with the skill when no area match exists', async () => {
+      const fallbackTech = { id: 't-3' };
+      mockFindFirst
+        .mockResolvedValueOnce(null) // area-scoped query finds nobody
+        .mockResolvedValueOnce(fallbackTech); // area-agnostic fallback finds someone
+
+      const result = await repo.findBestAvailable('cat-1', 'Somewhere Unmapped', []);
+
+      expect(result).toBe(fallbackTech);
+      expect(mockFindFirst).toHaveBeenCalledTimes(2);
+      expect(mockFindFirst).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        where: expect.objectContaining({ serviceArea: expect.anything() }),
+      }));
+      expect(mockFindFirst).toHaveBeenNthCalledWith(2, {
+        where: {
+          status: TechnicianStatus.AVAILABLE,
+          active: true,
+          skills: { some: { categoryId: 'cat-1' } },
+        },
+        orderBy: [{ trustScore: 'desc' }, { rating: 'desc' }],
+      });
+    });
+
+    it('does not fall back when an area match is found', async () => {
+      const tech = { id: 't-1' };
+      mockFindFirst.mockResolvedValueOnce(tech);
+
+      await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
+
+      expect(mockFindFirst).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('findAll()', () => {

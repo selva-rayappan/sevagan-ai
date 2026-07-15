@@ -21,11 +21,14 @@ const mockGenerateInvoicePdf = jest.fn();
 const mockPdfGenerator = { generateInvoicePdf: mockGenerateInvoicePdf } as any;
 
 const mockUploadFile = jest.fn();
-const mockGetPresignedUrl = jest.fn();
+const mockDownloadFile = jest.fn();
 const mockMinioService = {
   uploadFile: mockUploadFile,
-  getPresignedUrl: mockGetPresignedUrl,
+  downloadFile: mockDownloadFile,
 } as any;
+
+const mockConfigGet = jest.fn().mockReturnValue('http://localhost:3001');
+const mockConfigService = { get: mockConfigGet } as any;
 
 const mockIncr = jest.fn();
 const mockExpire = jest.fn();
@@ -75,14 +78,15 @@ describe('InvoiceService', () => {
       mockRedisService,
       mockPrisma,
       mockTranslationService,
+      mockConfigService,
       mockWhatsApp,
     );
     jest.clearAllMocks();
+    mockConfigGet.mockReturnValue('http://localhost:3001');
     mockIncr.mockResolvedValue(1);
     mockExpire.mockResolvedValue(undefined);
     mockGenerateInvoicePdf.mockResolvedValue(Buffer.from('%PDF-fake'));
     mockUploadFile.mockResolvedValue('invoices/INV-20260630-0001.pdf');
-    mockGetPresignedUrl.mockResolvedValue('https://minio.local/invoices/INV-20260630-0001.pdf');
     mockSendDocument.mockResolvedValue(undefined);
   });
 
@@ -137,6 +141,7 @@ describe('InvoiceService', () => {
         expect.objectContaining({
           to: '919876543210',
           filename: 'INV-20260630-0001.pdf',
+          link: 'http://localhost:3001/api/v1/invoices/inv-1/pdf',
         }),
       );
     });
@@ -173,11 +178,11 @@ describe('InvoiceService', () => {
     });
   });
 
-  describe('getInvoicePdfUrl()', () => {
+  describe('getInvoicePdfBuffer()', () => {
     it('returns null when invoice has no pdfUrl', async () => {
       mockFindById.mockResolvedValue({ id: 'inv-1', pdfUrl: null });
 
-      const result = await service.getInvoicePdfUrl('inv-1');
+      const result = await service.getInvoicePdfBuffer('inv-1');
 
       expect(result).toBeNull();
     });
@@ -185,19 +190,19 @@ describe('InvoiceService', () => {
     it('returns null when invoice does not exist', async () => {
       mockFindById.mockResolvedValue(null);
 
-      const result = await service.getInvoicePdfUrl('missing');
+      const result = await service.getInvoicePdfBuffer('missing');
 
       expect(result).toBeNull();
     });
 
-    it('returns a presigned URL when invoice has a pdfUrl', async () => {
-      mockFindById.mockResolvedValue({ id: 'inv-1', pdfUrl: 'invoices/INV-1.pdf' });
-      mockGetPresignedUrl.mockResolvedValue('https://minio.local/invoices/INV-1.pdf');
+    it('returns the PDF bytes fetched directly from MinIO when invoice has a pdfUrl', async () => {
+      mockFindById.mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-1', pdfUrl: 'invoices/INV-1.pdf' });
+      mockDownloadFile.mockResolvedValue(Buffer.from('%PDF-fake'));
 
-      const result = await service.getInvoicePdfUrl('inv-1');
+      const result = await service.getInvoicePdfBuffer('inv-1');
 
-      expect(result).toBe('https://minio.local/invoices/INV-1.pdf');
-      expect(mockGetPresignedUrl).toHaveBeenCalledWith('invoices/INV-1.pdf', 86400);
+      expect(result).toEqual({ buffer: Buffer.from('%PDF-fake'), invoiceNumber: 'INV-1' });
+      expect(mockDownloadFile).toHaveBeenCalledWith('invoices/INV-1.pdf');
     });
   });
 });

@@ -2,6 +2,7 @@ export const appConfig = () => ({
   port: parseInt(process.env.API_PORT ?? '3001', 10),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   adminDomain: process.env.ADMIN_DOMAIN ?? 'admin.sevagan.ai',
+  publicApiUrl: process.env.PUBLIC_API_URL ?? 'http://localhost:3001',
 
   database: {
     url: process.env.DATABASE_URL,

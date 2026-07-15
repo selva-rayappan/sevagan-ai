@@ -75,8 +75,18 @@ export default function InvoicesPage() {
     }
   }
 
-  function downloadPdf(invoiceId: string) {
-    window.open(`/api/v1/admin/invoices/${invoiceId}/pdf`, '_blank');
+  async function downloadPdf(invoiceId: string, invoiceNumber: string) {
+    // window.open() can't attach our Authorization header, so a plain link
+    // always 401s — fetch as a blob through the authenticated client instead.
+    const res = await apiClient.get(`/api/v1/admin/invoices/${invoiceId}/pdf`, {
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(res.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${invoiceNumber}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -203,7 +213,7 @@ export default function InvoicesPage() {
                       {inv.pdfUrl && (
                         <button
                           id={`download-pdf-${inv.id}`}
-                          onClick={() => downloadPdf(inv.id)}
+                          onClick={() => downloadPdf(inv.id, inv.invoiceNumber)}
                           title="Download PDF"
                           className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
                         >

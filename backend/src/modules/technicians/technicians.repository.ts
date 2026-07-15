@@ -71,17 +71,25 @@ export class TechniciansRepository {
     location: string,
     excludedIds: string[],
   ): Promise<Technician | null> {
+    const baseWhere = {
+      status: TechnicianStatus.AVAILABLE as any,
+      active: true,
+      skills: { some: { categoryId } },
+      ...(excludedIds.length > 0 ? { id: { notIn: excludedIds } } : {}),
+    };
+    const orderBy = [{ trustScore: 'desc' as const }, { rating: 'desc' as const }];
+
     const locationKeyword = this.extractLocationKeyword(location);
-    return this.prisma.technician.findFirst({
-      where: {
-        status: TechnicianStatus.AVAILABLE as any,
-        active: true,
-        serviceArea: { contains: locationKeyword, mode: 'insensitive' },
-        skills: { some: { categoryId } },
-        ...(excludedIds.length > 0 ? { id: { notIn: excludedIds } } : {}),
-      },
-      orderBy: [{ trustScore: 'desc' }, { rating: 'desc' }],
+    const areaMatch = await this.prisma.technician.findFirst({
+      where: { ...baseWhere, serviceArea: { contains: locationKeyword, mode: 'insensitive' } },
+      orderBy,
     });
+    if (areaMatch) return areaMatch;
+
+    // No technician covers this specific area — fall back to the best
+    // available technician with the right skill regardless of service area,
+    // rather than leaving the job unassigned.
+    return this.prisma.technician.findFirst({ where: baseWhere, orderBy });
   }
 
   async findAll(activeOnly = true): Promise<Technician[]> {

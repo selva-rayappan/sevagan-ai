@@ -35,6 +35,21 @@ export class MinioService implements OnModuleInit {
     return this.client.presignedGetObject(this.bucketName, key, expirySeconds);
   }
 
+  /**
+   * Fetches an object's bytes directly via the internal MinIO client — used to
+   * proxy files (e.g. invoice PDFs) through our own API instead of exposing
+   * presigned URLs built with MINIO_ENDPOINT, which is an internal Docker
+   * hostname unreachable from outside the network.
+   */
+  async downloadFile(key: string): Promise<Buffer> {
+    const stream = await this.client.getObject(this.bucketName, key);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk as Buffer);
+    }
+    return Buffer.concat(chunks);
+  }
+
   private async ensureBucket(): Promise<void> {
     try {
       const exists = await this.client.bucketExists(this.bucketName);

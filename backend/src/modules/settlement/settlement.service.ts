@@ -28,6 +28,10 @@ export class SettlementService {
         job: {
           assignment: { technicianId },
           status: 'COMPLETED',
+          // Only settle jobs whose payment has actually been collected — a UPI
+          // payment left PENDING (never confirmed by the admin) must not be
+          // paid out to the technician as if the money had come in.
+          invoice: { payment: { status: 'COMPLETED' } },
         },
       },
     });
