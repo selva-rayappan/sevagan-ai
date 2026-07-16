@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
 } from 'class-validator';
 import { Language, TechnicianStatus } from '../../../domain/enums';
@@ -18,6 +19,14 @@ export class CreateTechnicianDto {
 
   @IsIndianPhone()
   phone: string;
+
+  @IsString()
+  @MaxLength(255)
+  address: string;
+
+  @IsOptional()
+  @Matches(/^\d{12}$/, { message: 'aadharNumber must be exactly 12 digits' })
+  aadharNumber?: string;
 
   @IsString()
   @MaxLength(255)
@@ -39,6 +48,15 @@ export class UpdateTechnicianDto {
   @IsString()
   @MaxLength(120)
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  address?: string;
+
+  @IsOptional()
+  @Matches(/^\d{12}$/, { message: 'aadharNumber must be exactly 12 digits' })
+  aadharNumber?: string;
 
   @IsOptional()
   @IsString()

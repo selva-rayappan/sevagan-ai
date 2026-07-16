@@ -213,13 +213,14 @@ describe('TechniciansRepository', () => {
       const tech = { id: 't-1' };
       mockCreate.mockResolvedValue(tech);
 
-      const result = await repo.create({ name: 'Kumar', phone: '9876543210', serviceArea: 'Virudhunagar' });
+      const result = await repo.create({ name: 'Kumar', phone: '9876543210', address: 'Virudhunagar', serviceArea: 'Virudhunagar' });
 
       expect(result).toBe(tech);
       expect(mockCreate).toHaveBeenCalledWith({
         data: {
           name: 'Kumar',
           phone: '919876543210',
+          address: 'Virudhunagar',
           serviceArea: 'Virudhunagar',
           language: Language.EN,
         },
@@ -229,7 +230,7 @@ describe('TechniciansRepository', () => {
     it('respects an explicit language', async () => {
       mockCreate.mockResolvedValue({ id: 't-1' });
 
-      await repo.create({ name: 'Kumar', phone: '9876543210', serviceArea: 'Virudhunagar', language: Language.TA });
+      await repo.create({ name: 'Kumar', phone: '9876543210', address: 'Virudhunagar', serviceArea: 'Virudhunagar', language: Language.TA });
 
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ language: Language.TA }) }),

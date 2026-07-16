@@ -52,6 +52,8 @@ export class TechniciansAdminController {
     const technician = await this.techniciansRepo.create({
       name: body.name,
       phone,
+      address: body.address,
+      aadharNumber: body.aadharNumber,
       serviceArea: body.serviceArea,
       language: (body.language as Language) ?? Language.EN,
     });

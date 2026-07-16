@@ -7,6 +7,8 @@ import { normalizePhone } from '../../common/utils/phone.utils';
 export interface AdminCreateTechnicianData {
   name: string;
   phone: string;
+  address: string;
+  aadharNumber?: string;
   serviceArea: string;
   language?: Language;
 }
@@ -14,6 +16,8 @@ export interface AdminCreateTechnicianData {
 export interface AdminUpdateTechnicianData {
   name?: string;
   phone?: string;
+  address?: string;
+  aadharNumber?: string;
   serviceArea?: string;
   language?: Language;
   status?: TechnicianStatus;

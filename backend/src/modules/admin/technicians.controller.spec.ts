@@ -84,6 +84,7 @@ describe('TechniciansAdminController', () => {
         {
           name: 'Kumar',
           phone: '919876543210',
+          address: 'Virudhunagar',
           serviceArea: 'Virudhunagar',
           language: Language.EN,
           categoryIds: ['cat-1'],
@@ -94,6 +95,8 @@ describe('TechniciansAdminController', () => {
       expect(mockCreate).toHaveBeenCalledWith({
         name: 'Kumar',
         phone: '919876543210',
+        address: 'Virudhunagar',
+        aadharNumber: undefined,
         serviceArea: 'Virudhunagar',
         language: Language.EN,
       });
@@ -114,7 +117,7 @@ describe('TechniciansAdminController', () => {
       mockCreate.mockResolvedValue({ id: 'tech-1' });
       mockFindUnique.mockResolvedValue({ id: 'tech-1', skills: [] });
 
-      await controller.create({ name: 'Kumar', phone: '919876543210', serviceArea: 'Virudhunagar' }, mockUser);
+      await controller.create({ name: 'Kumar', phone: '919876543210', address: 'Virudhunagar', serviceArea: 'Virudhunagar' }, mockUser);
 
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({ language: Language.EN }),
@@ -128,7 +131,7 @@ describe('TechniciansAdminController', () => {
       mockFindUnique.mockResolvedValue({ id: 'tech-1', skills: [] });
       mockSendText.mockRejectedValue(new Error('WhatsApp API down'));
 
-      const result = await controller.create({ name: 'Kumar', phone: '919876543210', serviceArea: 'Virudhunagar' }, mockUser);
+      const result = await controller.create({ name: 'Kumar', phone: '919876543210', address: 'Virudhunagar', serviceArea: 'Virudhunagar' }, mockUser);
 
       expect(result).toEqual({ id: 'tech-1', skills: [] });
     });

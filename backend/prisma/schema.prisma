@@ -86,17 +86,19 @@ model Customer {
 }
 
 model Technician {
-  id          String           @id @default(uuid())
-  name        String
-  phone       String           @unique
-  status      TechnicianStatus @default(AVAILABLE)
-  rating      Decimal          @default(5.0) @db.Decimal(3, 2)
-  trustScore  Int              @default(100) @map("trust_score")
-  serviceArea String           @map("service_area")
-  language    Language         @default(EN)
-  active      Boolean          @default(true)
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
+  id           String           @id @default(uuid())
+  name         String
+  phone        String           @unique
+  address      String?
+  aadharNumber String?          @map("aadhar_number")
+  status       TechnicianStatus @default(AVAILABLE)
+  rating       Decimal          @default(5.0) @db.Decimal(3, 2)
+  trustScore   Int              @default(100) @map("trust_score")
+  serviceArea  String           @map("service_area")
+  language     Language         @default(EN)
+  active       Boolean          @default(true)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
 
   skills      TechnicianSkill[]
   assignments Assignment[]

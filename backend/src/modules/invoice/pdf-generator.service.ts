@@ -38,14 +38,12 @@ export class PdfGeneratorService {
 
       // PDFKit's built-in Standard-14 fonts (Helvetica etc.) are Latin-only —
       // Tamil text renders as missing-glyph boxes/garbage unless we embed a
-      // font with Tamil coverage instead.
-      if (isTA) {
-        doc.registerFont('Body', TAMIL_REGULAR);
-        doc.registerFont('Body-Bold', TAMIL_BOLD);
-      } else {
-        doc.registerFont('Body', 'Helvetica');
-        doc.registerFont('Body-Bold', 'Helvetica-Bold');
-      }
+      // font with Tamil coverage instead. Always use the Tamil font (it also
+      // covers Latin/numerals/₹) rather than switching on isTA: freeform
+      // fields like customerName come from WhatsApp and can contain Tamil
+      // script regardless of the customer's selected UI language.
+      doc.registerFont('Body', TAMIL_REGULAR);
+      doc.registerFont('Body-Bold', TAMIL_BOLD);
 
       // ── Header ──────────────────────────────────────────────────────────
       doc

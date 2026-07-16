@@ -10,6 +10,8 @@ interface Technician {
   id: string;
   name: string;
   phone: string;
+  address: string | null;
+  aadharNumber: string | null;
   status: string;
   active: boolean;
   trustScore: number;
@@ -35,7 +37,7 @@ function CreateModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [form, setForm] = useState({ name: '', phone: '', serviceArea: '', language: 'EN', categoryIds: [] as string[] });
+  const [form, setForm] = useState({ name: '', phone: '', address: '', aadharNumber: '', serviceArea: '', language: 'EN', categoryIds: [] as string[] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -44,7 +46,8 @@ function CreateModal({
     setLoading(true);
     setError('');
     try {
-      await apiClient.post('/api/v1/admin/technicians', form);
+      const payload = { ...form, aadharNumber: form.aadharNumber.trim() || undefined };
+      await apiClient.post('/api/v1/admin/technicians', payload);
       onCreated();
       onClose();
     } catch (err: any) {
@@ -69,7 +72,7 @@ function CreateModal({
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {['name', 'phone', 'serviceArea'].map((field) => (
+          {['name', 'phone', 'address', 'serviceArea'].map((field) => (
             <div key={field}>
               <label className="block text-xs font-medium text-gray-700 mb-1 capitalize">
                 {field === 'serviceArea' ? 'Service Area (comma-separated localities)' : field}
@@ -83,6 +86,17 @@ function CreateModal({
               />
             </div>
           ))}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Aadhar Number (optional)</label>
+            <input
+              value={form.aadharNumber}
+              onChange={(e) => setForm((f) => ({ ...f, aadharNumber: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="12-digit Aadhar number"
+              maxLength={12}
+              pattern="\d{12}"
+            />
+          </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Language</label>
             <select
@@ -149,6 +163,8 @@ function EditModal({
 }) {
   const [form, setForm] = useState({
     name: technician.name,
+    address: technician.address ?? '',
+    aadharNumber: technician.aadharNumber ?? '',
     serviceArea: technician.serviceArea,
     status: technician.status,
     active: technician.active,
@@ -166,7 +182,8 @@ function EditModal({
     setLoading(true);
     setError('');
     try {
-      await apiClient.patch(`/api/v1/admin/technicians/${technician.id}`, form);
+      const payload = { ...form, aadharNumber: form.aadharNumber.trim() || undefined };
+      await apiClient.patch(`/api/v1/admin/technicians/${technician.id}`, payload);
 
       const originalIds = technician.skills.map((s) => s.category.id);
       const toAdd = categoryIds.filter((id) => !originalIds.includes(id));
@@ -204,6 +221,26 @@ function EditModal({
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+            <input
+              required
+              value={form.address}
+              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Aadhar Number (optional)</label>
+            <input
+              value={form.aadharNumber}
+              onChange={(e) => setForm((f) => ({ ...f, aadharNumber: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="12-digit Aadhar number"
+              maxLength={12}
+              pattern="\d{12}"
             />
           </div>
           <div>
