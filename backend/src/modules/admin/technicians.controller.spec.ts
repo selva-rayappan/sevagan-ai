@@ -9,6 +9,10 @@ const mockCategoryFindUnique = jest.fn();
 const mockSkillCreateMany = jest.fn();
 const mockSkillUpsert = jest.fn();
 const mockSkillDelete = jest.fn();
+const mockJobCommissionAggregate = jest.fn().mockResolvedValue({
+  _sum: { technicianAmount: null, commissionAmount: null },
+  _count: 0,
+});
 
 const mockPrisma = {
   technician: {
@@ -24,6 +28,9 @@ const mockPrisma = {
     createMany: mockSkillCreateMany,
     upsert: mockSkillUpsert,
     delete: mockSkillDelete,
+  },
+  jobCommission: {
+    aggregate: mockJobCommissionAggregate,
   },
 } as any;
 
@@ -138,13 +145,37 @@ describe('TechniciansAdminController', () => {
   });
 
   describe('findOne()', () => {
-    it('returns a technician with skills and recent assignments', async () => {
-      const technician = { id: 'tech-1' };
+    it('returns a technician with skills, recent assignments, and job stats', async () => {
+      const technician = { id: 'tech-1', createdAt: new Date('2026-01-01') };
       mockFindUniqueOrThrow.mockResolvedValue(technician);
+      mockJobCommissionAggregate.mockResolvedValueOnce({
+        _sum: { technicianAmount: 4500, commissionAmount: 500 },
+        _count: 6,
+      });
 
       const result = await controller.findOne('tech-1');
 
-      expect(result).toBe(technician);
+      expect(mockJobCommissionAggregate).toHaveBeenCalledWith({
+        where: { job: { assignment: { technicianId: 'tech-1' } } },
+        _sum: { technicianAmount: true, commissionAmount: true },
+        _count: true,
+      });
+      expect(result).toEqual({
+        ...technician,
+        totalJobs: 6,
+        totalEarnings: 4500,
+        totalCommission: 500,
+      });
+    });
+
+    it('defaults earnings/commission to 0 when the technician has no completed jobs', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({ id: 'tech-1' });
+
+      const result = await controller.findOne('tech-1');
+
+      expect(result).toEqual(
+        expect.objectContaining({ totalJobs: 0, totalEarnings: 0, totalCommission: 0 }),
+      );
     });
   });
 

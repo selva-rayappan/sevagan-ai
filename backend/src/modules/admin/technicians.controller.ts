@@ -100,13 +100,26 @@ export class TechniciansAdminController {
   @Get(':id')
   @Version('1')
   async findOne(@Param('id') id: string) {
-    return this.prisma.technician.findUniqueOrThrow({
+    const technician = await this.prisma.technician.findUniqueOrThrow({
       where: { id },
       include: {
         skills: { include: { category: true } },
         assignments: { take: 10, orderBy: { assignedAt: 'desc' }, include: { job: true } },
       },
     });
+
+    const stats = await this.prisma.jobCommission.aggregate({
+      where: { job: { assignment: { technicianId: id } } },
+      _sum: { technicianAmount: true, commissionAmount: true },
+      _count: true,
+    });
+
+    return {
+      ...technician,
+      totalJobs: stats._count,
+      totalEarnings: stats._sum.technicianAmount ?? 0,
+      totalCommission: stats._sum.commissionAmount ?? 0,
+    };
   }
 
   @Patch(':id')

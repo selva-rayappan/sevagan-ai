@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Plus, X, Pencil } from 'lucide-react';
+import { Plus, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface Category { id: string; name: string; }
 interface Technician {
@@ -21,6 +21,12 @@ interface Technician {
   language: string;
   createdAt: string;
   skills: { category: Category }[];
+}
+
+interface TechnicianDetail extends Technician {
+  totalJobs: number;
+  totalEarnings: number;
+  totalCommission: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -348,7 +354,22 @@ export default function TechniciansPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<Technician | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [details, setDetails] = useState<Record<string, TechnicianDetail>>({});
   const limit = 20;
+
+  function toggleExpand(t: Technician) {
+    if (expandedId === t.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(t.id);
+    if (!details[t.id]) {
+      apiClient.get(`/api/v1/admin/technicians/${t.id}`).then((r) => {
+        setDetails((d) => ({ ...d, [t.id]: r.data }));
+      });
+    }
+  }
 
   const load = () => {
     setLoading(true);
@@ -412,39 +433,81 @@ export default function TechniciansPage() {
                 <td colSpan={9} className="px-4 py-10 text-center text-gray-400">No technicians yet</td>
               </tr>
             ) : (
-              technicians.map((t) => (
-                <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{t.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{t.phone}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[t.status] ?? ''}`}>
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-700 font-medium">{t.trustScore}</td>
-                  <td className="px-4 py-3 text-gray-700 font-medium">{t.priorityRank}</td>
-                  <td className="px-4 py-3 text-gray-700">⭐ {Number(t.rating).toFixed(1)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {t.skills.map((s) => (
-                        <span key={s.category.id} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                          {s.category.name}
+              technicians.map((t) => {
+                const detail = details[t.id];
+                const isExpanded = expandedId === t.id;
+                return (
+                  <Fragment key={t.id}>
+                    <tr className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        <button
+                          onClick={() => toggleExpand(t)}
+                          className="flex items-center gap-1 hover:text-indigo-600 transition-colors"
+                        >
+                          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          {t.name}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{t.phone}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[t.status] ?? ''}`}>
+                          {t.status}
                         </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{t.serviceArea}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setEditing(t)}
-                      title="Edit technician"
-                      className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))
+                      </td>
+                      <td className="px-4 py-3 text-gray-700 font-medium">{t.trustScore}</td>
+                      <td className="px-4 py-3 text-gray-700 font-medium">{t.priorityRank}</td>
+                      <td className="px-4 py-3 text-gray-700">⭐ {Number(t.rating).toFixed(1)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {t.skills.map((s) => (
+                            <span key={s.category.id} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                              {s.category.name}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{t.serviceArea}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setEditing(t)}
+                          title="Edit technician"
+                          className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="border-b border-gray-100 bg-gray-50/60">
+                        <td colSpan={9} className="px-4 py-4">
+                          {detail ? (
+                            <div className="grid grid-cols-4 gap-4 max-w-2xl">
+                              <div>
+                                <p className="text-xs text-gray-500">Joined</p>
+                                <p className="text-sm font-medium text-gray-900">{formatDate(detail.createdAt)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Total Jobs</p>
+                                <p className="text-sm font-medium text-gray-900">{detail.totalJobs}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Total Earnings</p>
+                                <p className="text-sm font-medium text-gray-900">₹{Number(detail.totalEarnings).toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Total Commission</p>
+                                <p className="text-sm font-medium text-gray-900">₹{Number(detail.totalCommission).toFixed(2)}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="h-4 w-64 bg-gray-100 rounded animate-pulse" />
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })
             )}
           </tbody>
         </table>

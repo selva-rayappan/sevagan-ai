@@ -623,8 +623,8 @@
 | # | Task | Status |
 |---|------|--------|
 | 8.5.1 | `POST /api/v1/admin/technicians` — create + add skills + send WhatsApp `technician.welcome` | ✅ |
-| 8.5.2 | `GET /api/v1/admin/technicians` (paginated), `GET /:id`, `PATCH /:id` | ✅ |
-| 8.5.3 | Technicians page: table + create modal with skill pill toggles | ✅ |
+| 8.5.2 | `GET /api/v1/admin/technicians` (paginated), `GET /:id` (+ `totalJobs`/`totalEarnings`/`totalCommission` via `JobCommission.aggregate`), `PATCH /:id` | ✅ |
+| 8.5.3 | Technicians page: table + create modal with skill pill toggles; clicking a technician's name folds open a detail row with Joined date, Total Jobs, Total Earnings, Total Commission (lazy-fetched + cached per row) | ✅ |
 
 ### 8.6 Job Management
 | # | Task | Status |

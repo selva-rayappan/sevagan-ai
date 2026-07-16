@@ -290,7 +290,7 @@
 
 #### 8.3 Entity Management Pages
 - ✅ Customers: list with pagination (GET /admin/customers, GET /admin/customers/:id, PATCH)
-- ✅ Technicians: list, create modal with skill selection + WhatsApp onboarding, skills CRUD
+- ✅ Technicians: list, create modal with skill selection + WhatsApp onboarding, skills CRUD; `GET /admin/technicians/:id` also returns `totalJobs`/`totalEarnings`/`totalCommission` (aggregated from `JobCommission`) and `createdAt`, shown in a fold/expand detail row when the admin clicks a technician's name (added 2026-07-16)
 - ✅ Jobs: list with status filter + date filters, detail (GET /admin/jobs, POST /admin/jobs/:id/assign, POST /admin/jobs/:id/cancel)
 - ✅ Settlements: list, generate modal, mark paid (GET, POST /admin/settlements/generate, POST /:id/pay)
 - ✅ Commission Rules: list + inline create form (GET, POST /admin/commission-rules)
