@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<!-- saved from url=(0036)https://sevagan.netlify.app/#contact -->
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Sevagan | Premium Concierge — Trusted Doorstep Services</title>
+  <!-- Font Awesome 6 & Google Fonts -->
+  <link rel="stylesheet" href="./index_files/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0A0C14;
+      color: #EFF3F8;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    /* premium animated gradient background */
+    .animated-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+      background: radial-gradient(circle at 20% 30%, #10131f, #05070e);
+    }
+
+    .animated-bg::before {
+      content: "";
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      top: -50%;
+      left: -50%;
+      background: radial-gradient(circle at 40% 50%, rgba(18, 150, 243, 0.12), transparent 60%);
+      animation: aurora 18s infinite alternate;
+    }
+
+    .animated-bg::after {
+      content: "";
+      position: absolute;
+      width: 180%;
+      height: 180%;
+      bottom: -40%;
+      right: -60%;
+      background: radial-gradient(circle at 70% 80%, rgba(255, 184, 77, 0.1), transparent 70%);
+      animation: aurora2 22s infinite alternate;
+    }
+
+    @keyframes aurora {
+      0% {
+        transform: translate(-10%, -10%) rotate(0deg);
+        opacity: 0.4;
+      }
+
+      100% {
+        transform: translate(10%, 10%) rotate(5deg);
+        opacity: 1;
+      }
+    }
+
+    @keyframes aurora2 {
+      0% {
+        transform: translate(5%, 5%) scale(1);
+        opacity: 0.3;
+      }
+
+      100% {
+        transform: translate(-8%, -8%) scale(1.2);
+        opacity: 0.8;
+      }
+    }
+
+    .container {
+      width: 90%;
+      max-width: 1280px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    :root {
+      --primary: #1296F3;
+      --primary-glow: rgba(18, 150, 243, 0.4);
+      --secondary: #FFB84D;
+      --secondary-glow: rgba(255, 184, 77, 0.3);
+      --card-bg: rgba(18, 24, 36, 0.65);
+      --card-border: rgba(18, 150, 243, 0.25);
+    }
+
+    /* Navbar premium */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(8, 12, 22, 0.8);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(18, 150, 243, 0.3);
+    }
+
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+    }
+
+    .logo {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(125deg, #FFFFFF, #1296F3, #FFB84D);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo i {
+      background: none;
+      -webkit-background-clip: unset;
+      color: #1296F3;
+      font-size: 1.8rem;
+    }
+
+    nav ul {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    nav ul li a {
+      text-decoration: none;
+      font-weight: 600;
+      color: #E2E8F0;
+      transition: 0.2s;
+      font-size: 0.95rem;
+      position: relative;
+    }
+
+    nav ul li a::before {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 0;
+      width: 0%;
+      height: 2px;
+      background: linear-gradient(90deg, #1296F3, #FFB84D);
+      transition: 0.3s;
+      border-radius: 2px;
+    }
+
+    nav ul li a:hover::before,
+    nav ul li a.active::before {
+      width: 100%;
+    }
+
+    nav ul li a.active {
+      color: #FFB84D;
+      font-weight: 700;
+    }
+
+    /* Hero Section with Logo Image Box */
+    .hero {
+      padding: 5rem 0 5rem;
+      position: relative;
+      min-height: 85vh;
+      display: flex;
+      align-items: center;
+    }
+
+    .hero .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .hero-content {
+      flex: 1.2;
+      min-width: 280px;
+    }
+
+    .hero-badge {
+      background: rgba(18, 150, 243, 0.2);
+      backdrop-filter: blur(12px);
+      padding: 0.4rem 1.3rem;
+      border-radius: 40px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #FFB84D;
+      border: 0.5px solid rgba(255, 184, 77, 0.4);
+      display: inline-block;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: 3.8rem;
+      font-weight: 800;
+      line-height: 1.2;
+      background: linear-gradient(to right, #FFFFFF, #79C2FF, #FFD27A);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 1.2rem;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: #BDC7E2;
+      max-width: 540px;
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .hero-image-wrapper {
+      flex: 1;
+      min-width: 300px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .hero-image-card {
+      width: 400px;
+      height: 400px;
+      padding: 25px;
+      border-radius: 40px;
+      background: rgba(15, 23, 36, 0.55);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(18, 150, 243, 0.25);
+      box-shadow: 0 0 40px rgba(18, 150, 243, 0.20), 0 0 80px rgba(255, 184, 77, 0.12), inset 0 0 20px rgba(255, 255, 255, 0.03);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .hero-image-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 0 60px rgba(18, 150, 243, 0.35), 0 0 100px rgba(255, 184, 77, 0.2);
+    }
+
+    .hero-image-card::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      border-radius: 40px;
+      background: linear-gradient(135deg, rgba(18, 150, 243, 0.7), transparent, rgba(255, 184, 77, 0.5));
+      opacity: 0.4;
+      z-index: -1;
+    }
+
+    .hero-image-card img {
+      width: 400px;
+      height: 400px;
+      object-fit: cover;
+      filter: drop-shadow(0 0 25px rgba(18, 150, 243, 0.35)) drop-shadow(0 0 15px rgba(255, 184, 77, 0.25));
+    }
+
+    .btn-primary {
+      background: linear-gradient(105deg, #1296F3, #0A5F9E);
+      border: none;
+      padding: 1rem 2.4rem;
+      font-weight: 700;
+      border-radius: 60px;
+      color: white;
+      box-shadow: 0 12px 20px -12px #1296F3;
+      transition: 0.25s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 22px 30px -14px #1296F3;
+      background: linear-gradient(105deg, #2aa5ff, #0F6FBD);
+    }
+
+    .btn-outline-light {
+      background: transparent;
+      border: 1.5px solid rgba(18, 150, 243, 0.7);
+      color: #CEE4FF;
+      padding: 0.9rem 2rem;
+      border-radius: 60px;
+      font-weight: 600;
+      transition: 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-outline-light:hover {
+      background: rgba(18, 150, 243, 0.15);
+      border-color: #FFB84D;
+      color: white;
+    }
+
+    /* section styles */
+    section {
+      padding: 5rem 0;
+    }
+
+    .section-title {
+      font-size: 2.6rem;
+      font-weight: 700;
+      text-align: center;
+      background: linear-gradient(135deg, #FFFFFF, #B2DFFF);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+      text-align: center;
+      max-width: 750px;
+      margin: 0 auto 3rem auto;
+      color: #A3B3D6;
+      font-size: 1.1rem;
+    }
+
+    /* Premium Cards for services */
+    .glass-card {
+      background: rgba(15, 23, 36, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(18, 150, 243, 0.25);
+      border-radius: 2rem;
+      padding: 2rem;
+      transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.4);
+    }
+
+    .glass-card:hover {
+      transform: translateY(-12px);
+      border-color: #FFB84D;
+      box-shadow: 0 30px 40px -15px rgba(18, 150, 243, 0.3);
+      background: rgba(20, 30, 48, 0.75);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+    }
+
+    .service-icon {
+      font-size: 2.6rem;
+      background: linear-gradient(145deg, #1296F3, #FFB84D);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 1rem;
+    }
+
+    /* Why Sevagan section */
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+    }
+
+    .why-card {
+      background: linear-gradient(135deg, rgba(18, 150, 243, 0.08), rgba(10, 20, 35, 0.6));
+      backdrop-filter: blur(12px);
+      border-radius: 2rem;
+      padding: 2rem;
+      text-align: center;
+      border: 1px solid rgba(18, 150, 243, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .why-card:hover {
+      transform: translateY(-8px);
+      border-color: #FFB84D;
+      background: rgba(18, 150, 243, 0.12);
+    }
+
+    .why-icon {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(145deg, #1296F3, #0F5F9E);
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 2rem;
+      color: #FFB84D;
+    }
+
+    .why-card h3 {
+      font-size: 1.5rem;
+      margin-bottom: 0.8rem;
+      color: #F0F4FF;
+    }
+
+    .why-card p {
+      color: #B8C5E2;
+      line-height: 1.6;
+    }
+
+    /* Policies */
+    .policies-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      margin-top: 1rem;
+    }
+
+    .policy-modern {
+      flex: 1;
+      min-width: 280px;
+      background: rgba(12, 18, 30, 0.7);
+      backdrop-filter: blur(12px);
+      border-radius: 2rem;
+      padding: 2rem;
+      border: 1px solid rgba(255, 184, 77, 0.25);
+      transition: 0.3s;
+    }
+
+    .policy-modern:hover {
+      border-color: #1296F3;
+      transform: translateY(-5px);
+    }
+
+    .policy-modern h3 {
+      font-size: 1.7rem;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(135deg, #FFB84D, #fff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .policy-list {
+      list-style: none;
+    }
+
+    .policy-list li {
+      padding: 0.75rem 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #CBD5E1;
+    }
+
+    .policy-list li i {
+      color: #1296F3;
+      width: 24px;
+    }
+
+    .policy-list li:last-child {
+      border-bottom: none;
+    }
+
+    /* Contact section */
+    .contact-premium-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      background: rgba(10, 16, 28, 0.5);
+      backdrop-filter: blur(16px);
+      border-radius: 2.5rem;
+      padding: 2rem;
+      border: 1px solid rgba(18, 150, 243, 0.3);
+    }
+
+    .contact-info-panel {
+      flex: 1;
+      min-width: 240px;
+      background: linear-gradient(145deg, rgba(18, 150, 243, 0.1), rgba(0, 0, 0, 0.2));
+      border-radius: 2rem;
+      padding: 2rem;
+    }
+
+    .contact-info-panel h3 {
+      font-size: 1.6rem;
+      margin-bottom: 1.5rem;
+      color: #FFB84D;
+    }
+
+    .contact-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .contact-detail-item i {
+      width: 45px;
+      height: 45px;
+      background: rgba(18, 150, 243, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      color: #1296F3;
+    }
+
+    .contact-detail-item div strong {
+      display: block;
+      font-size: 0.85rem;
+      color: #94A3B8;
+    }
+
+    .contact-detail-item div span {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .contact-form-panel {
+      flex: 1.5;
+      min-width: 260px;
+      padding: 0.5rem;
+    }
+
+    .input-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .input-group input,
+    .input-group textarea {
+      width: 100%;
+      padding: 1rem;
+      background: rgba(20, 30, 48, 0.7);
+      border: 1px solid rgba(18, 150, 243, 0.3);
+      border-radius: 1.2rem;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      transition: 0.2s;
+    }
+
+    .input-group input:focus,
+    .input-group textarea:focus {
+      outline: none;
+      border-color: #FFB84D;
+      background: rgba(18, 150, 243, 0.1);
+    }
+
+    .input-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .btn-submit {
+      background: linear-gradient(95deg, #1296F3, #0A5F9E);
+      border: none;
+      padding: 0.9rem 2rem;
+      border-radius: 60px;
+      color: white;
+      font-weight: 700;
+      width: 100%;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-submit:hover {
+      background: linear-gradient(95deg, #2aa5ff, #0F6FBD);
+      transform: translateY(-3px);
+    }
+
+    /* Steps */
+    .step-item {
+      background: rgba(10, 16, 28, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 184, 77, 0.25);
+      padding: 2rem;
+      border-radius: 2rem;
+      text-align: center;
+      transition: transform 0.3s;
+    }
+
+    .step-item:hover {
+      transform: translateY(-5px);
+    }
+
+    .step-number {
+      width: 65px;
+      height: 65px;
+      background: linear-gradient(145deg, #1296F3, #FFB84D);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 800;
+      margin: 0 auto 1.5rem;
+      box-shadow: 0 10px 20px -5px #1296F3;
+    }
+
+    /* About section */
+    .about-rich {
+      background: rgba(5, 10, 20, 0.5);
+      border-radius: 2.5rem;
+      padding: 2.5rem;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(18, 150, 243, 0.3);
+    }
+
+    .stat-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .stat-item {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.8rem 1.5rem;
+      border-radius: 3rem;
+      border-left: 3px solid #FFB84D;
+    }
+
+    footer {
+      background: #03060C;
+      border-top: 1px solid #1296F3;
+      text-align: center;
+      padding: 2rem;
+      color: #91A3C2;
+    }
+
+    .fade-up {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1), transform 0.8s ease;
+    }
+
+    .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ============================================ */
+    /* ENHANCED MOBILE RESPONSIVE CSS - ALL SECTIONS */
+    /* ============================================ */
+
+    @media (max-width: 968px) {
+      nav .container {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 0.8rem 0;
+      }
+
+      nav ul {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 1.2rem;
+      }
+
+      nav ul li a {
+        font-size: 0.85rem;
+      }
+
+      .logo {
+        font-size: 1.6rem;
+      }
+
+      .hero {
+        padding: 2rem 0 3rem;
+        min-height: auto;
+      }
+
+      .hero .container {
+        flex-direction: column;
+        text-align: center;
+        gap: 2rem;
+      }
+
+      .hero-content {
+        text-align: center;
+      }
+
+      .hero p {
+        margin-left: auto;
+        margin-right: auto;
+        font-size: 1rem;
+      }
+
+      .hero h1 {
+        font-size: 2.3rem;
+      }
+
+      .hero-badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 1rem;
+      }
+
+      .btn-primary,
+      .btn-outline-light {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
+      }
+
+      .hero-image-wrapper {
+        min-width: auto;
+        width: 100%;
+      }
+
+      .hero-image-card {
+        width: 260px;
+        height: 260px;
+        padding: 15px;
+      }
+
+      section {
+        padding: 3rem 0;
+      }
+
+      .section-title {
+        font-size: 1.8rem;
+      }
+
+      .section-subtitle {
+        font-size: 0.95rem;
+        margin: 0 auto 2rem auto;
+        padding: 0 0.5rem;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+      }
+
+      .why-grid {
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+      }
+
+      .glass-card {
+        padding: 1.5rem;
+      }
+
+      .glass-card h3 {
+        font-size: 1.3rem;
+      }
+
+      .glass-card p {
+        font-size: 0.9rem;
+      }
+
+      .why-card {
+        padding: 1.5rem;
+      }
+
+      .why-card h3 {
+        font-size: 1.3rem;
+      }
+
+      .why-icon {
+        width: 55px;
+        height: 55px;
+        font-size: 1.5rem;
+      }
+
+      .step-item {
+        padding: 1.5rem;
+      }
+
+      .step-number {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+      }
+
+      .step-item h3 {
+        font-size: 1.2rem;
+      }
+
+      .policies-wrapper {
+        flex-direction: column;
+        gap: 1.2rem;
+      }
+
+      .policy-modern {
+        padding: 1.3rem;
+      }
+
+      .policy-modern h3 {
+        font-size: 1.3rem;
+        flex-wrap: wrap;
+      }
+
+      .policy-list li {
+        font-size: 0.85rem;
+        padding: 0.6rem 0;
+      }
+
+      .about-rich {
+        padding: 1.5rem;
+      }
+
+      .about-rich p {
+        font-size: 0.95rem !important;
+      }
+
+      .stat-grid {
+        gap: 0.7rem;
+      }
+
+      .stat-item {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+      }
+
+      .contact-premium-wrapper {
+        flex-direction: column;
+        padding: 1.2rem;
+        gap: 1.2rem;
+      }
+
+      .contact-info-panel {
+        padding: 1.2rem;
+      }
+
+      .contact-info-panel h3 {
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+      }
+
+      .contact-detail-item {
+        margin: 1rem 0;
+        gap: 0.8rem;
+      }
+
+      .contact-detail-item i {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+      }
+
+      .contact-detail-item div span {
+        font-size: 0.85rem;
+      }
+
+      .contact-form-panel {
+        padding: 0;
+      }
+
+      .input-group input,
+      .input-group textarea {
+        padding: 0.8rem;
+        font-size: 0.9rem;
+      }
+
+      .btn-submit {
+        padding: 0.8rem;
+        font-size: 0.9rem;
+      }
+
+      footer {
+        padding: 1.5rem;
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        width: 92%;
+      }
+
+      .hero h1 {
+        font-size: 1.8rem;
+      }
+
+      .hero p {
+        font-size: 0.9rem;
+      }
+
+      .hero-image-card {
+        width: 220px;
+        height: 220px;
+        padding: 12px;
+      }
+
+      .section-title {
+        font-size: 1.5rem;
+      }
+
+      .glass-card,
+      .why-card,
+      .step-item,
+      .policy-modern {
+        padding: 1.2rem;
+      }
+
+      .glass-card h3,
+      .why-card h3 {
+        font-size: 1.2rem;
+      }
+
+      .contact-detail-item {
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+        gap: 0.5rem;
+      }
+
+      .contact-detail-item div {
+        text-align: center;
+      }
+
+      .contact-info-panel h3 {
+        text-align: center;
+      }
+
+      .policy-modern h3 {
+        justify-content: center;
+      }
+
+      .stat-item {
+        width: calc(50% - 0.7rem);
+        text-align: center;
+        justify-content: center;
+      }
+
+      .btn-primary,
+      .btn-outline-light {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.85rem;
+      }
+
+      .hero-badge {
+        font-size: 0.65rem;
+      }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .hero h1 {
+        font-size: 3rem;
+      }
+
+      .hero-image-card {
+        width: 320px;
+        height: 320px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .why-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .section-title {
+        font-size: 2.2rem;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .hero h1 {
+        font-size: 1.6rem;
+      }
+
+      .hero-image-card {
+        width: 190px;
+        height: 190px;
+      }
+
+      .stat-item {
+        width: 100%;
+      }
+
+      nav ul {
+        gap: 0.8rem;
+      }
+
+      nav ul li a {
+        font-size: 0.75rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="animated-bg"></div>
+
+  <nav>
+    <div class="container">
+      <div class="logo"><i class="fa-solid fa-screwdriver-wrench"></i> Sevagan</div>
+      <ul>
+        <li><a href="https://sevagan.netlify.app/#home" class="active">Home</a></li>
+        <li><a href="https://sevagan.netlify.app/#about" class="">About</a></li>
+        <li><a href="https://sevagan.netlify.app/#services" class="">Services</a></li>
+        <li><a href="https://sevagan.netlify.app/#howitworks" class="">Process</a></li>
+        <li><a href="https://sevagan.netlify.app/#policies" class="">Policies</a></li>
+        <li><a href="https://sevagan.netlify.app/#contact" class="">Contact</a></li>
+        <li><a href="https://admin.sevagan.co.in/login">Admin Login</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <section id="home" class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <span class="hero-badge"><i class="fas fa-crown"></i> Premium doorstep ecosystem</span>
+        <h1>Service at your<br> doorstep, <span style="color:#FFB84D">elevated.</span></h1>
+        <p>Sevagan delivers elite home services — plumbing, electrical, drivers, appliances — with verified experts and
+          white-glove experience. Simplicity meets sophistication.</p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-start;">
+          <a href="https://sevagan.netlify.app/#services" class="btn-primary"><i class="fas fa-sparkles"></i> Explore
+            Services</a>
+          <a href="https://sevagan.netlify.app/#contact" class="btn-outline-light"><i class="fas fa-comment-dots"></i>
+            Request a callback</a>
+        </div>
+      </div>
+      <div class="hero-image-wrapper">
+        <div class="hero-image-card">
+          <img src="./index_files/logo.jpg" alt="Sevagan Logo">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="container">
+      <h2 class="section-title">About Sevagan</h2>
+      <div class="about-rich fade-up visible">
+        <p style="font-size: 1.1rem; line-height: 1.7; margin-bottom: 1.5rem;"><strong>Redefining convenience</strong> —
+          Sevagan was founded to bridge the trust gap in home services. We combine technology, empathy, and unmatched
+          professionalism to deliver services that feel effortless. Each professional undergoes rigorous verification
+          and skill assessment, ensuring you get nothing but the best.</p>
+        <p style="margin-bottom: 1rem;">What sets Sevagan apart is our obsession with customer delight. We don't just
+          assign any professional — our AI-driven matching system pairs you with the right expert based on the specific
+          job, past ratings, and proximity. This means faster arrival times and better first-time resolution rates.</p>
+        <p style="margin-bottom: 1rem;">Looking ahead, Sevagan aims to expand to 25+ cities by 2027 and introduce
+          subscription-based maintenance plans for complete home care. Our vision is to become the invisible
+          infrastructure that keeps Indian homes running smoothly — one doorstep at a time.</p>
+        <div class="stat-grid">
+          <div class="stat-item"><i class="fas fa-user-check" style="color:#1296F3"></i> 2,500+ Experts</div>
+          <div class="stat-item"><i class="fas fa-smile" style="color:#FFB84D"></i> 98% satisfaction</div>
+          <div class="stat-item"><i class="fas fa-clock" style="color:#1296F3"></i> 45min avg arrival</div>
+          <div class="stat-item"><i class="fas fa-shield-alt" style="color:#FFB84D"></i> 100% insured work</div>
+        </div>
+        <p style="margin-top: 1.5rem;">We don't just fix problems — we build lasting peace of mind. Our mission: to
+          become the most trusted home concierge, one doorstep at a time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="services">
+    <div class="container">
+      <h2 class="section-title">Signature Services</h2>
+      <p class="section-subtitle">Handpicked solutions, delivered with precision.</p>
+      <div class="grid">
+        <div class="glass-card fade-up visible">
+          <div class="service-icon"><i class="fas fa-wrench"></i></div>
+          <h3>Plumbing</h3>
+          <p>Leak detection, pipe installation &amp; high-pressure cleaning.</p>
+        </div>
+        <div class="glass-card fade-up visible">
+          <div class="service-icon"><i class="fas fa-bolt"></i></div>
+          <h3>Electrical</h3>
+          <p>Smart wiring, circuit repair, safety inspections.</p>
+        </div>
+        <div class="glass-card fade-up visible">
+          <div class="service-icon"><i class="far fa-snowflake"></i></div>
+          <h3>AC Services</h3>
+          <p>Deep clean, gas refill, maintenance contracts.</p>
+        </div>
+        <div class="glass-card fade-up visible">
+          <div class="service-icon"><i class="fas fa-broom"></i></div>
+          <h3>Deep Cleaning</h3>
+          <p>Sanitization, sofa/carpet, bacterial protection.</p>
+        </div>
+        <div class="glass-card fade-up visible">
+          <div class="service-icon"><i class="fas fa-hammer"></i></div>
+          <h3>Carpentry</h3>
+          <p>Custom furniture, repair, polishing experts.</p>
+        </div>
+        <div class="glass-card fade-up visible">
+          <div class="service-icon"><i class="fas fa-car"></i></div>
+          <h3>Driver on Demand</h3>
+          <p>Verified drivers for local &amp; outstation trips.</p>
+        </div>
+        <div class="glass-card fade-up visible">
+          <div class="service-icon"><i class="fas fa-microchip"></i></div>
+          <h3>Appliance Repair</h3>
+          <p>Fridge, washing machine, microwave experts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <h2 class="section-title">Why Sevagan stands out</h2>
+      <div class="why-grid">
+        <div class="why-card fade-up visible">
+          <div class="why-icon"><i class="fas fa-gem"></i></div>
+          <h3>White‑Glove Standard</h3>
+          <p>From arrival etiquette to post-service follow-up, we redefine quality with every interaction.</p>
+        </div>
+        <div class="why-card fade-up visible">
+          <div class="why-icon"><i class="fas fa-shield-alt"></i></div>
+          <h3>Safety Guarantee</h3>
+          <p>Background checks, insurance coverage, and secure payments for absolute peace of mind.</p>
+        </div>
+        <div class="why-card fade-up visible">
+          <div class="why-icon"><i class="fas fa-chart-line"></i></div>
+          <h3>Real‑time updates</h3>
+          <p>Live tracking, service reminders, and digital reports — total transparency.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="howitworks">
+    <div class="container">
+      <h2 class="section-title">Your seamless journey</h2>
+      <p class="section-subtitle">Three steps, zero hassle — experience the Sevagan ritual.</p>
+      <div class="grid">
+        <div class="step-item fade-up visible">
+          <div class="step-number">1</div>
+          <h3>Select &amp; Schedule</h3>
+          <p>Pick a service, pick your time slot, and confirm instantly.</p>
+        </div>
+        <div class="step-item fade-up visible">
+          <div class="step-number">2</div>
+          <h3>Expert Arrives</h3>
+          <p>A trained, verified professional arrives fully equipped.</p>
+        </div>
+        <div class="step-item fade-up visible">
+          <div class="step-number">3</div>
+          <h3>Relax &amp; Rate</h3>
+          <p>Service done, review completed, enjoy peace of mind.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="policies">
+    <div class="container">
+      <h2 class="section-title">Our standards &amp; agreements</h2>
+      <div class="policies-wrapper">
+        <div class="policy-modern fade-up visible">
+          <h3><i class="fas fa-lock"></i> Privacy Pledge</h3>
+          <ul class="policy-list">
+            <li><i class="fas fa-check-circle"></i> Zero third-party data selling — ever.</li>
+            <li><i class="fas fa-check-circle"></i> Your information is encrypted and used solely for service delivery.
+            </li>
+            <li><i class="fas fa-check-circle"></i> Transparent opt-out &amp; data deletion rights.</li>
+            <li><i class="fas fa-check-circle"></i> We never share personal data without consent.</li>
+          </ul>
+        </div>
+        <div class="policy-modern fade-up visible">
+          <h3><i class="fas fa-file-signature"></i> Terms of Service</h3>
+          <ul class="policy-list">
+            <li><i class="fas fa-hand-peace"></i> Sevagan facilitates connections between verified pros and users.</li>
+            <li><i class="fas fa-map-pin"></i> Service availability based on location &amp; partner coverage.</li>
+            <li><i class="fas fa-rupee-sign"></i> Transparent estimate; final charges depend on actual job requirements.
+            </li>
+            <li><i class="fas fa-sync-alt"></i> Sevagan reserves right to update policies for service improvement.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="container">
+      <h2 class="section-title">Concierge support</h2>
+      <div class="contact-premium-wrapper fade-up visible">
+        <div class="contact-info-panel">
+          <h3><i class="fas fa-headset"></i> 24/7 Assistance</h3>
+          <div class="contact-detail-item">
+            <i class="fas fa-envelope"></i>
+            <div><strong>Email</strong><span> hello@sevagan.com</span></div>
+          </div>
+          <div class="contact-detail-item">
+            <i class="fas fa-phone-alt"></i>
+            <div><strong>Phone</strong><span> +91 98100 56789</span></div>
+          </div>
+          <div class="contact-detail-item">
+            <i class="fab fa-whatsapp"></i>
+            <div><strong>WhatsApp</strong><span> +91 98765 12345</span></div>
+          </div>
+          <div class="contact-detail-item">
+            <i class="fas fa-map-marker-alt"></i>
+            <div><strong>Availability</strong><span> Mumbai, Delhi NCR, Bangalore, Chennai, Hyderabad</span></div>
+          </div>
+        </div>
+        <div class="contact-form-panel">
+          <form id="contactForm">
+            <div class="input-group">
+              <input type="text" placeholder="Full name" required="">
+            </div>
+            <div class="input-group">
+              <input type="email" placeholder="Email address" required="">
+            </div>
+            <div class="input-group">
+              <input type="tel" placeholder="Phone number">
+            </div>
+            <div class="input-group">
+              <textarea placeholder="Tell us about your service need..."></textarea>
+            </div>
+            <button type="submit" class="btn-submit"><i class="fas fa-paper-plane"></i> Send request</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2026 Sevagan — Where trust meets excellence. All rights reserved.</p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><i class="fas fa-heart" style="color:#FFB84D;"></i> Premium
+      doorstep service, crafted for you.</p>
+  </footer>
+
+  <script>
+    const fadeElements = document.querySelectorAll('.fade-up');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1, rootMargin: "0px 0px -20px 0px" });
+    fadeElements.forEach(el => observer.observe(el));
+
+    const sections = document.querySelectorAll('section, #home');
+    const navLinks = document.querySelectorAll('nav ul li a');
+    function updateActive() {
+      let current = '';
+      const scrollPos = window.scrollY + 140;
+      sections.forEach(section => {
+        const top = section.offsetTop;
+        const bottom = top + section.offsetHeight;
+        if (scrollPos >= top && scrollPos < bottom) {
+          current = section.getAttribute('id');
+        }
+      });
+      if (window.scrollY < 80) current = 'home';
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href').substring(1) === current) {
+          link.classList.add('active');
+        }
+      });
+    }
+    window.addEventListener('scroll', updateActive);
+    window.addEventListener('load', updateActive);
+
+    document.querySelectorAll('nav a, .btn-primary, .btn-outline-light').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        const url = this.getAttribute('href');
+        if (url && url.startsWith('#')) {
+          e.preventDefault();
+          const targetId = url.substring(1);
+          const target = document.getElementById(targetId);
+          if (target) {
+            const offset = 70;
+            const elementPos = target.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: elementPos - offset, behavior: 'smooth' });
+            history.pushState(null, null, url);
+            updateActive();
+          }
+        }
+      });
+    });
+
+    setTimeout(() => {
+      fadeElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight - 60) {
+          el.classList.add('visible');
+        }
+      });
+    }, 200);
+
+    document.getElementById('contactForm')?.addEventListener('submit', function (e) {
+      e.preventDefault();
+      alert('Thank you! A Sevagan concierge will reach out within 2 hours.');
+      this.reset();
+    });
+  </script>
+
+
+</body>
+
+</html>

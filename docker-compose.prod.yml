@@ -168,6 +168,7 @@ services:
       - '443:443'
     volumes:
       - ./infrastructure/nginx/nginx.conf.generated:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/site:/usr/share/nginx/html/site:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot
     depends_on:
