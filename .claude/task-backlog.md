@@ -543,8 +543,9 @@
 | # | Task | Status |
 |---|------|--------|
 | 7.1.1 | `AssignmentEngineService.tryAssignJob(jobId, customerPhone)` | ✅ |
-| 7.1.2 | `findBestAvailable(categoryId, location, excludedIds)` — ILIKE serviceArea, trustScore/rating ordering | ✅ |
+| 7.1.2 | `findBestAvailable(categoryId, location, excludedIds)` — ILIKE serviceArea, composite score ordering | ✅ |
 | 7.1.3 | `TechnicianSessionModule` extracted to break circular dependency with WhatsAppModule | ✅ |
+| 7.1.4 | Admin-editable `Technician.priorityRank` (0-100, default 50) — weighted boost in composite score (`priorityRank*2 + trustScore + rating*10`), not a hard override | ✅ |
 
 ### 7.2 Assignment Creation
 | # | Task | Status |

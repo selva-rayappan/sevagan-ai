@@ -3,11 +3,14 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 import { Language, TechnicianStatus } from '../../../domain/enums';
 import { IsIndianPhone } from '../../../common/validators/is-indian-phone.validator';
@@ -41,6 +44,12 @@ export class CreateTechnicianDto {
   @ArrayUnique()
   @IsUUID('4', { each: true })
   categoryIds?: string[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  priorityRank?: number;
 }
 
 export class UpdateTechnicianDto {
@@ -70,6 +79,12 @@ export class UpdateTechnicianDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  priorityRank?: number;
 }
 
 export class AddSkillDto {

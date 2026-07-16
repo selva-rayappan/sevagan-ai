@@ -11,6 +11,7 @@ export interface AdminCreateTechnicianData {
   aadharNumber?: string;
   serviceArea: string;
   language?: Language;
+  priorityRank?: number;
 }
 
 export interface AdminUpdateTechnicianData {
@@ -22,7 +23,14 @@ export interface AdminUpdateTechnicianData {
   language?: Language;
   status?: TechnicianStatus;
   active?: boolean;
+  priorityRank?: number;
 }
+
+// Admin-editable priorityRank (0-100, default 50) nudges the score rather than
+// overriding trustScore/rating outright, so a poorly-ranked-but-trusted
+// technician isn't locked out in favor of a newly boosted one.
+const PRIORITY_RANK_WEIGHT = 2;
+const RATING_WEIGHT = 10;
 
 @Injectable()
 export class TechniciansRepository {
@@ -81,19 +89,33 @@ export class TechniciansRepository {
       skills: { some: { categoryId } },
       ...(excludedIds.length > 0 ? { id: { notIn: excludedIds } } : {}),
     };
-    const orderBy = [{ trustScore: 'desc' as const }, { rating: 'desc' as const }];
 
     const locationKeyword = this.extractLocationKeyword(location);
-    const areaMatch = await this.prisma.technician.findFirst({
+    const areaMatches = await this.prisma.technician.findMany({
       where: { ...baseWhere, serviceArea: { contains: locationKeyword, mode: 'insensitive' } },
-      orderBy,
     });
-    if (areaMatch) return areaMatch;
+    if (areaMatches.length > 0) return this.pickHighestScoring(areaMatches);
 
     // No technician covers this specific area — fall back to the best
     // available technician with the right skill regardless of service area,
     // rather than leaving the job unassigned.
-    return this.prisma.technician.findFirst({ where: baseWhere, orderBy });
+    const fallback = await this.prisma.technician.findMany({ where: baseWhere });
+    if (fallback.length === 0) return null;
+    return this.pickHighestScoring(fallback);
+  }
+
+  private pickHighestScoring(technicians: Technician[]): Technician {
+    return technicians.reduce((best, candidate) =>
+      this.computeAssignmentScore(candidate) > this.computeAssignmentScore(best) ? candidate : best,
+    );
+  }
+
+  private computeAssignmentScore(technician: Technician): number {
+    return (
+      technician.priorityRank * PRIORITY_RANK_WEIGHT +
+      technician.trustScore +
+      Number(technician.rating) * RATING_WEIGHT
+    );
   }
 
   async findAll(activeOnly = true): Promise<Technician[]> {

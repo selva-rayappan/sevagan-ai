@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-07-14)
+## Progress Overview (Last Updated: 2026-07-16)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -244,10 +244,15 @@
 **Goal:** Auto-assign best available technician on job creation; handle reassignment on rejection.
 
 #### 7.1 Assignment Service
-- ✅ `AssignmentEngineService.findBestTechnician(categoryId, location, excludedIds)` — filter by skill, AVAILABLE status, serviceArea ILIKE match; rank by trustScore DESC, rating DESC
+- ✅ `AssignmentEngineService.findBestTechnician(categoryId, location, excludedIds)` — filter by skill, AVAILABLE status, serviceArea ILIKE match; rank by composite score (admin-editable `priorityRank` weighted boost + trustScore + rating)
 - ✅ `assignJobToTechnician(job, technician)` — create Assignment, Job.status = ASSIGNED, Technician.status = BUSY, set tech session JOB_OFFER_PENDING, send WhatsApp offer
 - ✅ `tryAssignJob(jobId, customerPhone)` — triggered from CustomerBotService after job creation (fire-and-forget)
 - ✅ `TechnicianSessionModule` extracted as standalone module to avoid circular dependency
+
+#### 7.1a Admin-Editable Technician Ranking (added 2026-07-16)
+- ✅ `Technician.priorityRank` (Int, default 50, 0-100) — admin-editable via `PATCH /admin/technicians/:id` and set on create
+- ✅ `TechniciansRepository.findBestAvailable` computes a composite score (`priorityRank * 2 + trustScore + rating * 10`) over `findMany` candidates instead of a raw `orderBy`, so rank nudges selection without letting it fully override trustScore/rating
+- ✅ Admin technicians page (frontend) exposes a "Priority Rank" field on create/edit and a Rank column in the list
 
 #### 7.2 Rejection & Reassignment
 - ✅ `triggerReassignment(jobId, rejectedTechnicianId)` — called from TechnicianBotService on rejection and offer expiry

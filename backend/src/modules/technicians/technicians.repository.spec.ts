@@ -123,13 +123,13 @@ describe('TechniciansRepository', () => {
 
   describe('findBestAvailable()', () => {
     it('queries by category, availability, and location keyword, excluding given ids', async () => {
-      const tech = { id: 't-1' };
-      mockFindFirst.mockResolvedValue(tech);
+      const tech = { id: 't-1', priorityRank: 50, trustScore: 100, rating: 5 };
+      mockFindMany.mockResolvedValueOnce([tech]);
 
       const result = await repo.findBestAvailable('cat-1', 'Allampatti, Virudhunagar', ['t-2']);
 
       expect(result).toBe(tech);
-      expect(mockFindFirst).toHaveBeenCalledWith({
+      expect(mockFindMany).toHaveBeenCalledWith({
         where: {
           status: TechnicianStatus.AVAILABLE,
           active: true,
@@ -137,16 +137,15 @@ describe('TechniciansRepository', () => {
           skills: { some: { categoryId: 'cat-1' } },
           id: { notIn: ['t-2'] },
         },
-        orderBy: [{ trustScore: 'desc' }, { rating: 'desc' }],
       });
     });
 
     it('omits the notIn clause when there are no excluded ids', async () => {
-      mockFindFirst.mockResolvedValue(null);
+      mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
 
-      expect(mockFindFirst).toHaveBeenCalledWith(
+      expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.not.objectContaining({ id: expect.anything() }),
         }),
@@ -154,35 +153,64 @@ describe('TechniciansRepository', () => {
     });
 
     it('falls back to any available technician with the skill when no area match exists', async () => {
-      const fallbackTech = { id: 't-3' };
-      mockFindFirst
-        .mockResolvedValueOnce(null) // area-scoped query finds nobody
-        .mockResolvedValueOnce(fallbackTech); // area-agnostic fallback finds someone
+      const fallbackTech = { id: 't-3', priorityRank: 50, trustScore: 100, rating: 5 };
+      mockFindMany
+        .mockResolvedValueOnce([]) // area-scoped query finds nobody
+        .mockResolvedValueOnce([fallbackTech]); // area-agnostic fallback finds someone
 
       const result = await repo.findBestAvailable('cat-1', 'Somewhere Unmapped', []);
 
       expect(result).toBe(fallbackTech);
-      expect(mockFindFirst).toHaveBeenCalledTimes(2);
-      expect(mockFindFirst).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      expect(mockFindMany).toHaveBeenCalledTimes(2);
+      expect(mockFindMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
         where: expect.objectContaining({ serviceArea: expect.anything() }),
       }));
-      expect(mockFindFirst).toHaveBeenNthCalledWith(2, {
+      expect(mockFindMany).toHaveBeenNthCalledWith(2, {
         where: {
           status: TechnicianStatus.AVAILABLE,
           active: true,
           skills: { some: { categoryId: 'cat-1' } },
         },
-        orderBy: [{ trustScore: 'desc' }, { rating: 'desc' }],
       });
     });
 
     it('does not fall back when an area match is found', async () => {
-      const tech = { id: 't-1' };
-      mockFindFirst.mockResolvedValueOnce(tech);
+      const tech = { id: 't-1', priorityRank: 50, trustScore: 100, rating: 5 };
+      mockFindMany.mockResolvedValueOnce([tech]);
 
       await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
 
-      expect(mockFindFirst).toHaveBeenCalledTimes(1);
+      expect(mockFindMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns null when no technician is available anywhere', async () => {
+      mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+      const result = await repo.findBestAvailable('cat-1', 'Somewhere Unmapped', []);
+
+      expect(result).toBeNull();
+    });
+
+    it('picks the technician with the strictly higher composite score', async () => {
+      const lowerScore = { id: 't-1', priorityRank: 50, trustScore: 90, rating: 4 };
+      const higherScore = { id: 't-2', priorityRank: 90, trustScore: 40, rating: 3 };
+      mockFindMany.mockResolvedValueOnce([lowerScore, higherScore]);
+
+      const result = await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
+
+      // t-1 score: 50*2 + 90 + 4*10 = 230; t-2 score: 90*2 + 40 + 3*10 = 250
+      expect(result).toBe(higherScore);
+    });
+
+    it('lets a strong priorityRank boost overcome a slightly lower trust score', async () => {
+      const highTrustLowRank = { id: 't-1', priorityRank: 10, trustScore: 100, rating: 5 };
+      const boostedRank = { id: 't-2', priorityRank: 100, trustScore: 90, rating: 5 };
+      mockFindMany.mockResolvedValueOnce([highTrustLowRank, boostedRank]);
+
+      const result = await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
+
+      // t-1 score: 10*2 + 100 + 5*10 = 170; t-2 score: 100*2 + 90 + 5*10 = 340
+      expect(result).toBe(boostedRank);
     });
   });
 

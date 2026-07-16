@@ -56,6 +56,7 @@ export class TechniciansAdminController {
       aadharNumber: body.aadharNumber,
       serviceArea: body.serviceArea,
       language: (body.language as Language) ?? Language.EN,
+      priorityRank: body.priorityRank,
     });
 
     if (body.categoryIds?.length) {

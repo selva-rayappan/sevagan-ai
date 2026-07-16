@@ -105,6 +105,7 @@ describe('Admin DTO validation', () => {
       const dto = plainToInstance(CreateTechnicianDto, {
         name: 'Kumar',
         phone: '919876543210',
+        address: 'Virudhunagar',
         serviceArea: 'Virudhunagar',
         categoryIds: ['550e8400-e29b-41d4-a716-446655440000'],
       });
@@ -127,6 +128,28 @@ describe('Admin DTO validation', () => {
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
     });
+
+    it('accepts a priorityRank within 0-100', async () => {
+      const dto = plainToInstance(CreateTechnicianDto, {
+        name: 'Kumar',
+        phone: '919876543210',
+        address: 'Virudhunagar',
+        serviceArea: 'Virudhunagar',
+        priorityRank: 80,
+      });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects a priorityRank outside 0-100', async () => {
+      const dto = plainToInstance(CreateTechnicianDto, {
+        name: 'Kumar',
+        phone: '919876543210',
+        serviceArea: 'Virudhunagar',
+        priorityRank: 150,
+      });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
   });
 
   describe('UpdateTechnicianDto', () => {
@@ -137,6 +160,17 @@ describe('Admin DTO validation', () => {
 
     it('rejects an invalid status value', async () => {
       const dto = plainToInstance(UpdateTechnicianDto, { status: 'ON_VACATION' });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it('accepts a valid priorityRank update', async () => {
+      const dto = plainToInstance(UpdateTechnicianDto, { priorityRank: 25 });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects a negative priorityRank', async () => {
+      const dto = plainToInstance(UpdateTechnicianDto, { priorityRank: -1 });
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
     });

@@ -15,6 +15,7 @@ interface Technician {
   status: string;
   active: boolean;
   trustScore: number;
+  priorityRank: number;
   rating: string;
   serviceArea: string;
   language: string;
@@ -37,7 +38,7 @@ function CreateModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [form, setForm] = useState({ name: '', phone: '', address: '', aadharNumber: '', serviceArea: '', language: 'EN', categoryIds: [] as string[] });
+  const [form, setForm] = useState({ name: '', phone: '', address: '', aadharNumber: '', serviceArea: '', language: 'EN', priorityRank: 50, categoryIds: [] as string[] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -109,6 +110,17 @@ function CreateModal({
             </select>
           </div>
           <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Priority Rank (0-100, higher = offered jobs first)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={form.priorityRank}
+              onChange={(e) => setForm((f) => ({ ...f, priorityRank: Number(e.target.value) }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">Skills</label>
             <div className="flex flex-wrap gap-2">
               {categories.map((cat) => (
@@ -168,6 +180,7 @@ function EditModal({
     serviceArea: technician.serviceArea,
     status: technician.status,
     active: technician.active,
+    priorityRank: technician.priorityRank,
   });
   const [categoryIds, setCategoryIds] = useState<string[]>(technician.skills.map((s) => s.category.id));
   const [loading, setLoading] = useState(false);
@@ -275,6 +288,17 @@ function EditModal({
             </label>
           </div>
           <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Priority Rank (0-100, higher = offered jobs first)</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={form.priorityRank}
+              onChange={(e) => setForm((f) => ({ ...f, priorityRank: Number(e.target.value) }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">Skills</label>
             <div className="flex flex-wrap gap-2">
               {categories.map((cat) => (
@@ -367,6 +391,7 @@ export default function TechniciansPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Phone</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Trust</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Rank</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Rating</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Skills</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Area</th>
@@ -377,14 +402,14 @@ export default function TechniciansPage() {
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-b border-gray-100">
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 9 }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                   ))}
                 </tr>
               ))
             ) : technicians.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-gray-400">No technicians yet</td>
+                <td colSpan={9} className="px-4 py-10 text-center text-gray-400">No technicians yet</td>
               </tr>
             ) : (
               technicians.map((t) => (
@@ -397,6 +422,7 @@ export default function TechniciansPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-700 font-medium">{t.trustScore}</td>
+                  <td className="px-4 py-3 text-gray-700 font-medium">{t.priorityRank}</td>
                   <td className="px-4 py-3 text-gray-700">⭐ {Number(t.rating).toFixed(1)}</td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">

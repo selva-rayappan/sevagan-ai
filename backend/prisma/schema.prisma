@@ -94,6 +94,7 @@ model Technician {
   status       TechnicianStatus @default(AVAILABLE)
   rating       Decimal          @default(5.0) @db.Decimal(3, 2)
   trustScore   Int              @default(100) @map("trust_score")
+  priorityRank Int              @default(50) @map("priority_rank")
   serviceArea  String           @map("service_area")
   language     Language         @default(EN)
   active       Boolean          @default(true)
