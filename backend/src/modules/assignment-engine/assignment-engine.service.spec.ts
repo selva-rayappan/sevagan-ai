@@ -60,6 +60,7 @@ describe('AssignmentEngineService', () => {
     };
     mockTechniciansRepo = {
       findBestAvailable: jest.fn().mockResolvedValue(mockTechnician),
+      findById: jest.fn().mockResolvedValue(mockTechnician),
       updateStatus: jest.fn().mockResolvedValue(undefined),
     };
     mockCustomersRepo = {
@@ -154,6 +155,35 @@ describe('AssignmentEngineService', () => {
       await service.tryAssignJob('job-1', '919876543210');
 
       expect(mockAssignmentsRepo.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('manualAssign', () => {
+    it('assigns the job to the specified technician', async () => {
+      await service.manualAssign('job-1', 'tech-1');
+
+      expect(mockTechniciansRepo.findById).toHaveBeenCalledWith('tech-1');
+      expect(mockAssignmentsRepo.create).toHaveBeenCalledWith({
+        jobId: 'job-1',
+        technicianId: 'tech-1',
+      });
+      expect(mockJobsService.updateStatus).toHaveBeenCalledWith('job-1', JobStatus.ASSIGNED);
+      expect(mockTechniciansRepo.updateStatus).toHaveBeenCalledWith('tech-1', TechnicianStatus.BUSY);
+      expect(mockWhatsapp.sendInteractiveButtons).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919876543211' }),
+      );
+    });
+
+    it('throws if the job is not found', async () => {
+      mockJobsService.findWithDetails.mockResolvedValue(null);
+
+      await expect(service.manualAssign('job-1', 'tech-1')).rejects.toThrow('job-1');
+    });
+
+    it('throws if the technician is not found', async () => {
+      mockTechniciansRepo.findById.mockResolvedValue(null);
+
+      await expect(service.manualAssign('job-1', 'tech-1')).rejects.toThrow('tech-1');
     });
   });
 

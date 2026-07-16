@@ -13,7 +13,7 @@ export class ServiceCategoriesRepository {
   async findActive(): Promise<ServiceCategory[]> {
     return this.prisma.serviceCategory.findMany({
       where: { active: true },
-      orderBy: { name: 'asc' },
+      orderBy: { createdAt: 'asc' },
     });
   }
 

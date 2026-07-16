@@ -67,9 +67,13 @@ const mockJobsService = {
 };
 
 const mockFindByName = jest.fn();
+const mockFindById = jest.fn();
+const mockFindActive = jest.fn().mockResolvedValue([{ id: 'cat-1', name: 'Electrical' }]);
 
 const mockCategoriesRepository = {
   findByName: mockFindByName,
+  findById: mockFindById,
+  findActive: mockFindActive,
 };
 
 const mockTechniciansRepository = {
@@ -318,12 +322,14 @@ describe('CustomerBotService', () => {
   describe('AWAITING_SERVICE state', () => {
     it('asks for location when customer selects a valid service number', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
-      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
-      mockFindByName.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
+      mockGetSession.mockResolvedValue(
+        makeSession({ state: ConversationState.AWAITING_SERVICE, pendingServiceCategoryIds: ['cat-1'] }),
+      );
+      mockFindById.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
 
       await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 
-      expect(mockFindByName).toHaveBeenCalledWith('Electrical');
+      expect(mockFindById).toHaveBeenCalledWith('cat-1');
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({
           state: ConversationState.AWAITING_LOCATION,
@@ -335,7 +341,9 @@ describe('CustomerBotService', () => {
 
     it('sends error + re-shows menu for invalid service number', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
-      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
+      mockGetSession.mockResolvedValue(
+        makeSession({ state: ConversationState.AWAITING_SERVICE, pendingServiceCategoryIds: ['cat-1'] }),
+      );
 
       await service.handleMessage(makeTextMessage('9'), 'Rajesh');
 
@@ -345,14 +353,16 @@ describe('CustomerBotService', () => {
       );
     });
 
-    it('sends error if category not found in DB', async () => {
+    it('sends error + re-shows menu if the category was held/removed after the menu was shown', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
-      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
-      mockFindByName.mockResolvedValue(null);
+      mockGetSession.mockResolvedValue(
+        makeSession({ state: ConversationState.AWAITING_SERVICE, pendingServiceCategoryIds: ['cat-1'] }),
+      );
+      mockFindById.mockResolvedValue(null);
 
       await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 
-      expect(mockSendText).toHaveBeenCalledTimes(1);
+      expect(mockSendText).toHaveBeenCalledTimes(2);
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: ConversationState.AWAITING_SERVICE }),
       );
@@ -391,8 +401,10 @@ describe('CustomerBotService', () => {
 
     it('does not call the AI dispatcher for numeric menu input', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
-      mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
-      mockFindByName.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
+      mockGetSession.mockResolvedValue(
+        makeSession({ state: ConversationState.AWAITING_SERVICE, pendingServiceCategoryIds: ['cat-1'] }),
+      );
+      mockFindById.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
 
       await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 

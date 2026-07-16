@@ -145,7 +145,7 @@
 
 #### 4.2 Customer Bot Flows
 - ✅ Language selection (first interaction)
-- ✅ Service category selection (numbered menu)
+- ✅ Service category selection (numbered menu, generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu) (updated 2026-07-16)
 - ✅ Location capture (text or WhatsApp location share)
 - ✅ Scheduled time capture (free text)
 - ✅ Job creation with `JOB-YYYYMMDD-NNNN` number format
@@ -295,13 +295,13 @@
 - ✅ Settlements: list, generate modal, mark paid (GET, POST /admin/settlements/generate, POST /:id/pay)
 - ✅ Commission Rules: list + inline create form (GET, POST /admin/commission-rules)
 - ✅ Disputes: list with status filter, resolve with notes (GET, POST /admin/disputes/:id/resolve)
-- ✅ Service Categories: GET /admin/service-categories (used by technician create form)
+- ✅ Services tab: full CRUD (GET ?all=true, POST, PATCH incl. `active` toggle for Hold/Unhold, DELETE — blocked with 409 + a "use Hold instead" message if technicians/jobs still reference it) — drives both the technician skill picker and the live customer WhatsApp menu (updated 2026-07-16)
 
 #### Acceptance Criteria
 - ✅ Admin can log in; JWT auth guard protects all admin routes
 - ✅ Dashboard KPIs match database counts (auto-refresh every 30s)
 - ✅ Creating technician from dashboard sends WhatsApp onboarding message via translation service
-- ✅ Manual assignment triggers AssignmentEngineService
+- ✅ `AssignmentEngineService.manualAssign(jobId, technicianId)` — admin picks a specific technician (not just re-running auto-match); frees the previously-assigned technician back to AVAILABLE first; exposed via the "Assign" button on NEW/ASSIGNED/ACCEPTED jobs (updated 2026-07-16 — the endpoint previously accepted but silently ignored `technicianId`)
 - ✅ **224 tests, 24 suites — all passing**
 - ✅ Unit tests backfilled 2026-06-30 for all 7 admin controllers, the auth module (controller/service/guard/strategy), and the dashboard module — these had zero coverage despite the original sign-off; see Phase 9 note (now resolved)
 

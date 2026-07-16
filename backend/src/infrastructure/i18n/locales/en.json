@@ -1,7 +1,8 @@
 {
   "customer": {
     "welcome": "Welcome to Sevagan! 🙏\nHow can we help you today?\n\nType HELP to see what we can do.",
-    "select_service": "Please select a service:\n\n1. Electrical ⚡\n2. Plumbing 🔧\n3. AC Service ❄️\n4. Carpentry 🪚\n5. Painting 🖌️\n6. Appliance Repair ⚙️\n7. RO Service 💧\n8. CCTV Installation 📷\n\nType the number of the service you need.",
+    "select_service": "Please select a service:",
+    "invalid_service": "Please reply with a number from the list.",
     "ask_location": "Please share your location or type your area name.\n(e.g., Virudhunagar, Sattur Road)",
     "select_time_slot": "When do you need this service? Please select a time slot:",
     "invalid_time_slot": "Please reply with a number from the list (1-4).",

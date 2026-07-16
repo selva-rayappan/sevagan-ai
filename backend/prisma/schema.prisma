@@ -111,10 +111,11 @@ model Technician {
 }
 
 model ServiceCategory {
-  id          String  @id @default(uuid())
-  name        String  @unique
+  id          String   @id @default(uuid())
+  name        String   @unique
   description String?
-  active      Boolean @default(true)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
 
   technicianSkills TechnicianSkill[]
   jobs             Job[]

@@ -16,6 +16,7 @@ import {
   PercentCircle,
   AlertTriangle,
   BarChart3,
+  ListChecks,
   LogOut,
 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ const NAV = [
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/technicians', label: 'Technicians', icon: Wrench },
   { href: '/jobs', label: 'Jobs', icon: Briefcase },
+  { href: '/services', label: 'Services', icon: ListChecks },
   { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/settlements', label: 'Settlements', icon: Banknote },
   { href: '/commission', label: 'Commission', icon: PercentCircle },

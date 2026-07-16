@@ -630,9 +630,9 @@
 | # | Task | Status |
 |---|------|--------|
 | 8.6.1 | `GET /api/v1/admin/jobs` — paginated with status/date filters | ✅ |
-| 8.6.2 | `POST /api/v1/admin/jobs/:id/assign` — manual via `AssignmentEngineService.tryAssignJob` | ✅ |
+| 8.6.2 | `POST /api/v1/admin/jobs/:id/assign` — genuine manual pick via `AssignmentEngineService.manualAssign(jobId, technicianId)`; frees the previous technician back to AVAILABLE first | ✅ |
 | 8.6.3 | `POST /api/v1/admin/jobs/:id/cancel` | ✅ |
-| 8.6.4 | Jobs page: table with status filter dropdown, all 6 `JobStatus` color badges | ✅ |
+| 8.6.4 | Jobs page: table with status filter dropdown, all 6 `JobStatus` color badges, "Assign" button + technician-picker modal on NEW/ASSIGNED/ACCEPTED rows | ✅ |
 
 ### 8.7 Settlement Management
 | # | Task | Status |
@@ -655,7 +655,10 @@
 ### 8.10 Service Categories
 | # | Task | Status |
 |---|------|--------|
-| 8.10.1 | `GET /api/v1/admin/service-categories` — used by technician create form | ✅ |
+| 8.10.1 | `GET /api/v1/admin/service-categories` (`?all=true` for held/inactive too) — used by technician create form and the Services page | ✅ |
+| 8.10.2 | `POST /api/v1/admin/service-categories`, `PATCH /:id` (name/description/`active` for Hold-Unhold), `DELETE /:id` (409 + "use Hold instead" if technicians/jobs still reference it) | ✅ |
+| 8.10.3 | Services page: table (name, description, Active/Held badge), Add/Edit modal, Hold/Unhold toggle, Remove with confirm | ✅ |
+| 8.10.4 | Customer WhatsApp service menu is now generated live from `findActive()` instead of a hardcoded 8-item map — admin add/hold/remove immediately changes what customers can select | ✅ |
 
 ### Acceptance Criteria
 | # | Criterion | Status |

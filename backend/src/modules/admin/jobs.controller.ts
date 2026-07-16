@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors, Version } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
-import { JobStatus } from '../../domain/enums';
+import { JobStatus, TechnicianStatus } from '../../domain/enums';
 import { AssignmentEngineService } from '../assignment-engine/assignment-engine.service';
 import { CurrentUser, CurrentUserPayload } from '../auth/current-user.decorator';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -70,17 +70,19 @@ export class JobsAdminController {
   @Post(':id/assign')
   @Version('1')
   async manualAssign(@Param('id') id: string, @Body() body: ManualAssignDto, @CurrentUser() user: CurrentUserPayload) {
-    const job = await this.prisma.job.findUniqueOrThrow({
-      where: { id },
-      include: { customer: true },
-    });
-    // Remove existing assignment if any
+    await this.prisma.job.findUniqueOrThrow({ where: { id } });
+
+    // Remove any existing assignment and free that technician before assigning the new one
     const existing = await this.prisma.assignment.findUnique({ where: { jobId: id } });
     if (existing) {
       await this.prisma.assignment.delete({ where: { jobId: id } });
+      await this.prisma.technician.update({
+        where: { id: existing.technicianId },
+        data: { status: TechnicianStatus.AVAILABLE as any },
+      });
     }
-    await this.prisma.job.update({ where: { id }, data: { status: JobStatus.NEW as any } });
-    await this.assignmentEngine.tryAssignJob(id, job.customer.phone);
+
+    await this.assignmentEngine.manualAssign(id, body.technicianId);
 
     await this.auditService.log({
       actorId: user.id,
@@ -88,10 +90,10 @@ export class JobsAdminController {
       action: 'MANUAL_ASSIGN_JOB',
       entityType: 'Job',
       entityId: id,
-      metadata: { requestedTechnicianId: body.technicianId },
+      metadata: { technicianId: body.technicianId },
     });
 
-    return { message: 'Assignment triggered' };
+    return { message: 'Job assigned' };
   }
 
   @Post(':id/cancel')

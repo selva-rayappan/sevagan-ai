@@ -43,7 +43,7 @@ describe('ServiceCategoriesRepository', () => {
       expect(result).toBe(active);
       expect(mockFindMany).toHaveBeenCalledWith({
         where: { active: true },
-        orderBy: { name: 'asc' },
+        orderBy: { createdAt: 'asc' },
       });
     });
   });

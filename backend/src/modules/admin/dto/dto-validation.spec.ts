@@ -6,6 +6,7 @@ import { ManualAssignDto } from './jobs.dto';
 import { GenerateSettlementDto } from './settlements.dto';
 import { CreateCommissionRuleDto } from './commission.dto';
 import { AddSkillDto, CreateTechnicianDto, UpdateTechnicianDto } from './technicians.dto';
+import { CreateServiceCategoryDto, UpdateServiceCategoryDto } from './service-categories.dto';
 import { PaymentMode, CommissionType, TechnicianStatus } from '../../../domain/enums';
 
 describe('Admin DTO validation', () => {
@@ -179,6 +180,32 @@ describe('Admin DTO validation', () => {
   describe('AddSkillDto', () => {
     it('rejects a missing categoryId', async () => {
       const dto = plainToInstance(AddSkillDto, {});
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('CreateServiceCategoryDto', () => {
+    it('accepts a name-only payload', async () => {
+      const dto = plainToInstance(CreateServiceCategoryDto, { name: 'Pest Control' });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects a missing name', async () => {
+      const dto = plainToInstance(CreateServiceCategoryDto, {});
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('UpdateServiceCategoryDto', () => {
+    it('accepts toggling active for hold/unhold', async () => {
+      const dto = plainToInstance(UpdateServiceCategoryDto, { active: false });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects a non-boolean active value', async () => {
+      const dto = plainToInstance(UpdateServiceCategoryDto, { active: 'yes' });
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
     });

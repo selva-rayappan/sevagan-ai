@@ -28,6 +28,7 @@ export interface ConversationSession {
   selectedCategoryId?: string;
   selectedCategoryName?: string;
   location?: string;
+  pendingServiceCategoryIds?: string[];
   pendingTimeSlots?: string[];
   activeJobContext?: ActiveJobContext;
   updatedAt: string;

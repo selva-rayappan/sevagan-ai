@@ -26,16 +26,17 @@ import { CategoryMapperService } from '../../ai-dispatcher/category-mapper.servi
 import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.service';
 import { generateTimeSlots } from './time-slot.util';
 
-const SERVICE_MENU: Record<string, string> = {
-  '1': 'Electrical',
-  '2': 'Plumbing',
-  '3': 'AC Service',
-  '4': 'Carpentry',
-  '5': 'Painting',
-  '6': 'Appliance Repair',
-  '7': 'RO Service',
-  '8': 'CCTV Installation',
+const SERVICE_ICONS: Record<string, string> = {
+  electrical: '⚡',
+  plumbing: '🔧',
+  ac_service: '❄️',
+  carpentry: '🪚',
+  painting: '🖌️',
+  appliance_repair: '⚙️',
+  ro_service: '💧',
+  cctv_installation: '📷',
 };
+const DEFAULT_SERVICE_ICON = '🛠️';
 
 @Injectable()
 export class CustomerBotService {
@@ -271,9 +272,17 @@ export class CustomerBotService {
 
   private async showServiceMenu(session: ConversationSession): Promise<void> {
     session.state = ConversationState.AWAITING_SERVICE;
+
+    const categories = await this.categoriesRepository.findActive();
+    session.pendingServiceCategoryIds = categories.map((c) => c.id);
+
+    const menu = categories
+      .map((c, i) => `${i + 1}. ${this.translateServiceName(c.name, session.language)} ${this.serviceIcon(c.name)}`)
+      .join('\n');
+
     await this.whatsapp.sendText({
       to: session.phone,
-      text: this.translation.translate('customer.select_service', session.language),
+      text: `${this.translation.translate('customer.select_service', session.language)}\n\n${menu}`,
     });
   }
 
@@ -281,27 +290,17 @@ export class CustomerBotService {
     session: ConversationSession,
     text: string,
   ): Promise<void> {
-    const categoryName = SERVICE_MENU[text.trim()];
+    const categoryIds = session.pendingServiceCategoryIds ?? [];
+    const choice = parseInt(text.trim(), 10);
+    const categoryId = categoryIds[choice - 1];
 
-    if (!categoryName) {
-      await this.whatsapp.sendText({
-        to: session.phone,
-        text: this.translation.translate('customer.unknown_command', session.language),
-      });
-      await this.whatsapp.sendText({
-        to: session.phone,
-        text: this.translation.translate('customer.select_service', session.language),
-      });
-      return;
-    }
-
-    const category = await this.categoriesRepository.findByName(categoryName);
+    const category = categoryId ? await this.categoriesRepository.findById(categoryId) : null;
     if (!category) {
-      this.logger.error(`Service category "${categoryName}" not found in DB — seed data may be missing`);
       await this.whatsapp.sendText({
         to: session.phone,
-        text: this.translation.translate('customer.unknown_command', session.language),
+        text: this.translation.translate('customer.invalid_service', session.language),
       });
+      await this.showServiceMenu(session);
       return;
     }
 
@@ -630,6 +629,18 @@ export class CustomerBotService {
 
   private categoryNameToKey(name: string): string {
     return name.toLowerCase().replace(/\s+/g, '_');
+  }
+
+  private translateServiceName(name: string, language: Language): string {
+    const key = `service.${this.categoryNameToKey(name)}`;
+    const translated = this.translation.translate(key, language);
+    // Categories added via the admin UI have no matching i18n key — fall back
+    // to the raw name rather than showing the untranslated key to customers.
+    return translated === key ? name : translated;
+  }
+
+  private serviceIcon(name: string): string {
+    return SERVICE_ICONS[this.categoryNameToKey(name)] ?? DEFAULT_SERVICE_ICON;
   }
 
   private async generateInvoiceAndPayment(

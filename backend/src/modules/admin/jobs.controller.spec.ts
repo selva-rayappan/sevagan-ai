@@ -5,6 +5,7 @@ const mockFindMany = jest.fn();
 const mockCount = jest.fn();
 const mockFindUniqueOrThrow = jest.fn();
 const mockUpdate = jest.fn();
+const mockTechnicianUpdate = jest.fn();
 const mockAssignmentFindUnique = jest.fn();
 const mockAssignmentDelete = jest.fn();
 
@@ -15,14 +16,17 @@ const mockPrisma = {
     findUniqueOrThrow: mockFindUniqueOrThrow,
     update: mockUpdate,
   },
+  technician: {
+    update: mockTechnicianUpdate,
+  },
   assignment: {
     findUnique: mockAssignmentFindUnique,
     delete: mockAssignmentDelete,
   },
 } as any;
 
-const mockTryAssignJob = jest.fn();
-const mockAssignmentEngine = { tryAssignJob: mockTryAssignJob } as any;
+const mockManualAssign = jest.fn();
+const mockAssignmentEngine = { manualAssign: mockManualAssign } as any;
 
 const mockAuditLog = jest.fn().mockResolvedValue(undefined);
 const mockAuditService = { log: mockAuditLog } as any;
@@ -76,33 +80,37 @@ describe('JobsAdminController', () => {
   });
 
   describe('manualAssign()', () => {
-    it('removes an existing assignment, resets the job to NEW, and triggers reassignment', async () => {
-      mockFindUniqueOrThrow.mockResolvedValue({ id: 'job-1', customer: { phone: '919876543210' } });
-      mockAssignmentFindUnique.mockResolvedValue({ id: 'assign-1' });
+    it('removes an existing assignment, frees the previous technician, and assigns the requested one', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({ id: 'job-1' });
+      mockAssignmentFindUnique.mockResolvedValue({ id: 'assign-1', technicianId: 'old-tech' });
       mockAssignmentDelete.mockResolvedValue({});
-      mockUpdate.mockResolvedValue({});
-      mockTryAssignJob.mockResolvedValue(undefined);
+      mockTechnicianUpdate.mockResolvedValue({});
+      mockManualAssign.mockResolvedValue(undefined);
 
       const result = await controller.manualAssign('job-1', { technicianId: 'tech-1' }, mockUser);
 
       expect(mockAssignmentDelete).toHaveBeenCalledWith({ where: { jobId: 'job-1' } });
-      expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'job-1' }, data: { status: JobStatus.NEW } });
-      expect(mockTryAssignJob).toHaveBeenCalledWith('job-1', '919876543210');
-      expect(result).toEqual({ message: 'Assignment triggered' });
+      expect(mockTechnicianUpdate).toHaveBeenCalledWith({
+        where: { id: 'old-tech' },
+        data: { status: 'AVAILABLE' },
+      });
+      expect(mockManualAssign).toHaveBeenCalledWith('job-1', 'tech-1');
+      expect(result).toEqual({ message: 'Job assigned' });
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ actorId: 'admin-1', action: 'MANUAL_ASSIGN_JOB', entityId: 'job-1' }),
       );
     });
 
-    it('skips assignment deletion when no existing assignment is found', async () => {
-      mockFindUniqueOrThrow.mockResolvedValue({ id: 'job-1', customer: { phone: '919876543210' } });
+    it('skips assignment deletion and technician-freeing when no existing assignment is found', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({ id: 'job-1' });
       mockAssignmentFindUnique.mockResolvedValue(null);
-      mockUpdate.mockResolvedValue({});
-      mockTryAssignJob.mockResolvedValue(undefined);
+      mockManualAssign.mockResolvedValue(undefined);
 
       await controller.manualAssign('job-1', { technicianId: 'tech-1' }, mockUser);
 
       expect(mockAssignmentDelete).not.toHaveBeenCalled();
+      expect(mockTechnicianUpdate).not.toHaveBeenCalled();
+      expect(mockManualAssign).toHaveBeenCalledWith('job-1', 'tech-1');
     });
   });
 

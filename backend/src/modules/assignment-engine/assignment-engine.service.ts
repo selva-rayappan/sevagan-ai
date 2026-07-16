@@ -70,6 +70,19 @@ export class AssignmentEngineService {
     await this.assignJobToTechnician(job, technician);
   }
 
+  async manualAssign(jobId: string, technicianId: string): Promise<void> {
+    const job = await this.jobsService.findWithDetails(jobId);
+    if (!job) {
+      throw new Error(`manualAssign: job ${jobId} not found`);
+    }
+    const technician = await this.techniciansRepository.findById(technicianId);
+    if (!technician) {
+      throw new Error(`manualAssign: technician ${technicianId} not found`);
+    }
+
+    await this.assignJobToTechnician(job, technician);
+  }
+
   async triggerReassignment(jobId: string, rejectedTechnicianId: string): Promise<void> {
     const count = await this.addRejection(jobId, rejectedTechnicianId);
     this.logger.log(`Job ${jobId}: rejection #${count} from tech ${rejectedTechnicianId}`);
