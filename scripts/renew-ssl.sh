@@ -5,5 +5,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+ENV_FILE="/etc/sevagan/.env"
+set -a
+source "$ENV_FILE"
+set +a
+
 docker compose -f docker-compose.prod.yml --profile ssl run --rm certbot renew --quiet
 docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
