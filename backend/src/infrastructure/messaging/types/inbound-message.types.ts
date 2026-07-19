@@ -63,11 +63,19 @@ export interface InboundWhatsAppMessage {
   document?: WhatsAppMedia;
 }
 
+export interface WhatsAppStatusError {
+  code: number;
+  title: string;
+  message?: string;
+  error_data?: { details?: string };
+}
+
 export interface WhatsAppStatusUpdate {
   id: string;
   status: 'sent' | 'delivered' | 'read' | 'failed';
   timestamp: string;
   recipient_id: string;
+  errors?: WhatsAppStatusError[];
 }
 
 export interface WhatsAppMetadata {

@@ -92,6 +92,13 @@ export class WebhookController {
 
         for (const status of statuses) {
           this.logger.debug(`Message ${status.id} status: ${status.status}`);
+          if (status.status === 'failed' && status.errors?.length) {
+            this.logger.error(
+              `Message ${status.id} to ${status.recipient_id} failed: ${status.errors
+                .map((e) => `(#${e.code}) ${e.title}${e.message ? ` — ${e.message}` : ''}`)
+                .join('; ')}`,
+            );
+          }
         }
       }
     }

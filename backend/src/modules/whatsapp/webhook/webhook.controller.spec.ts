@@ -264,5 +264,60 @@ describe('WebhookController', () => {
       expect(() => controller.handleWebhook(payload, rawBody)).not.toThrow();
       expect(controller.handleWebhook(payload, rawBody)).toEqual({ status: 'ok' });
     });
+
+    describe('status updates', () => {
+      let errorSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        errorSpy = jest.spyOn((controller as any).logger, 'error').mockImplementation();
+      });
+
+      afterEach(() => {
+        errorSpy.mockRestore();
+      });
+
+      it('logs the failure reason when a status update reports errors', () => {
+        const payload = buildPayload([], [
+          {
+            id: 'wamid.abc',
+            status: 'failed',
+            timestamp: '1718000100',
+            recipient_id: '919442060644',
+            errors: [
+              {
+                code: 131047,
+                title: 'Re-engagement message',
+                message: 'More than 24 hours have passed since the recipient last replied.',
+              },
+            ],
+          },
+        ]);
+
+        controller.handleWebhook(payload, rawBody);
+
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('wamid.abc to 919442060644 failed: (#131047) Re-engagement message'),
+        );
+      });
+
+      it('does not log an error for non-failed statuses', () => {
+        const payload = buildPayload([], [
+          { id: 'wamid.xyz', status: 'read', timestamp: '1718000101', recipient_id: '919876543210' },
+        ]);
+
+        controller.handleWebhook(payload, rawBody);
+
+        expect(errorSpy).not.toHaveBeenCalled();
+      });
+
+      it('does not throw when a failed status has no errors array', () => {
+        const payload = buildPayload([], [
+          { id: 'wamid.no-errors', status: 'failed', timestamp: '1718000102', recipient_id: '919876543210' },
+        ]);
+
+        expect(() => controller.handleWebhook(payload, rawBody)).not.toThrow();
+        expect(errorSpy).not.toHaveBeenCalled();
+      });
+    });
   });
 });
