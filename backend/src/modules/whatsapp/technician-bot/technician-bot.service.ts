@@ -141,8 +141,8 @@ export class TechnicianBotService {
         scheduledTime: scheduledTimeText,
       }),
       buttons: [
-        { id: 'accept_job', title: 'Accept' },
-        { id: 'reject_job', title: 'Reject' },
+        { id: 'accept_job', title: this.translation.translate('technician.accept_button', session.language) },
+        { id: 'reject_job', title: this.translation.translate('technician.reject_button', session.language) },
       ],
     });
   }
@@ -219,14 +219,18 @@ export class TechnicianBotService {
     const serviceKey = this.categoryNameToKey(job.serviceCategory.name);
     const serviceLabel = this.translation.translate(`service.${serviceKey}`, session.language);
 
-    await this.whatsapp.sendText({
+    await this.whatsapp.sendInteractiveButtons({
       to: technician.phone,
-      text: this.translation.translate('technician.job_accepted', session.language, {
+      body: this.translation.translate('technician.job_accepted', session.language, {
         jobNumber: job.jobNumber,
         customerName: job.customer.name ?? 'Customer',
         location: job.location,
         scheduledTime: this.extractScheduledTime(job.description),
       }),
+      buttons: [
+        { id: '1', title: this.translation.translate('technician.start_button', session.language) },
+        { id: '2', title: this.translation.translate('technician.decline_button', session.language) },
+      ],
     });
 
     // Notify customer
@@ -293,11 +297,15 @@ export class TechnicianBotService {
       await this.jobsService.updateStatus(session.activeJobId!, JobStatus.IN_PROGRESS);
       session.state = TechnicianConversationState.JOB_IN_PROGRESS;
 
-      await this.whatsapp.sendText({
+      await this.whatsapp.sendInteractiveButtons({
         to: technician.phone,
-        text: this.translation.translate('technician.job_started', session.language, {
+        body: this.translation.translate('technician.job_started', session.language, {
           jobNumber: session.activeJobNumber ?? '',
         }),
+        buttons: [
+          { id: '1', title: this.translation.translate('technician.complete_cash_button', session.language) },
+          { id: '2', title: this.translation.translate('technician.complete_upi_button', session.language) },
+        ],
       });
 
       // Notify customer
@@ -466,13 +474,17 @@ export class TechnicianBotService {
       customerLang,
     );
 
-    await this.whatsapp.sendText({
+    await this.whatsapp.sendInteractiveButtons({
       to: customer.phone,
-      text: this.translation.translate('customer.confirm_amount', customerLang, {
+      body: this.translation.translate('customer.confirm_amount', customerLang, {
         technicianName: technician.name,
         amount: String(amount),
         paymentMode: customerPaymentLabel,
       }),
+      buttons: [
+        { id: '1', title: this.translation.translate('customer.yes_correct', customerLang) },
+        { id: '2', title: this.translation.translate('customer.no_incorrect', customerLang) },
+      ],
     });
 
     // Set customer session to AWAITING_AMOUNT_CONFIRMATION

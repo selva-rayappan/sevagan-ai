@@ -144,14 +144,27 @@
 - ✅ States: IDLE → AWAITING_LANGUAGE → AWAITING_SERVICE → AWAITING_LOCATION → AWAITING_TIME → (job created) → IDLE
 
 #### 4.2 Customer Bot Flows
-- ✅ Language selection (first interaction)
-- ✅ Service category selection (numbered menu, generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu) (updated 2026-07-16)
+- ✅ Language selection (first interaction) — interactive buttons (EN/தமிழ்)
+- ✅ Service category selection — interactive list message (tap to select), generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu
 - ✅ Location capture (text or WhatsApp location share)
-- ✅ Scheduled time capture (free text)
+- ✅ Scheduled time capture — interactive list message (tap to select a slot), auto-regenerates on an invalid/stale reply
 - ✅ Job creation with `JOB-YYYYMMDD-NNNN` number format
 - ✅ TRACK, CANCEL, HELP commands
-- ✅ Amount confirmation flow (AWAITING_AMOUNT_CONFIRMATION)
-- ✅ Rating flow (AWAITING_RATING)
+- ✅ Amount confirmation flow (AWAITING_AMOUNT_CONFIRMATION) — interactive buttons (Yes Correct / No Incorrect)
+- ✅ Rating flow (AWAITING_RATING) — interactive list message (5 star-rating options)
+
+All customer/technician numbered-selection flows (service, time slot, amount
+confirm, rating, job accept/reject, start/decline, complete cash/UPI) were
+converted from typed numbers to tap-to-select WhatsApp interactive
+buttons/lists (2026-07-19) — `extractText()` already normalized
+`button_reply.id`/`list_reply.id` to the same string used for typed replies,
+so row/button `id`s reuse the existing "1", "2", ... values and no
+state-handler parsing logic needed to change, only the send side. Typed
+numeric replies still work as a fallback. Row/button title lengths are
+validated against WhatsApp's 24-char (list row) / 20-char (button) limits;
+`sendSelectionList` defensively truncates row titles since admin-entered
+service names can exceed that (DTO allows up to 120 chars for dashboard
+display).
 
 #### 4.3 Repositories
 - ✅ `CustomersRepository`: findByPhone, findById, upsert, updateLanguage
@@ -173,13 +186,14 @@
 - ✅ States: IDLE → JOB_OFFER_PENDING → JOB_ACCEPTED → JOB_IN_PROGRESS → AWAITING_COMPLETION
 
 #### 5.2 Bot Flows
-- ✅ Job offer notification (interactive buttons: Accept / Reject)
-- ✅ Accept (reply `1`): acceptedAt set, Job.status = ACCEPTED, Technician.status = BUSY, customer notified
-- ✅ Reject (reply `2`): assignment deleted, Job.status = NEW, session cleared
-- ✅ `START` command: IN_PROGRESS, customer notified
-- ✅ `COMPLETE <amount> <CASH|UPI>` command: amount + mode set, customer prompted for confirmation
+- ✅ Job offer notification — interactive buttons: Accept / Reject
+- ✅ Accept: acceptedAt set, Job.status = ACCEPTED, Technician.status = BUSY, customer notified; reply sends interactive buttons (Start / Decline) for the next step
+- ✅ Reject/Decline: assignment deleted, Job.status = NEW, session cleared, reassignment triggered
+- ✅ Start (interactive button): IN_PROGRESS, customer notified; reply sends interactive buttons (Complete Cash / Complete UPI) for the next step
+- ✅ Complete Cash/UPI (interactive buttons) → amount entered as free text → amount + mode set, customer prompted for confirmation via interactive buttons (Yes Correct / No Incorrect)
 - ✅ Photo upload: downloaded from Meta, stored in MinIO, URL appended to job
 - ✅ STATUS, JOBS, HELP commands
+- ✅ All button titles routed through `TranslationService` (`technician.accept_button`, `reject_button`, `start_button`, `decline_button`, `complete_cash_button`, `complete_upi_button`) — previously hardcoded English-only "Accept"/"Reject" strings (fixed 2026-07-19)
 
 #### 5.3 Repositories & Extensions
 - ✅ `TechniciansRepository`: findByPhone, findById, updateLanguage, updateStatus

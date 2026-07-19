@@ -26,12 +26,13 @@ import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.s
 
 const mockSendText = jest.fn().mockResolvedValue(undefined);
 const mockSendInteractiveButtons = jest.fn().mockResolvedValue(undefined);
+const mockSendInteractiveList = jest.fn().mockResolvedValue(undefined);
 const mockMarkAsRead = jest.fn().mockResolvedValue(undefined);
 
 const mockWhatsApp = {
   sendText: mockSendText,
   sendInteractiveButtons: mockSendInteractiveButtons,
-  sendInteractiveList: jest.fn().mockResolvedValue(undefined),
+  sendInteractiveList: mockSendInteractiveList,
   sendImage: jest.fn().mockResolvedValue(undefined),
   markAsRead: mockMarkAsRead,
 };
@@ -347,7 +348,8 @@ describe('CustomerBotService', () => {
 
       await service.handleMessage(makeTextMessage('9'), 'Rajesh');
 
-      expect(mockSendText).toHaveBeenCalledTimes(2);
+      expect(mockSendText).toHaveBeenCalledTimes(1);
+      expect(mockSendInteractiveList).toHaveBeenCalledTimes(1);
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: ConversationState.AWAITING_SERVICE }),
       );
@@ -362,7 +364,8 @@ describe('CustomerBotService', () => {
 
       await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 
-      expect(mockSendText).toHaveBeenCalledTimes(2);
+      expect(mockSendText).toHaveBeenCalledTimes(1);
+      expect(mockSendInteractiveList).toHaveBeenCalledTimes(1);
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: ConversationState.AWAITING_SERVICE }),
       );
@@ -832,7 +835,7 @@ describe('CustomerBotService', () => {
 
       await service.handleMessage(makeTextMessage('maybe'), 'Rajesh');
 
-      expect(mockSendText).toHaveBeenCalled();
+      expect(mockSendInteractiveButtons).toHaveBeenCalled();
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: ConversationState.AWAITING_AMOUNT_CONFIRMATION }),
       );
@@ -888,7 +891,7 @@ describe('CustomerBotService', () => {
 
       await service.handleMessage(makeTextMessage('6'), 'Rajesh');
 
-      expect(mockSendText).toHaveBeenCalled();
+      expect(mockSendInteractiveList).toHaveBeenCalled();
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: ConversationState.AWAITING_RATING }),
       );
@@ -900,7 +903,7 @@ describe('CustomerBotService', () => {
 
       await service.handleMessage(makeTextMessage('great'), 'Rajesh');
 
-      expect(mockSendText).toHaveBeenCalled();
+      expect(mockSendInteractiveList).toHaveBeenCalled();
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: ConversationState.AWAITING_RATING }),
       );

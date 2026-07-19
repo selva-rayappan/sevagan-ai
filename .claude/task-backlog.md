@@ -294,9 +294,9 @@
 ### 4.4 Service Request Flow
 | # | Task | Status |
 |---|------|--------|
-| 4.4.1 | Service numbered menu 1–8 sent (all 8 seeded categories) | ✅ |
-| 4.4.2 | On valid selection: lookup category by name in DB, advance to AWAITING_LOCATION | ✅ |
-| 4.4.3 | On invalid selection: error + re-send menu (state unchanged) | ✅ |
+| 4.4.1 | Service menu sent as an interactive list message (tap to select) — live from `findActive()`, order = `createdAt asc` (updated 2026-07-19, was a static numbered-text menu) | ✅ |
+| 4.4.2 | On valid selection: lookup category by id from session's `pendingServiceCategoryIds`, advance to AWAITING_LOCATION | ✅ |
+| 4.4.3 | On invalid selection: error + re-send list (state unchanged) | ✅ |
 
 ### 4.5 Location Handling
 | # | Task | Status |
@@ -373,7 +373,7 @@
 |---|------|--------|
 | 5.3.1 | `TechnicianBotService.sendJobOffer(technician, job, customer)` — sends interactive buttons | ✅ |
 | 5.3.2 | Message includes: customer name, service type, location, scheduled time (EN+TA) | ✅ |
-| 5.3.3 | Interactive buttons: `Accept` / `Reject` (localised per technician language) | ✅ |
+| 5.3.3 | Interactive buttons: `Accept` / `Reject` — titles now routed through `TranslationService` (`technician.accept_button`/`reject_button`), previously hardcoded English strings despite the "localised" intent (fixed 2026-07-19) | ✅ |
 | 5.3.4 | Set session state to `JOB_OFFER_PENDING`, store `offerExpiresAt` (15 min TTL) | ✅ |
 | 5.3.5 | Expired offer resets session to IDLE with `offer_expired` message on next incoming message | ✅ |
 
@@ -384,22 +384,23 @@
 | 5.4.2 | `2` / `reject_job` / `reject` / `நிராகரிக்கவும்`: delete assignment, `Job.status = NEW`, session cleared to IDLE | ✅ |
 | 5.4.3 | Expired offer detected on next message; session reset to IDLE | ✅ |
 
-### 5.5 START Command
+### 5.5 Start / Decline (after Accept)
 | # | Task | Status |
 |---|------|--------|
 | 5.5.1 | Validate: session must be `JOB_ACCEPTED` | ✅ |
-| 5.5.2 | Update `Job.status = IN_PROGRESS` | ✅ |
-| 5.5.3 | Send `job_started` to technician | ✅ |
-| 5.5.4 | Send `JOB_STARTED` notification to customer | ✅ |
-| 5.5.5 | Advance session to `JOB_IN_PROGRESS` | ✅ |
+| 5.5.2 | `job_accepted` sent as interactive buttons: Start / Decline (`technician.start_button`/`decline_button`) — was typed `START`/`1`/`2` text before 2026-07-19 | ✅ |
+| 5.5.3 | Update `Job.status = IN_PROGRESS` | ✅ |
+| 5.5.4 | Send `job_started` to technician as interactive buttons: Complete (Cash) / Complete (UPI) | ✅ |
+| 5.5.5 | Send `JOB_STARTED` notification to customer (plain text, informational only) | ✅ |
+| 5.5.6 | Advance session to `JOB_IN_PROGRESS` | ✅ |
 
-### 5.6 COMPLETE Command
+### 5.6 Job Completion
 | # | Task | Status |
 |---|------|--------|
-| 5.6.1 | Parse `COMPLETE <amount> <CASH\|UPI>` format (regex validates decimal amounts) | ✅ |
+| 5.6.1 | Complete (Cash) / Complete (UPI) selected via interactive buttons → `AWAITING_PAYMENT_AMOUNT` state; amount entered as free text (numeric, can't be a tap target) | ✅ |
 | 5.6.2 | Call `JobsService.setCompletion(id, amount, paymentMode)` — sets `jobAmount`, `paymentMode`, `status = COMPLETED` | ✅ |
-| 5.6.3 | Send `job_completed` to technician (commission placeholder until Phase 6) | ✅ |
-| 5.6.4 | Send `confirm_amount` to customer; set customer session to `AWAITING_AMOUNT_CONFIRMATION` | ✅ |
+| 5.6.3 | Send `job_completed` to technician (commission calculated via Phase 6 engine) | ✅ |
+| 5.6.4 | Send `confirm_amount` to customer as interactive buttons: Yes Correct / No Incorrect; set customer session to `AWAITING_AMOUNT_CONFIRMATION` | ✅ |
 
 ### 5.7 Photo Upload
 | # | Task | Status |

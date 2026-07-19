@@ -569,8 +569,11 @@ describe('TechnicianBotService', () => {
       await service.handleMessage(makeTextMessage('COMPLETE 500 CASH'), 'Kumar', makeTechnician());
 
       expect(mockSetCompletion).toHaveBeenCalledWith('job-1', 500, PaymentMode.CASH);
-      // 2 messages: one to technician (job_completed), one to customer (confirm_amount)
-      expect(mockSendText).toHaveBeenCalledTimes(2);
+      // one text to technician (job_completed), one interactive buttons to customer (confirm_amount)
+      expect(mockSendText).toHaveBeenCalledTimes(1);
+      expect(mockSendInteractiveButtons).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919876543210' }),
+      );
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: TechnicianConversationState.AWAITING_COMPLETION }),
       );

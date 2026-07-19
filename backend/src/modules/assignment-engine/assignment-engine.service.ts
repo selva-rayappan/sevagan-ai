@@ -139,8 +139,8 @@ export class AssignmentEngineService {
         scheduledTime,
       }),
       buttons: [
-        { id: 'accept_job', title: 'Accept' },
-        { id: 'reject_job', title: 'Reject' },
+        { id: 'accept_job', title: this.translation.translate('technician.accept_button', lang) },
+        { id: 'reject_job', title: this.translation.translate('technician.reject_button', lang) },
       ],
     });
 

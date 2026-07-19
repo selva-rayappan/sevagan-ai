@@ -26,18 +26,6 @@ import { CategoryMapperService } from '../../ai-dispatcher/category-mapper.servi
 import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.service';
 import { generateTimeSlots } from './time-slot.util';
 
-const SERVICE_ICONS: Record<string, string> = {
-  electrical: '⚡',
-  plumbing: '🔧',
-  ac_service: '❄️',
-  carpentry: '🪚',
-  painting: '🖌️',
-  appliance_repair: '⚙️',
-  ro_service: '💧',
-  cctv_installation: '📷',
-};
-const DEFAULT_SERVICE_ICON = '🛠️';
-
 @Injectable()
 export class CustomerBotService {
   private readonly logger = new Logger(CustomerBotService.name);
@@ -270,20 +258,40 @@ export class CustomerBotService {
     await this.showServiceMenu(session);
   }
 
+  private async sendSelectionList(
+    to: string,
+    language: Language,
+    body: string,
+    rows: { id: string; title: string }[],
+  ): Promise<void> {
+    const header = this.translation.translate('customer.list_header', language);
+    await this.whatsapp.sendInteractiveList({
+      to,
+      headerText: header,
+      body,
+      buttonText: this.translation.translate('customer.select_button', language),
+      // WhatsApp caps list row titles at 24 chars — admin-entered service
+      // names can be longer (validated up to 120 chars for dashboard display),
+      // so truncate defensively rather than let the whole send fail.
+      sections: [{ title: header, rows: rows.map((r) => ({ ...r, title: r.title.slice(0, 24) })) }],
+    });
+  }
+
   private async showServiceMenu(session: ConversationSession): Promise<void> {
     session.state = ConversationState.AWAITING_SERVICE;
 
-    const categories = await this.categoriesRepository.findActive();
+    const categories = (await this.categoriesRepository.findActive()).slice(0, 10);
     session.pendingServiceCategoryIds = categories.map((c) => c.id);
 
-    const menu = categories
-      .map((c, i) => `${i + 1}. ${this.translateServiceName(c.name, session.language)} ${this.serviceIcon(c.name)}`)
-      .join('\n');
-
-    await this.whatsapp.sendText({
-      to: session.phone,
-      text: `${this.translation.translate('customer.select_service', session.language)}\n\n${menu}`,
-    });
+    await this.sendSelectionList(
+      session.phone,
+      session.language,
+      this.translation.translate('customer.select_service', session.language),
+      categories.map((c, i) => ({
+        id: String(i + 1),
+        title: this.translateServiceName(c.name, session.language),
+      })),
+    );
   }
 
   private async handleServiceSelection(
@@ -331,14 +339,19 @@ export class CustomerBotService {
     session.location = location;
     session.state = ConversationState.AWAITING_TIME;
 
+    await this.showTimeSlotMenu(session);
+  }
+
+  private async showTimeSlotMenu(session: ConversationSession): Promise<void> {
     const slots = generateTimeSlots(new Date(), session.language);
     session.pendingTimeSlots = slots.map((s) => s.label);
 
-    const menu = slots.map((s, i) => `${i + 1}. ${s.label}`).join('\n');
-    await this.whatsapp.sendText({
-      to: session.phone,
-      text: `${this.translation.translate('customer.select_time_slot', session.language)}\n\n${menu}`,
-    });
+    await this.sendSelectionList(
+      session.phone,
+      session.language,
+      this.translation.translate('customer.select_time_slot', session.language),
+      slots.map((s, i) => ({ id: String(i + 1), title: s.label })),
+    );
   }
 
   private async handleTime(
@@ -355,6 +368,7 @@ export class CustomerBotService {
         to: session.phone,
         text: this.translation.translate('customer.invalid_time_slot', session.language),
       });
+      await this.showTimeSlotMenu(session);
       return;
     }
 
@@ -491,6 +505,7 @@ export class CustomerBotService {
         }),
       });
       session.state = ConversationState.AWAITING_RATING;
+      await this.sendRatingPrompt(session, ctx.technicianName);
 
       // Notify technician and free them up
       await this.notifyTechnicianConfirmed(ctx);
@@ -527,15 +542,38 @@ export class CustomerBotService {
       await this.notifyTechnicianDisputed(ctx);
 
     } else {
-      await this.whatsapp.sendText({
-        to: session.phone,
-        text: this.translation.translate('customer.confirm_amount', session.language, {
-          technicianName: ctx.technicianName,
-          amount: ctx.amount,
-          paymentMode: this.translation.translate(`payment_mode.${ctx.paymentMode}`, session.language),
-        }),
-      });
+      await this.sendAmountConfirmationPrompt(session, ctx);
     }
+  }
+
+  private async sendAmountConfirmationPrompt(
+    session: ConversationSession,
+    ctx: NonNullable<ConversationSession['activeJobContext']>,
+  ): Promise<void> {
+    await this.whatsapp.sendInteractiveButtons({
+      to: session.phone,
+      body: this.translation.translate('customer.confirm_amount', session.language, {
+        technicianName: ctx.technicianName,
+        amount: ctx.amount,
+        paymentMode: this.translation.translate(`payment_mode.${ctx.paymentMode}`, session.language),
+      }),
+      buttons: [
+        { id: '1', title: this.translation.translate('customer.yes_correct', session.language) },
+        { id: '2', title: this.translation.translate('customer.no_incorrect', session.language) },
+      ],
+    });
+  }
+
+  private async sendRatingPrompt(session: ConversationSession, technicianName: string): Promise<void> {
+    await this.sendSelectionList(
+      session.phone,
+      session.language,
+      this.translation.translate('customer.rate_technician', session.language, { technicianName }),
+      [5, 4, 3, 2, 1].map((n) => ({
+        id: String(n),
+        title: this.translation.translate(`customer.rating_${n}`, session.language),
+      })),
+    );
   }
 
   private async handleRating(session: ConversationSession, text: string): Promise<void> {
@@ -578,12 +616,7 @@ export class CustomerBotService {
       session.state = ConversationState.IDLE;
       delete session.activeJobContext;
     } else {
-      await this.whatsapp.sendText({
-        to: session.phone,
-        text: this.translation.translate('customer.rate_technician', session.language, {
-          technicianName: ctx.technicianName,
-        }),
-      });
+      await this.sendRatingPrompt(session, ctx.technicianName);
     }
   }
 
@@ -637,10 +670,6 @@ export class CustomerBotService {
     // Categories added via the admin UI have no matching i18n key — fall back
     // to the raw name rather than showing the untranslated key to customers.
     return translated === key ? name : translated;
-  }
-
-  private serviceIcon(name: string): string {
-    return SERVICE_ICONS[this.categoryNameToKey(name)] ?? DEFAULT_SERVICE_ICON;
   }
 
   private async generateInvoiceAndPayment(
