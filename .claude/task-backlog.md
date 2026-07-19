@@ -478,6 +478,7 @@
 | 6.1.2 | `calculateCommission(jobAmount, paymentMode)` — fetch active rule, apply FLAT or PERCENTAGE | ✅ |
 | 6.1.3 | `recordCommission(jobId)` — persist to `job_commissions` | ✅ |
 | 6.1.4 | Triggered on customer amount confirmation (reply '1' in `AWAITING_AMOUNT_CONFIRMATION`) | ✅ |
+| 6.1.5 | MVP: commission rules set to 0 (CASH FLAT, UPI PERCENTAGE) via admin Commission tab; display removed from invoice + technician messages (commented out, not deleted) while technicians onboard — see `docs/EXECUTION_PLAN.md` §6.1 (2026-07-19) | ✅ |
 
 ### 6.2 Commission Rule Service
 | # | Task | Status |

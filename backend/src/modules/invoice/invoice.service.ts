@@ -36,7 +36,8 @@ export class InvoiceService {
         customer: true,
         serviceCategory: true,
         assignment: { include: { technician: true } },
-        commission: true,
+        // MVP: commission not displayed on invoices — see pdfData below.
+        // commission: true,
       },
     });
 
@@ -63,8 +64,10 @@ export class InvoiceService {
     });
 
     const customerLang = (job.customer.language as Language) ?? Language.EN;
-    const commissionAmount = job.commission ? Number(job.commission.commissionAmount) : 0;
-    const technicianAmount = job.commission ? Number(job.commission.technicianAmount) : amount;
+    // MVP: commission not displayed on invoices — restore after stabilization
+    // (also uncomment `commission: true` in the include above):
+    // const commissionAmount = job.commission ? Number(job.commission.commissionAmount) : 0;
+    // const technicianAmount = job.commission ? Number(job.commission.technicianAmount) : amount;
 
     // Generate PDF
     const pdfData: InvoicePdfData = {
@@ -77,8 +80,8 @@ export class InvoiceService {
       location: job.location,
       technicianName: job.assignment?.technician?.name ?? 'N/A',
       jobAmount: amount,
-      commissionAmount,
-      technicianAmount,
+      // commissionAmount,
+      // technicianAmount,
       paymentMode: job.paymentMode ?? 'CASH',
       language: customerLang,
     };

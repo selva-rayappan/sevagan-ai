@@ -220,6 +220,7 @@ display).
 - ✅ Fetch active `CommissionRule` for paymentMode at calculation time
 - ✅ FLAT: `commission = rule.commissionValue`; PERCENTAGE: `commission = jobAmount * rule.commissionValue / 100`
 - ✅ Triggered on customer amount confirmation (`AWAITING_AMOUNT_CONFIRMATION` state, reply '1')
+- 🔄 **MVP (2026-07-19): commission set to 0** for both CASH (FLAT) and UPI (PERCENTAGE) via the existing admin Commission tab — technicians keep 100% during the onboarding/adoption period. `JobCommission` records still get created (commissionAmount=0) since `CommissionService`/`recordCommission()` are untouched; only the *display* of commission was removed (invoice PDF's "Service Fee" row, technician's `job_completed`/`settlement_processed` messages) — code commented out, not deleted, in `pdf-generator.service.ts`, `invoice.service.ts`, `technician-bot.service.ts` (+ specs). To re-enable: uncomment those blocks and raise the commission rules back above 0 via `POST /admin/commission-rules`.
 
 #### 6.2 Commission Rule Service
 - ✅ `CommissionRuleRepository`: `getActiveRule(paymentMode)`, `createRule(dto)` (auto-deactivates previous), `listRules()`

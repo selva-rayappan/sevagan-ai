@@ -8,7 +8,8 @@ import { TechniciansRepository } from '../../technicians/technicians.repository'
 import { AssignmentsRepository } from '../../assignments/assignments.repository';
 import { JobsService } from '../../jobs/jobs.service';
 import { CustomersRepository } from '../../customers/customers.repository';
-import { CommissionService } from '../../commission/commission.service';
+// MVP: commission not applied/displayed — see technician-bot.service.ts.
+// import { CommissionService } from '../../commission/commission.service';
 import { ConversationStateService } from '../conversation/conversation-state.service';
 import { MinioService } from '../../../infrastructure/storage/minio.service';
 import { Language, JobStatus, TechnicianStatus, PaymentMode } from '../../../domain/enums';
@@ -68,10 +69,11 @@ const mockJobsService = {
 
 const mockCustomersRepository = {};
 
-const mockCalculateCommission = jest.fn().mockResolvedValue({ commissionAmount: 0, technicianAmount: 500 });
-const mockCommissionService = {
-  calculateCommission: mockCalculateCommission,
-};
+// MVP: commission not applied/displayed — see technician-bot.service.ts.
+// const mockCalculateCommission = jest.fn().mockResolvedValue({ commissionAmount: 0, technicianAmount: 500 });
+// const mockCommissionService = {
+//   calculateCommission: mockCalculateCommission,
+// };
 
 const mockGetCustomerSession = jest.fn();
 const mockSaveCustomerSession = jest.fn().mockResolvedValue(undefined);
@@ -162,7 +164,8 @@ describe('TechnicianBotService', () => {
         { provide: AssignmentsRepository, useValue: mockAssignmentsRepository },
         { provide: JobsService, useValue: mockJobsService },
         { provide: CustomersRepository, useValue: mockCustomersRepository },
-        { provide: CommissionService, useValue: mockCommissionService },
+        // MVP: commission not applied/displayed — see technician-bot.service.ts.
+        // { provide: CommissionService, useValue: mockCommissionService },
         { provide: ConversationStateService, useValue: mockCustomerSessionService },
         { provide: MinioService, useValue: mockMinioService },
         { provide: AssignmentEngineService, useValue: mockAssignmentEngineService },

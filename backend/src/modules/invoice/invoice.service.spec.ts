@@ -51,6 +51,7 @@ const makeJob = (overrides = {}): any => ({
   customer: { name: 'Rajesh', phone: '919876543210', language: 'EN' },
   serviceCategory: { name: 'Electrical' },
   assignment: { technician: { name: 'Kumar' } },
+  // MVP: commission not displayed on invoices — see invoice.service.ts.
   commission: { commissionAmount: 20, technicianAmount: 980 },
   ...overrides,
 });
@@ -125,8 +126,9 @@ describe('InvoiceService', () => {
         expect.objectContaining({
           jobNumber: 'JOB-20260630-0001',
           jobAmount: 1000,
-          commissionAmount: 20,
-          technicianAmount: 980,
+          // MVP: commission not displayed on invoices — see invoice.service.ts.
+          // commissionAmount: 20,
+          // technicianAmount: 980,
           language: Language.EN,
         }),
       );
@@ -146,10 +148,13 @@ describe('InvoiceService', () => {
       );
     });
 
-    it('falls back to job amount and N/A technician when commission or assignment is missing', async () => {
-      mockFindUniqueJob.mockResolvedValue(
-        makeJob({ assignment: null, commission: null }),
-      );
+    // MVP: was 'falls back to job amount and N/A technician when commission or
+    // assignment is missing' — the commission-fallback half is inactive while
+    // commission is not displayed (see invoice.service.ts); restore
+    // `commission: null` to the makeJob() call and the commissionAmount/
+    // technicianAmount assertions below once re-enabled.
+    it('falls back to N/A technician when assignment is missing', async () => {
+      mockFindUniqueJob.mockResolvedValue(makeJob({ assignment: null }));
       mockFindByJobId.mockResolvedValue(null);
       mockCreate.mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-20260630-0001' });
 
@@ -158,8 +163,8 @@ describe('InvoiceService', () => {
       expect(mockGenerateInvoicePdf).toHaveBeenCalledWith(
         expect.objectContaining({
           technicianName: 'N/A',
-          commissionAmount: 0,
-          technicianAmount: 1000,
+          // commissionAmount: 0,
+          // technicianAmount: 1000,
         }),
       );
     });

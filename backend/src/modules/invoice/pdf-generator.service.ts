@@ -13,8 +13,10 @@ export interface InvoicePdfData {
   location: string;
   technicianName: string;
   jobAmount: number;
-  commissionAmount: number;
-  technicianAmount: number;
+  // MVP: commission not displayed on invoices during technician onboarding
+  // period — restore after stabilization (see the "Service Fee" row below).
+  // commissionAmount: number;
+  // technicianAmount: number;
   paymentMode: string;
   language: Language;
 }
@@ -134,7 +136,8 @@ export class PdfGeneratorService {
       doc.fontSize(10).font('Body').fillColor('#334155');
 
       this.addRow(doc, isTA ? 'மொத்த தொகை' : 'Total Amount', `₹${data.jobAmount.toFixed(2)}`);
-      this.addRow(doc, isTA ? 'சேவை கட்டணம்' : 'Service Fee', `₹${data.commissionAmount.toFixed(2)}`);
+      // MVP: commission not displayed during technician onboarding period.
+      // this.addRow(doc, isTA ? 'சேவை கட்டணம்' : 'Service Fee', `₹${data.commissionAmount.toFixed(2)}`);
 
       doc.moveDown(0.5);
       doc

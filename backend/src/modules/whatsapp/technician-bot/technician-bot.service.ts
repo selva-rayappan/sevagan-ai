@@ -12,7 +12,8 @@ import { TechniciansRepository } from '../../technicians/technicians.repository'
 import { AssignmentsRepository } from '../../assignments/assignments.repository';
 import { JobsService } from '../../jobs/jobs.service';
 import { CustomersRepository } from '../../customers/customers.repository';
-import { CommissionService } from '../../commission/commission.service';
+// MVP: commission not applied/displayed during technician onboarding period — see handleCompleteCommand.
+// import { CommissionService } from '../../commission/commission.service';
 import { ConversationStateService } from '../conversation/conversation-state.service';
 import { ConversationState } from '../conversation/conversation-state.types';
 import { TechnicianSessionService } from './technician-session.service';
@@ -32,7 +33,8 @@ export class TechnicianBotService {
     private readonly assignmentsRepository: AssignmentsRepository,
     private readonly jobsService: JobsService,
     private readonly customersRepository: CustomersRepository,
-    private readonly commissionService: CommissionService,
+    // MVP: commission not applied/displayed during technician onboarding period.
+    // private readonly commissionService: CommissionService,
     private readonly customerSessionService: ConversationStateService,
     private readonly minioService: MinioService,
     private readonly translation: TranslationService,
@@ -451,9 +453,14 @@ export class TechnicianBotService {
       session.language,
     );
 
-    const { commissionAmount, technicianAmount } = await this.commissionService
-      .calculateCommission(amount, paymentMode)
-      .catch(() => ({ commissionAmount: 0, technicianAmount: amount }));
+    // MVP: commission not applied/displayed during technician onboarding period.
+    // Restore after stabilization: inject CommissionService above, then
+    // const { commissionAmount, technicianAmount } = await this.commissionService
+    //   .calculateCommission(amount, paymentMode)
+    //   .catch(() => ({ commissionAmount: 0, technicianAmount: amount }));
+    // and pass `commission: String(commissionAmount), netAmount: String(technicianAmount)`
+    // into the job_completed translate() call below (see en.json/ta.json git history
+    // for the original message text with the Gross/Commission/Net breakdown).
 
     await this.whatsapp.sendText({
       to: technician.phone,
@@ -461,8 +468,6 @@ export class TechnicianBotService {
         jobNumber: session.activeJobNumber ?? '',
         amount: String(amount),
         paymentMode: paymentLabel,
-        commission: String(commissionAmount),
-        netAmount: String(technicianAmount),
       }),
     });
 

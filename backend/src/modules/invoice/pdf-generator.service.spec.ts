@@ -16,8 +16,9 @@ describe('PdfGeneratorService', () => {
     location: 'Virudhunagar',
     technicianName: 'Kumar',
     jobAmount: 1000,
-    commissionAmount: 20,
-    technicianAmount: 980,
+    // MVP: commission not displayed — see InvoicePdfData in pdf-generator.service.ts.
+    // commissionAmount: 20,
+    // technicianAmount: 980,
     paymentMode: 'CASH',
     language: Language.EN,
   };
