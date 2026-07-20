@@ -6,6 +6,8 @@
     "ask_location": "Please share your location or type your area name.\n(e.g., Virudhunagar, Sattur Road)",
     "select_time_slot": "When do you need this service? Please select a time slot:",
     "invalid_time_slot": "Please select a time slot from the list.",
+    "idle_reminder": "👋 Are you still there? We're ready whenever you'd like to continue your service request.",
+    "idle_dropoff": "😔 Sorry that we were not able to service you this time. Please reach out to us anytime for any future service needs!",
     "job_created": "✅ Your request is confirmed!\n\nJob No: {{jobNumber}}\nService: {{service}}\nLocation: {{location}}\nTime: {{scheduledTime}}\n\nWe are finding the best technician for you. You will be notified shortly.",
     "job_assigned": "🔧 Technician Assigned!\n\n👤 {{technicianName}}\n📞 {{technicianPhone}}\n📅 Arriving at {{scheduledTime}}\n\nJob: {{jobNumber}}\n\nYou will be notified when they are on the way.",
     "technician_on_way": "🚗 {{technicianName}} is on the way to your location!\n\nJob: {{jobNumber}}",

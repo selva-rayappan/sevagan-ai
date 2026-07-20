@@ -32,4 +32,10 @@ export interface ConversationSession {
   pendingTimeSlots?: string[];
   activeJobContext?: ActiveJobContext;
   updatedAt: string;
+  // Tracks real customer activity separately from updatedAt, since
+  // saveSession() bumps updatedAt on every write — including the automated
+  // idle-nudge writes below, which would otherwise reset the idle clock.
+  lastCustomerMessageAt?: string;
+  idleReminderSentAt?: string;
+  idleDropOffSentAt?: string;
 }

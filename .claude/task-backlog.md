@@ -327,6 +327,16 @@
 | 4.8.2 | `CANCEL JOB-YYYYMMDD-NNNN` — cancels NEW/ASSIGNED jobs; rejects IN_PROGRESS+ | ✅ |
 | 4.8.3 | `HELP` / `உதவி` — help message in customer's language | ✅ |
 
+### 4.8a Idle Session Nudge (added 2026-07-20)
+| # | Task | Status |
+|---|------|--------|
+| 4.8a.1 | `CustomerIdleNudgeService` — `setInterval` polls every 60s, `SCAN conv:*` via `RedisService.getClient()` | ✅ |
+| 4.8a.2 | Only nudges AWAITING_LANGUAGE/SERVICE/LOCATION/TIME (mid-request); skips IDLE and post-job AWAITING_AMOUNT_CONFIRMATION/AWAITING_RATING | ✅ |
+| 4.8a.3 | `customer.idle_reminder` sent once after 15 min idle (`idleReminderSentAt` flag) | ✅ |
+| 4.8a.4 | `customer.idle_dropoff` sent once after 30 min idle (`idleDropOffSentAt` flag), resets session to IDLE and clears in-progress selection fields | ✅ |
+| 4.8a.5 | Idle time measured via new `lastCustomerMessageAt` field, set only on real inbound customer messages — kept separate from `updatedAt` (which `saveSession()` bumps on every write, including the nudge's own) so sending a nudge doesn't reset the idle clock | ✅ |
+| 4.8a.6 | Both idle flags cleared on the customer's next real message, so nudges can fire again for a later idle period in the same conversation | ✅ |
+
 ### 4.9 Repositories
 | # | Task | Status |
 |---|------|--------|

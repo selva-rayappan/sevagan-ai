@@ -67,6 +67,10 @@ export class CustomerBotService {
       session.language = customer.language as Language;
     }
 
+    session.lastCustomerMessageAt = new Date().toISOString();
+    delete session.idleReminderSentAt;
+    delete session.idleDropOffSentAt;
+
     const text = this.extractText(message);
 
     const commandHandled = await this.handleCommand(text, session, customer);

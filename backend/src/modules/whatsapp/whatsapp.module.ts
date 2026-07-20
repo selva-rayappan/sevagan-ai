@@ -3,6 +3,7 @@ import { WebhookController } from './webhook/webhook.controller';
 import { WebhookHmacGuard } from './guards/webhook-hmac.guard';
 import { ConversationStateService } from './conversation/conversation-state.service';
 import { CustomerBotService } from './customer-bot/customer-bot.service';
+import { CustomerIdleNudgeService } from './customer-bot/customer-idle-nudge.service';
 import { TechnicianSessionModule } from './technician-bot/technician-session.module';
 import { TechnicianBotService } from './technician-bot/technician-bot.service';
 import { CustomersModule } from '../customers/customers.module';
@@ -41,6 +42,7 @@ import { AIDispatcherModule } from '../ai-dispatcher/ai-dispatcher.module';
     WebhookHmacGuard,
     ConversationStateService,
     CustomerBotService,
+    CustomerIdleNudgeService,
     TechnicianBotService,
   ],
   exports: [TechnicianBotService],

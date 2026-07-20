@@ -152,6 +152,7 @@
 - ✅ TRACK, CANCEL, HELP commands
 - ✅ Amount confirmation flow (AWAITING_AMOUNT_CONFIRMATION) — interactive buttons (Yes Correct / No Incorrect)
 - ✅ Rating flow (AWAITING_RATING) — interactive list message (5 star-rating options)
+- ✅ Idle nudge (added 2026-07-20): `CustomerIdleNudgeService` polls Redis every 60s (`conv:*` SCAN) for customers parked mid-request (AWAITING_LANGUAGE/SERVICE/LOCATION/TIME only — not post-job states, where "sorry we couldn't service you" would be confusing). Sends `customer.idle_reminder` once after 15 min of no reply, `customer.idle_dropoff` once after 30 min and resets the session to IDLE. Idle time is measured from a dedicated `lastCustomerMessageAt` field (not `updatedAt`, which the nudge's own save would otherwise reset) and clears on the customer's next real message so nudges can fire again for a future idle period.
 
 All customer/technician numbered-selection flows (service, time slot, amount
 confirm, rating, job accept/reject, start/decline, complete cash/UPI) were
