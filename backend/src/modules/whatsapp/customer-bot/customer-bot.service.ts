@@ -181,9 +181,9 @@ export class CustomerBotService {
     session.selectedCategoryName = match.categoryName;
     session.state = ConversationState.AWAITING_LOCATION;
 
-    await this.whatsapp.sendText({
+    await this.whatsapp.sendLocationRequest({
       to: session.phone,
-      text: this.translation.translate('customer.ask_location', session.language),
+      body: this.translation.translate('customer.ask_location', session.language),
     });
     return true;
   }
@@ -316,9 +316,9 @@ export class CustomerBotService {
     session.selectedCategoryName = category.name;
     session.state = ConversationState.AWAITING_LOCATION;
 
-    await this.whatsapp.sendText({
+    await this.whatsapp.sendLocationRequest({
       to: session.phone,
-      text: this.translation.translate('customer.ask_location', session.language),
+      body: this.translation.translate('customer.ask_location', session.language),
     });
   }
 

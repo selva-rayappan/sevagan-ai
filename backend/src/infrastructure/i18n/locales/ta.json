@@ -37,7 +37,7 @@
   },
   "technician": {
     "job_offer": "🔔 புதிய வேலை கிடைத்தது!\n\nவாடிக்கையாளர்: {{customerName}}\n📍 இடம்: {{location}}\n🔧 சேவை: {{service}}\n📅 நேரம்: {{scheduledTime}}\n\n⏰ 15 நிமிடத்தில் பதில் அளிக்கவும்.",
-    "job_accepted": "✅ வேலை ஏற்றுக்கொள்ளப்பட்டது!\n\nவேலை எண்: {{jobNumber}}\nவாடிக்கையாளர்: {{customerName}}\nஇடம்: {{location}}\nநேரம்: {{scheduledTime}}",
+    "job_accepted": "✅ வேலை ஏற்றுக்கொள்ளப்பட்டது!\n\nவேலை எண்: {{jobNumber}}\nவாடிக்கையாளர்: {{customerName}}\n📞 {{customerPhone}}\nஇடம்: {{location}}\nநேரம்: {{scheduledTime}}",
     "job_rejected": "❌ வேலை {{jobNumber}} மறுக்கப்பட்டது. வேறொரு தொழில்நுட்பவியலாளரை நியமிக்கிறோம்.\n\nஅடுத்த வேலை விரைவில் வரும்.",
     "job_started": "🔨 வேலை {{jobNumber}} தொடங்கியது! வேலை முடிந்தவுடன் தெரிவிக்கவும்.",
     "ask_completion_amount": "பெற்ற தொகையை உள்ளிடவும் (எண்கள் மட்டும்):",

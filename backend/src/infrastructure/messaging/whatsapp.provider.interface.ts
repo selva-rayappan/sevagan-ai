@@ -3,6 +3,7 @@ import {
   SendImageOptions,
   SendInteractiveButtonsOptions,
   SendInteractiveListOptions,
+  SendLocationRequestOptions,
   SendTextOptions,
 } from './types/outbound-message.types';
 
@@ -17,6 +18,7 @@ export interface WhatsAppProvider {
   sendText(options: SendTextOptions): Promise<void>;
   sendInteractiveButtons(options: SendInteractiveButtonsOptions): Promise<void>;
   sendInteractiveList(options: SendInteractiveListOptions): Promise<void>;
+  sendLocationRequest(options: SendLocationRequestOptions): Promise<void>;
   sendImage(options: SendImageOptions): Promise<void>;
   sendDocument(options: SendDocumentOptions): Promise<void>;
   markAsRead(messageId: string): Promise<void>;

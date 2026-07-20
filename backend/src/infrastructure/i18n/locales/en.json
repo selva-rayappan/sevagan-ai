@@ -37,7 +37,7 @@
   },
   "technician": {
     "job_offer": "🔔 New Job Available!\n\nCustomer: {{customerName}}\n📍 Location: {{location}}\n🔧 Service: {{service}}\n📅 Time: {{scheduledTime}}\n\n⏰ Please respond within 15 minutes.",
-    "job_accepted": "✅ Job Accepted!\n\nJob No: {{jobNumber}}\nCustomer: {{customerName}}\nLocation: {{location}}\nTime: {{scheduledTime}}",
+    "job_accepted": "✅ Job Accepted!\n\nJob No: {{jobNumber}}\nCustomer: {{customerName}}\n📞 {{customerPhone}}\nLocation: {{location}}\nTime: {{scheduledTime}}",
     "job_rejected": "❌ Job {{jobNumber}} rejected. We will assign another technician.\n\nYou will receive the next available job shortly.",
     "job_started": "🔨 Job {{jobNumber}} started. Good luck! When work is complete, let us know.",
     "ask_completion_amount": "Please enter the amount received (numbers only):",

@@ -5,6 +5,7 @@ import {
   SendImageOptions,
   SendInteractiveButtonsOptions,
   SendInteractiveListOptions,
+  SendLocationRequestOptions,
   SendTextOptions,
 } from './types/outbound-message.types';
 
@@ -28,6 +29,10 @@ export class MockWhatsAppProvider implements WhatsAppProvider {
 
   async sendInteractiveList({ to, body, buttonText, sections }: SendInteractiveListOptions): Promise<void> {
     this.logger.log(`[MOCK] sendInteractiveList -> ${to}: ${body} (${buttonText}, ${sections.length} sections)`);
+  }
+
+  async sendLocationRequest({ to, body }: SendLocationRequestOptions): Promise<void> {
+    this.logger.log(`[MOCK] sendLocationRequest -> ${to}: ${body}`);
   }
 
   async sendImage({ to, mediaId, caption }: SendImageOptions): Promise<void> {

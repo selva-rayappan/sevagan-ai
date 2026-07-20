@@ -141,6 +141,21 @@ describe('MetaWhatsAppProvider', () => {
     });
   });
 
+  describe('sendLocationRequest()', () => {
+    it('posts an interactive location_request_message', async () => {
+      await provider.sendLocationRequest({
+        to: '919876543210',
+        body: 'Please share your location or type your area name.',
+      });
+
+      const [, payload] = mockPost.mock.calls[0];
+      expect(payload.type).toBe('interactive');
+      expect(payload.interactive.type).toBe('location_request_message');
+      expect(payload.interactive.body.text).toBe('Please share your location or type your area name.');
+      expect(payload.interactive.action).toEqual({ name: 'send_location' });
+    });
+  });
+
   describe('sendImage()', () => {
     it('posts an image message with media ID and caption', async () => {
       await provider.sendImage({

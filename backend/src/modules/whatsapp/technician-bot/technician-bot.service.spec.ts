@@ -352,6 +352,35 @@ describe('TechnicianBotService', () => {
       );
     });
 
+    it('sends the customer phone number to the technician on acceptance', async () => {
+      const session = pendingSession();
+      mockGetSession.mockResolvedValue(session);
+      const assignment = { id: 'assign-1', jobId: 'job-1' };
+      mockFindByJobId.mockResolvedValue(assignment);
+      mockAcceptAssignment.mockResolvedValue({ ...assignment, acceptedAt: new Date() });
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.ACCEPTED });
+      mockUpdateTechStatus.mockResolvedValue(undefined);
+      mockFindWithDetails.mockResolvedValue(
+        makeJobWithDetails({ customer: { id: 'cust-1', phone: '919876543210', name: 'Rajesh', language: Language.EN } }),
+      );
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE',
+        phone: '919876543210',
+        language: Language.EN,
+        updatedAt: new Date().toISOString(),
+      });
+
+      await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
+
+      expect(mockSendInteractiveButtons).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '919100000000',
+          body: expect.stringContaining('+919876543210'),
+        }),
+      );
+    });
+
     it('still persists the advanced state when the outbound WhatsApp send fails', async () => {
       const session = pendingSession();
       mockGetSession.mockResolvedValue(session);

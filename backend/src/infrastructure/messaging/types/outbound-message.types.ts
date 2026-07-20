@@ -35,6 +35,11 @@ export interface SendInteractiveListOptions {
   footer?: string;
 }
 
+export interface SendLocationRequestOptions {
+  to: string;
+  body: string;
+}
+
 export interface SendImageOptions {
   to: string;
   mediaId: string;

@@ -146,7 +146,7 @@
 #### 4.2 Customer Bot Flows
 - ✅ Language selection (first interaction) — interactive buttons (EN/தமிழ்)
 - ✅ Service category selection — interactive list message (tap to select), generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu
-- ✅ Location capture (text or WhatsApp location share)
+- ✅ Location capture — sent as an interactive `location_request_message` (native "Send Location" button) with typed free text as a fully-supported fallback (`WhatsAppProvider.sendLocationRequest`, added 2026-07-20)
 - ✅ Scheduled time capture — interactive list message (tap to select a slot), auto-regenerates on an invalid/stale reply
 - ✅ Job creation with `JOB-YYYYMMDD-NNNN` number format
 - ✅ TRACK, CANCEL, HELP commands
@@ -187,7 +187,7 @@ display).
 
 #### 5.2 Bot Flows
 - ✅ Job offer notification — interactive buttons: Accept / Reject
-- ✅ Accept: acceptedAt set, Job.status = ACCEPTED, Technician.status = BUSY, customer notified; reply sends interactive buttons (Start / Decline) for the next step
+- ✅ Accept: acceptedAt set, Job.status = ACCEPTED, Technician.status = BUSY, customer notified; reply sends interactive buttons (Start / Decline) for the next step; technician's `job_accepted` message now also includes the customer's phone number (`customerPhone`, added 2026-07-20) so they can call ahead
 - ✅ Reject/Decline: assignment deleted, Job.status = NEW, session cleared, reassignment triggered
 - ✅ Start (interactive button): IN_PROGRESS, customer notified; reply sends interactive buttons (Complete Cash / Complete UPI) for the next step
 - ✅ Complete Cash/UPI (interactive buttons) → amount entered as free text → amount + mode set, customer prompted for confirmation via interactive buttons (Yes Correct / No Incorrect)

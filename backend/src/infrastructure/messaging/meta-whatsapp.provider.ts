@@ -7,6 +7,7 @@ import {
   SendImageOptions,
   SendInteractiveButtonsOptions,
   SendInteractiveListOptions,
+  SendLocationRequestOptions,
   SendTextOptions,
 } from './types/outbound-message.types';
 
@@ -94,6 +95,20 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
           button: buttonText.substring(0, 20),
           sections,
         },
+      },
+    });
+  }
+
+  async sendLocationRequest({ to, body }: SendLocationRequestOptions): Promise<void> {
+    await this.post('/messages', {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'interactive',
+      interactive: {
+        type: 'location_request_message',
+        body: { text: body },
+        action: { name: 'send_location' },
       },
     });
   }

@@ -27,12 +27,14 @@ import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.s
 const mockSendText = jest.fn().mockResolvedValue(undefined);
 const mockSendInteractiveButtons = jest.fn().mockResolvedValue(undefined);
 const mockSendInteractiveList = jest.fn().mockResolvedValue(undefined);
+const mockSendLocationRequest = jest.fn().mockResolvedValue(undefined);
 const mockMarkAsRead = jest.fn().mockResolvedValue(undefined);
 
 const mockWhatsApp = {
   sendText: mockSendText,
   sendInteractiveButtons: mockSendInteractiveButtons,
   sendInteractiveList: mockSendInteractiveList,
+  sendLocationRequest: mockSendLocationRequest,
   sendImage: jest.fn().mockResolvedValue(undefined),
   markAsRead: mockMarkAsRead,
 };

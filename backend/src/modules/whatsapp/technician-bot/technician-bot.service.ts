@@ -226,6 +226,7 @@ export class TechnicianBotService {
       body: this.translation.translate('technician.job_accepted', session.language, {
         jobNumber: job.jobNumber,
         customerName: job.customer.name ?? 'Customer',
+        customerPhone: `+${job.customer.phone}`,
         location: job.location,
         scheduledTime: this.extractScheduledTime(job.description),
       }),
