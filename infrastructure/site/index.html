@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" href="./index_files/logo-new.png">
   <!-- Font Awesome 6 & Google Fonts -->
   <link rel="stylesheet" href="./index_files/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Tamil:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -28,7 +28,7 @@
     }
 
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', 'Noto Sans Tamil', sans-serif;
       background-color: #F4F6FA;
       color: #14213D;
       overflow-x: hidden;
@@ -96,7 +96,7 @@
     nav ul {
       display: flex;
       align-items: center;
-      gap: 1.8rem;
+      gap: 1.6rem;
       list-style: none;
     }
 
@@ -152,6 +152,37 @@
     .nav-cta i { color: #06210F !important; }
 
     .nav-cta::before { display: none; }
+
+    .lang-toggle {
+      display: flex;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 20px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .lang-btn {
+      padding: 5px 13px;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: #DCE3F0;
+      background: transparent;
+      border: none;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+
+    .lang-btn:hover {
+      color: #FFFFFF;
+    }
+
+    .lang-btn.active {
+      background: var(--secondary);
+      color: var(--primary);
+    }
 
     /* Hero */
     .hero {
@@ -778,7 +809,7 @@
 
     @media (max-width: 968px) {
       nav .container { flex-direction: column; gap: 1rem; padding: 0.8rem 0; }
-      nav ul { flex-wrap: wrap; justify-content: center; gap: 1.1rem; }
+      nav ul { flex-wrap: wrap; justify-content: center; gap: 1rem; }
       nav ul li a { font-size: 0.85rem; }
       .logo { font-size: 1.6rem; }
       .hero { padding: 2rem 0 3rem; min-height: auto; }
@@ -852,7 +883,7 @@
       .hero h1 { font-size: 1.6rem; }
       .hero-image-card { width: 190px; height: 190px; }
       .highlight-item { width: 100%; }
-      nav ul { gap: 0.8rem; }
+      nav ul { gap: 0.7rem; }
       nav ul li a { font-size: 0.75rem; }
     }
   </style>
@@ -861,16 +892,22 @@
 <body>
   <nav>
     <div class="container">
-      <div class="logo"><i class="fa-solid fa-leaf"></i> Sevagan</div>
+      <div class="logo"><i class="fa-solid fa-leaf"></i> <span class="i18n" data-en="Sevagan" data-ta="சேவகன்">Sevagan</span></div>
       <ul>
-        <li><a href="https://sevagan.co.in/#home" class="active"><i class="fas fa-house"></i> Home</a></li>
-        <li><a href="https://sevagan.co.in/#about"><i class="fas fa-circle-info"></i> About</a></li>
-        <li><a href="https://sevagan.co.in/#services"><i class="fas fa-toolbox"></i> Services</a></li>
-        <li><a href="https://sevagan.co.in/#howitworks"><i class="fas fa-route"></i> Process</a></li>
-        <li><a href="https://sevagan.co.in/#policies"><i class="fas fa-scale-balanced"></i> Policies</a></li>
-        <li><a href="https://sevagan.co.in/#contact"><i class="fas fa-address-book"></i> Contact</a></li>
-        <li><a href="https://admin.sevagan.co.in/login"><i class="fas fa-right-to-bracket"></i> Admin Login</a></li>
-        <li><a href="https://wa.me/917708100871" target="_blank" rel="noopener" class="nav-cta"><i class="fab fa-whatsapp"></i> Chat</a></li>
+        <li><a href="https://sevagan.co.in/#home" class="active"><i class="fas fa-house"></i> <span class="i18n" data-en="Home" data-ta="முகப்பு">Home</span></a></li>
+        <li><a href="https://sevagan.co.in/#about"><i class="fas fa-circle-info"></i> <span class="i18n" data-en="About" data-ta="எங்களைப் பற்றி">About</span></a></li>
+        <li><a href="https://sevagan.co.in/#services"><i class="fas fa-toolbox"></i> <span class="i18n" data-en="Services" data-ta="சேவைகள்">Services</span></a></li>
+        <li><a href="https://sevagan.co.in/#howitworks"><i class="fas fa-route"></i> <span class="i18n" data-en="Process" data-ta="செயல்முறை">Process</span></a></li>
+        <li><a href="https://sevagan.co.in/#policies"><i class="fas fa-scale-balanced"></i> <span class="i18n" data-en="Policies" data-ta="கொள்கைகள்">Policies</span></a></li>
+        <li><a href="https://sevagan.co.in/#contact"><i class="fas fa-address-book"></i> <span class="i18n" data-en="Contact" data-ta="தொடர்பு">Contact</span></a></li>
+        <li><a href="https://admin.sevagan.co.in/login"><i class="fas fa-right-to-bracket"></i> <span class="i18n" data-en="Admin Login" data-ta="நிர்வாக உள்நுழைவு">Admin Login</span></a></li>
+        <li><a href="https://wa.me/917708100871" target="_blank" rel="noopener" class="nav-cta"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Chat" data-ta="பேசுவோம்">Chat</span></a></li>
+        <li>
+          <div class="lang-toggle">
+            <button type="button" class="lang-btn active" data-lang="en">EN</button>
+            <button type="button" class="lang-btn" data-lang="ta">தமிழ்</button>
+          </div>
+        </li>
       </ul>
     </div>
   </nav>
@@ -878,14 +915,14 @@
   <section id="home" class="hero">
     <div class="container">
       <div class="hero-content">
-        <span class="hero-badge"><i class="fas fa-leaf"></i> WhatsApp-first · Eco-conscious service</span>
-        <h1>Home services,<br> the <span>simple</span> way.</h1>
-        <p>Sevagan connects Virudhunagar households with verified local technicians — entirely over WhatsApp.
+        <span class="hero-badge"><i class="fas fa-leaf"></i> <span class="i18n" data-en="WhatsApp-first · Eco-conscious service" data-ta="WhatsApp முதன்மை · சுற்றுச்சூழல் நேயம் கொண்ட சேவை">WhatsApp-first · Eco-conscious service</span></span>
+        <h1 class="i18n" data-en="Home services,<br> the <span>simple</span> way." data-ta="வீட்டு சேவைகள்,<br> மிக <span>எளிய</span> வழியில்.">Home services,<br> the <span>simple</span> way.</h1>
+        <p class="i18n" data-en="Sevagan connects Virudhunagar households with verified local technicians — entirely over WhatsApp. No app to install, no account to create. Just message us and get matched with a trusted professional." data-ta="சேவகன், விருதுநகர் வீடுகளை சரிபார்க்கப்பட்ட உள்ளூர் தொழில்நுட்பவியலாளர்களுடன் இணைக்கிறது — முழுவதும் WhatsApp வழியாக. ஆப் நிறுவ வேண்டாம், கணக்கு தேவையில்லை. எங்களுக்கு மெசேஜ் அனுப்பினால் போதும், நம்பகமான நிபுணர் உங்களுக்கு கிடைப்பார்.">Sevagan connects Virudhunagar households with verified local technicians — entirely over WhatsApp.
           No app to install, no account to create. Just message us and get matched with a trusted professional.</p>
         <div class="hero-lang-note"><i class="fas fa-language"></i> Available in English &amp; தமிழ் (Tamil)</div>
         <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: flex-start;">
-          <a href="https://wa.me/917708100871" target="_blank" rel="noopener" class="btn-primary"><i class="fab fa-whatsapp"></i> Chat on WhatsApp</a>
-          <a href="https://sevagan.co.in/#services" class="btn-outline-light"><i class="fas fa-compass"></i> Explore Services</a>
+          <a href="https://wa.me/917708100871" target="_blank" rel="noopener" class="btn-primary"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Chat on WhatsApp" data-ta="WhatsApp-இல் பேசுங்கள்">Chat on WhatsApp</span></a>
+          <a href="https://sevagan.co.in/#services" class="btn-outline-light"><i class="fas fa-compass"></i> <span class="i18n" data-en="Explore Services" data-ta="சேவைகளை காண">Explore Services</span></a>
         </div>
       </div>
       <div class="hero-image-wrapper">
@@ -899,31 +936,31 @@
   <section class="trust-bar">
     <div class="container">
       <div class="trust-grid">
-        <div class="trust-item fade-up visible"><i class="fas fa-shield-alt"></i> <span>Verified Professionals</span></div>
-        <div class="trust-item fade-up visible"><i class="fas fa-leaf"></i> <span>Eco Friendly Approach</span></div>
-        <div class="trust-item fade-up visible"><i class="fas fa-gauge-high"></i> <span>Fast &amp; Reliable</span></div>
-        <div class="trust-item fade-up visible"><i class="fas fa-rupee-sign"></i> <span>Transparent Pricing</span></div>
-        <div class="trust-item fade-up visible"><i class="fas fa-language"></i> <span>Tamil &amp; English Support</span></div>
+        <div class="trust-item fade-up visible"><i class="fas fa-shield-alt"></i> <span class="i18n" data-en="Verified Professionals" data-ta="சரிபார்க்கப்பட்ட நிபுணர்கள்">Verified Professionals</span></div>
+        <div class="trust-item fade-up visible"><i class="fas fa-leaf"></i> <span class="i18n" data-en="Eco Friendly Approach" data-ta="சுற்றுச்சூழல் நட்பு அணுகுமுறை">Eco Friendly Approach</span></div>
+        <div class="trust-item fade-up visible"><i class="fas fa-gauge-high"></i> <span class="i18n" data-en="Fast & Reliable" data-ta="வேகம் & நம்பகத்தன்மை">Fast &amp; Reliable</span></div>
+        <div class="trust-item fade-up visible"><i class="fas fa-rupee-sign"></i> <span class="i18n" data-en="Transparent Pricing" data-ta="வெளிப்படையான விலை">Transparent Pricing</span></div>
+        <div class="trust-item fade-up visible"><i class="fas fa-language"></i> <span class="i18n" data-en="Tamil & English Support" data-ta="தமிழ் & ஆங்கில ஆதரவு">Tamil &amp; English Support</span></div>
       </div>
     </div>
   </section>
 
   <section id="about">
     <div class="container">
-      <h2 class="section-title">About Sevagan</h2>
+      <h2 class="section-title i18n" data-en="About Sevagan" data-ta="சேவகனைப் பற்றி">About Sevagan</h2>
       <div class="about-rich fade-up visible">
-        <p style="font-size: 1.1rem; line-height: 1.7; margin-bottom: 1.5rem;"><strong>Bridging the trust gap in home services</strong> —
+        <p class="i18n" style="font-size: 1.1rem; line-height: 1.7; margin-bottom: 1.5rem;" data-en="&lt;strong&gt;Bridging the trust gap in home services&lt;/strong&gt; — Sevagan was built for Virudhunagar. Customers struggle to find reliable local technicians quickly, and technicians lack a structured channel for receiving and managing jobs. We solve both with the platform people already use every day: WhatsApp." data-ta="&lt;strong&gt;வீட்டு சேவைகளில் நம்பிக்கை இடைவெளியை நிரப்புதல்&lt;/strong&gt; — சேவகன் விருதுநகருக்காக உருவாக்கப்பட்டது. நம்பகமான உள்ளூர் தொழில்நுட்பவியலாளர்களை வேகமாகக் கண்டறிய வாடிக்கையாளர்கள் சிரமப்படுகின்றனர்; தொழில்நுட்பவியலாளர்களுக்கோ வேலைகளைப் பெற ஒழுங்கான வழி இல்லை. மக்கள் தினமும் பயன்படுத்தும் தளமான WhatsApp-இல் நாங்கள் இரண்டையும் தீர்க்கிறோம்."><strong>Bridging the trust gap in home services</strong> —
           Sevagan was built for Virudhunagar. Customers struggle to find reliable local technicians quickly, and
           technicians lack a structured channel for receiving and managing jobs. We solve both with the platform
           people already use every day: WhatsApp.</p>
-        <p style="margin-bottom: 1rem;">Request a service, track its status, confirm the final amount, and rate your
+        <p class="i18n" style="margin-bottom: 1rem;" data-en="Request a service, track its status, confirm the final amount, and rate your technician — all inside a WhatsApp conversation, in the language you're comfortable with. Behind the scenes, our admin team verifies every technician and matches jobs by skill and location." data-ta="சேவையைக் கோருங்கள், நிலையைக் கண்காணியுங்கள், இறுதி தொகையை உறுதிப்படுத்துங்கள், தொழில்நுட்பவியலாளருக்கு மதிப்பீடு கொடுங்கள் — இவை அனைத்தும் ஒரு WhatsApp உரையாடலுக்குள், நீங்கள் வசதியான மொழியில். பின்னணியில், எங்கள் நிர்வாகக் குழு ஒவ்வொரு தொழில்நுட்பவியலாளரையும் சரிபார்த்து, திறமை மற்றும் இடத்தின் அடிப்படையில் வேலைகளைப் பொருத்துகிறது.">Request a service, track its status, confirm the final amount, and rate your
           technician — all inside a WhatsApp conversation, in the language you're comfortable with. Behind the
           scenes, our admin team verifies every technician and matches jobs by skill and location.</p>
         <div class="highlight-grid">
-          <div class="highlight-item fade-up visible"><i class="fas fa-comments"></i> WhatsApp-only, no app install</div>
-          <div class="highlight-item fade-up visible"><i class="fas fa-language"></i> English &amp; Tamil</div>
-          <div class="highlight-item fade-up visible"><i class="fas fa-house-chimney"></i> Virudhunagar coverage</div>
-          <div class="highlight-item fade-up visible"><i class="fas fa-shield-alt"></i> Verified local technicians</div>
+          <div class="highlight-item fade-up visible"><i class="fas fa-comments"></i> <span class="i18n" data-en="WhatsApp-only, no app install" data-ta="WhatsApp மட்டும், ஆப் தேவையில்லை">WhatsApp-only, no app install</span></div>
+          <div class="highlight-item fade-up visible"><i class="fas fa-language"></i> <span class="i18n" data-en="English & Tamil" data-ta="ஆங்கிலம் & தமிழ்">English &amp; Tamil</span></div>
+          <div class="highlight-item fade-up visible"><i class="fas fa-house-chimney"></i> <span class="i18n" data-en="Virudhunagar coverage" data-ta="விருதுநகர் பகுதி சேவை">Virudhunagar coverage</span></div>
+          <div class="highlight-item fade-up visible"><i class="fas fa-shield-alt"></i> <span class="i18n" data-en="Verified local technicians" data-ta="சரிபார்க்கப்பட்ட உள்ளூர் தொழில்நுட்பவியலாளர்கள்">Verified local technicians</span></div>
         </div>
       </div>
     </div>
@@ -931,68 +968,68 @@
 
   <section id="services">
     <div class="container">
-      <h2 class="section-title">Signature Services</h2>
-      <p class="section-subtitle">Handpicked solutions, delivered with precision — request any of these directly on WhatsApp.</p>
+      <h2 class="section-title i18n" data-en="Signature Services" data-ta="முதன்மை சேவைகள்">Signature Services</h2>
+      <p class="section-subtitle i18n" data-en="Handpicked solutions, delivered with precision — request any of these directly on WhatsApp." data-ta="கவனமாகத் தேர்ந்தெடுக்கப்பட்ட தீர்வுகள், துல்லியமாக வழங்கப்படுகின்றன — இவற்றை நேரடியாக WhatsApp-இல் கோரலாம்.">Handpicked solutions, delivered with precision — request any of these directly on WhatsApp.</p>
       <div class="grid">
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-bolt"></i></div>
-          <h3>Electrician</h3>
-          <p>Wiring, fitting &amp; repairs.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20an%20Electrician%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="Electrician" data-ta="மின்சாரம்">Electrician</h3>
+          <p class="i18n" data-en="Wiring, fitting & repairs." data-ta="வயரிங், பொருத்துதல் & பழுதுபார்ப்பு.">Wiring, fitting &amp; repairs.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20an%20Electrician%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-wrench"></i></div>
-          <h3>Plumbing</h3>
-          <p>Leak repair &amp; installation.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Plumbing%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="Plumbing" data-ta="குழாய் பணி">Plumbing</h3>
+          <p class="i18n" data-en="Leak repair & installation." data-ta="கசிவு சரிசெய்தல் & பொருத்துதல்.">Leak repair &amp; installation.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Plumbing%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="far fa-snowflake"></i></div>
-          <h3>AC Service</h3>
-          <p>Service, repair &amp; installation.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20an%20AC%20Service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="AC Service" data-ta="AC சேவை">AC Service</h3>
+          <p class="i18n" data-en="Service, repair & installation." data-ta="சேவை, பழுதுபார்ப்பு & பொருத்துதல்.">Service, repair &amp; installation.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20an%20AC%20Service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-hammer"></i></div>
-          <h3>Carpentry</h3>
-          <p>Furniture, doors &amp; fixtures.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Carpentry%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="Carpentry" data-ta="தச்சு வேலை">Carpentry</h3>
+          <p class="i18n" data-en="Furniture, doors & fixtures." data-ta="மரச்சாமான்கள், கதவுகள் & பொருத்துதல்கள்.">Furniture, doors &amp; fixtures.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Carpentry%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-paint-roller"></i></div>
-          <h3>Painting</h3>
-          <p>Interior &amp; exterior painting.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Painting%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="Painting" data-ta="வண்ண வேலை">Painting</h3>
+          <p class="i18n" data-en="Interior & exterior painting." data-ta="உள் & வெளிப்புற வண்ணப்பூச்சு.">Interior &amp; exterior painting.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Painting%20service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-plug"></i></div>
-          <h3>Appliance Repair</h3>
-          <p>Washing machine, fridge &amp; more.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20an%20Appliance%20Repair" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="Appliance Repair" data-ta="கருவி பழுதுபார்ப்பு">Appliance Repair</h3>
+          <p class="i18n" data-en="Washing machine, fridge & more." data-ta="வாஷிங் மெஷின், குளிர்சாதனப்பெட்டி & பல.">Washing machine, fridge &amp; more.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20an%20Appliance%20Repair" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-tint"></i></div>
-          <h3>RO Service</h3>
-          <p>Water purifier service.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20RO%20Service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="RO Service" data-ta="RO சேவை">RO Service</h3>
+          <p class="i18n" data-en="Water purifier service." data-ta="தண்ணீர் சுத்திகரிப்பான் சேவை.">Water purifier service.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20RO%20Service" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-video"></i></div>
-          <h3>CCTV Installation</h3>
-          <p>Setup &amp; maintenance.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20CCTV%20Installation" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="CCTV Installation" data-ta="CCTV நிறுவல்">CCTV Installation</h3>
+          <p class="i18n" data-en="Setup & maintenance." data-ta="அமைப்பு & பராமரிப்பு.">Setup &amp; maintenance.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20CCTV%20Installation" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-broom"></i></div>
-          <h3>Deep Cleaning</h3>
-          <p>Sanitization, sofa &amp; carpet cleaning.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20Deep%20Cleaning" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="Deep Cleaning" data-ta="ஆழமான சுத்தம்">Deep Cleaning</h3>
+          <p class="i18n" data-en="Sanitization, sofa & carpet cleaning." data-ta="கிருமி நீக்கம், சோஃபா & கார்பெட் சுத்தம்.">Sanitization, sofa &amp; carpet cleaning.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20Deep%20Cleaning" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
         <div class="glass-card fade-up visible">
           <div class="service-icon"><i class="fas fa-car"></i></div>
-          <h3>Driver on Demand</h3>
-          <p>Verified drivers for local &amp; outstation trips.</p>
-          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Driver" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> Request on WhatsApp</a>
+          <h3 class="i18n" data-en="Driver on Demand" data-ta="டிரைவர் சேவை">Driver on Demand</h3>
+          <p class="i18n" data-en="Verified drivers for local & outstation trips." data-ta="உள்ளூர் & வெளியூர் பயணங்களுக்கு சரிபார்க்கப்பட்ட ஓட்டுநர்கள்.">Verified drivers for local &amp; outstation trips.</p>
+          <a class="service-request-link" href="https://wa.me/917708100871?text=Hi%20Sevagan%2C%20I%20need%20a%20Driver" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Request on WhatsApp" data-ta="WhatsApp-இல் கோருங்கள்">Request on WhatsApp</span></a>
         </div>
       </div>
     </div>
@@ -1000,22 +1037,22 @@
 
   <section>
     <div class="container">
-      <h2 class="section-title">Why Sevagan stands out</h2>
+      <h2 class="section-title i18n" data-en="Why Sevagan stands out" data-ta="சேவகன் சிறப்பாக இருப்பது ஏன்">Why Sevagan stands out</h2>
       <div class="why-grid">
         <div class="why-card fade-up visible">
           <div class="why-icon"><i class="fas fa-comments"></i></div>
-          <h3>WhatsApp-First Simplicity</h3>
-          <p>No app to install, no account to create. Message us in English or Tamil and you're on your way.</p>
+          <h3 class="i18n" data-en="WhatsApp-First Simplicity" data-ta="WhatsApp முதன்மை எளிமை">WhatsApp-First Simplicity</h3>
+          <p class="i18n" data-en="No app to install, no account to create. Message us in English or Tamil and you're on your way." data-ta="ஆப் நிறுவ வேண்டாம், கணக்கு தேவையில்லை. ஆங்கிலம் அல்லது தமிழில் மெசேஜ் அனுப்புங்கள், உடனே தொடங்கலாம்.">No app to install, no account to create. Message us in English or Tamil and you're on your way.</p>
         </div>
         <div class="why-card fade-up visible">
           <div class="why-icon"><i class="fas fa-shield-alt"></i></div>
-          <h3>Verified Local Experts</h3>
-          <p>Every technician is verified and matched to your job by skill and proximity within Virudhunagar.</p>
+          <h3 class="i18n" data-en="Verified Local Experts" data-ta="சரிபார்க்கப்பட்ட உள்ளூர் நிபுணர்கள்">Verified Local Experts</h3>
+          <p class="i18n" data-en="Every technician is verified and matched to your job by skill and proximity within Virudhunagar." data-ta="ஒவ்வொரு தொழில்நுட்பவியலாளரும் சரிபார்க்கப்பட்டு, விருதுநகருக்குள் திறமை மற்றும் அருகாமையின் அடிப்படையில் உங்கள் வேலைக்குப் பொருத்தப்படுகிறார்.">Every technician is verified and matched to your job by skill and proximity within Virudhunagar.</p>
         </div>
         <div class="why-card fade-up visible">
           <div class="why-icon"><i class="fas fa-route"></i></div>
-          <h3>Transparent Job Tracking</h3>
-          <p>Live status updates, amount confirmation before payment, and a star rating after every job.</p>
+          <h3 class="i18n" data-en="Transparent Job Tracking" data-ta="வெளிப்படையான வேலை கண்காணிப்பு">Transparent Job Tracking</h3>
+          <p class="i18n" data-en="Live status updates, amount confirmation before payment, and a star rating after every job." data-ta="நேரடி நிலை புதுப்பிப்புகள், பணம் செலுத்தும் முன் தொகை உறுதிப்படுத்தல், ஒவ்வொரு வேலைக்குப் பின்னும் நட்சத்திர மதிப்பீடு.">Live status updates, amount confirmation before payment, and a star rating after every job.</p>
         </div>
       </div>
     </div>
@@ -1023,23 +1060,23 @@
 
   <section id="howitworks">
     <div class="container">
-      <h2 class="section-title">Your seamless journey</h2>
-      <p class="section-subtitle">Three steps, zero hassle — entirely inside WhatsApp.</p>
+      <h2 class="section-title i18n" data-en="Your seamless journey" data-ta="உங்கள் தடையற்ற பயணம்">Your seamless journey</h2>
+      <p class="section-subtitle i18n" data-en="Three steps, zero hassle — entirely inside WhatsApp." data-ta="மூன்று படிகள், சிரமம் இல்லை — முழுவதும் WhatsApp-இற்குள்.">Three steps, zero hassle — entirely inside WhatsApp.</p>
       <div class="grid">
         <div class="step-item fade-up visible">
           <div class="step-number">1</div>
-          <h3><i class="fas fa-comment-dots"></i> Message Us</h3>
-          <p>Pick your language, choose a service, and share your location — all by chatting on WhatsApp.</p>
+          <h3><i class="fas fa-comment-dots"></i> <span class="i18n" data-en="Message Us" data-ta="மெசேஜ் அனுப்புங்கள்">Message Us</span></h3>
+          <p class="i18n" data-en="Pick your language, choose a service, and share your location — all by chatting on WhatsApp." data-ta="உங்கள் மொழியைத் தேர்வு செய்யுங்கள், சேவையைத் தேர்ந்தெடுங்கள், இடத்தைப் பகிருங்கள் — இவை அனைத்தும் WhatsApp-இல் அரட்டையடிப்பதன் மூலம்.">Pick your language, choose a service, and share your location — all by chatting on WhatsApp.</p>
         </div>
         <div class="step-item fade-up visible">
           <div class="step-number">2</div>
-          <h3><i class="fas fa-user-check"></i> Get Matched</h3>
-          <p>A verified local technician is assigned and arrives fully equipped, with live status updates.</p>
+          <h3><i class="fas fa-user-check"></i> <span class="i18n" data-en="Get Matched" data-ta="பொருத்தமான நபரைப் பெறுங்கள்">Get Matched</span></h3>
+          <p class="i18n" data-en="A verified local technician is assigned and arrives fully equipped, with live status updates." data-ta="சரிபார்க்கப்பட்ட உள்ளூர் தொழில்நுட்பவியலாளர் நியமிக்கப்பட்டு, முழு உபகரணங்களுடன் வருவார்; நேரடி நிலை புதுப்பிப்புகளும் கிடைக்கும்.">A verified local technician is assigned and arrives fully equipped, with live status updates.</p>
         </div>
         <div class="step-item fade-up visible">
           <div class="step-number">3</div>
-          <h3><i class="fas fa-star"></i> Confirm &amp; Rate</h3>
-          <p>Confirm the final amount, pay, and rate your experience — done, right inside the chat.</p>
+          <h3><i class="fas fa-star"></i> <span class="i18n" data-en="Confirm & Rate" data-ta="உறுதிப்படுத்தி மதிப்பிடுங்கள்">Confirm &amp; Rate</span></h3>
+          <p class="i18n" data-en="Confirm the final amount, pay, and rate your experience — done, right inside the chat." data-ta="இறுதி தொகையை உறுதிப்படுத்தி, பணம் செலுத்தி, அனுபவத்தை மதிப்பிடுங்கள் — அரட்டைக்குள்ளேயே முடிந்துவிடும்.">Confirm the final amount, pay, and rate your experience — done, right inside the chat.</p>
         </div>
       </div>
     </div>
@@ -1047,24 +1084,24 @@
 
   <section id="policies">
     <div class="container">
-      <h2 class="section-title">Our standards &amp; agreements</h2>
+      <h2 class="section-title i18n" data-en="Our standards & agreements" data-ta="எங்கள் தரநிலைகள் & ஒப்பந்தங்கள்">Our standards &amp; agreements</h2>
       <div class="policies-wrapper">
         <div class="policy-modern fade-up visible">
-          <h3><i class="fas fa-lock"></i> Privacy Pledge</h3>
+          <h3><i class="fas fa-lock"></i> <span class="i18n" data-en="Privacy Pledge" data-ta="தனியுரிமை உறுதிமொழி">Privacy Pledge</span></h3>
           <ul class="policy-list">
-            <li><i class="fas fa-check-circle"></i> Zero third-party data selling — ever.</li>
-            <li><i class="fas fa-check-circle"></i> Your information is encrypted and used solely for service delivery.</li>
-            <li><i class="fas fa-check-circle"></i> Transparent opt-out &amp; data deletion rights.</li>
-            <li><i class="fas fa-check-circle"></i> We never share personal data without consent.</li>
+            <li><i class="fas fa-check-circle"></i> <span class="i18n" data-en="Zero third-party data selling — ever." data-ta="மூன்றாம் தரப்பினருக்கு தரவு விற்பனை இல்லை — ஒருபோதும்.">Zero third-party data selling — ever.</span></li>
+            <li><i class="fas fa-check-circle"></i> <span class="i18n" data-en="Your information is encrypted and used solely for service delivery." data-ta="உங்கள் தகவல்கள் குறியாக்கம் செய்யப்பட்டு, சேவை வழங்குவதற்கு மட்டுமே பயன்படுத்தப்படும்.">Your information is encrypted and used solely for service delivery.</span></li>
+            <li><i class="fas fa-check-circle"></i> <span class="i18n" data-en="Transparent opt-out & data deletion rights." data-ta="வெளிப்படையான விலகல் & தரவு நீக்க உரிமைகள்.">Transparent opt-out &amp; data deletion rights.</span></li>
+            <li><i class="fas fa-check-circle"></i> <span class="i18n" data-en="We never share personal data without consent." data-ta="ஒப்புதல் இல்லாமல் தனிப்பட்ட தரவை நாங்கள் ஒருபோதும் பகிர மாட்டோம்.">We never share personal data without consent.</span></li>
           </ul>
         </div>
         <div class="policy-modern fade-up visible">
-          <h3><i class="fas fa-file-signature"></i> Terms of Service</h3>
+          <h3><i class="fas fa-file-signature"></i> <span class="i18n" data-en="Terms of Service" data-ta="சேவை விதிமுறைகள்">Terms of Service</span></h3>
           <ul class="policy-list">
-            <li><i class="fas fa-hand-holding-heart"></i> Sevagan facilitates connections between verified pros and users.</li>
-            <li><i class="fas fa-map-pin"></i> Service availability based on location &amp; partner coverage.</li>
-            <li><i class="fas fa-rupee-sign"></i> Transparent estimate; final charges depend on actual job requirements.</li>
-            <li><i class="fas fa-sync-alt"></i> Sevagan reserves right to update policies for service improvement.</li>
+            <li><i class="fas fa-hand-holding-heart"></i> <span class="i18n" data-en="Sevagan facilitates connections between verified pros and users." data-ta="சரிபார்க்கப்பட்ட நிபுணர்களுக்கும் பயனர்களுக்கும் இடையே இணைப்பை சேவகன் எளிதாக்குகிறது.">Sevagan facilitates connections between verified pros and users.</span></li>
+            <li><i class="fas fa-map-pin"></i> <span class="i18n" data-en="Service availability based on location & partner coverage." data-ta="இடம் & பங்குதாரர் சேவை பரப்பின் அடிப்படையில் சேவை கிடைக்கும்.">Service availability based on location &amp; partner coverage.</span></li>
+            <li><i class="fas fa-rupee-sign"></i> <span class="i18n" data-en="Transparent estimate; final charges depend on actual job requirements." data-ta="வெளிப்படையான மதிப்பீடு; இறுதிக் கட்டணம் உண்மையான வேலைத் தேவையைப் பொறுத்தது.">Transparent estimate; final charges depend on actual job requirements.</span></li>
+            <li><i class="fas fa-sync-alt"></i> <span class="i18n" data-en="Sevagan reserves right to update policies for service improvement." data-ta="சேவை மேம்பாட்டிற்காக கொள்கைகளைப் புதுப்பிக்கும் உரிமை சேவகனுக்கு உண்டு.">Sevagan reserves right to update policies for service improvement.</span></li>
           </ul>
         </div>
       </div>
@@ -1073,17 +1110,17 @@
 
   <section id="contact">
     <div class="container">
-      <h2 class="section-title">Concierge support</h2>
+      <h2 class="section-title i18n" data-en="Concierge support" data-ta="உதவி மையம்">Concierge support</h2>
       <div class="contact-premium-wrapper fade-up visible">
         <div class="contact-info-panel">
-          <h3><i class="fas fa-headset"></i> 24/7 Assistance</h3>
+          <h3><i class="fas fa-headset"></i> <span class="i18n" data-en="24/7 Assistance" data-ta="24/7 உதவி">24/7 Assistance</span></h3>
           <div class="contact-detail-item">
             <i class="fas fa-envelope"></i>
-            <div><strong>Email</strong><span><a href="mailto:sevagan.virudhunagar@gmail.com">sevagan.virudhunagar@gmail.com</a></span></div>
+            <div><strong class="i18n" data-en="Email" data-ta="மின்னஞ்சல்">Email</strong><span><a href="mailto:sevagan.virudhunagar@gmail.com">sevagan.virudhunagar@gmail.com</a></span></div>
           </div>
           <div class="contact-detail-item">
             <i class="fas fa-phone-alt"></i>
-            <div><strong>Phone</strong><span><a href="tel:+919442060644">+91 94420 60644</a></span></div>
+            <div><strong class="i18n" data-en="Phone" data-ta="தொலைபேசி">Phone</strong><span><a href="tel:+919442060644">+91 94420 60644</a></span></div>
           </div>
           <div class="contact-detail-item">
             <i class="fab fa-whatsapp"></i>
@@ -1091,7 +1128,7 @@
           </div>
           <div class="contact-detail-item">
             <i class="fas fa-map-marker-alt"></i>
-            <div><strong>Availability</strong><span>Virudhunagar, Tamil Nadu</span></div>
+            <div><strong class="i18n" data-en="Availability" data-ta="சேவை பகுதி">Availability</strong><span class="i18n" data-en="Virudhunagar, Tamil Nadu" data-ta="விருதுநகர், தமிழ்நாடு">Virudhunagar, Tamil Nadu</span></div>
           </div>
           <div class="contact-detail-item">
             <i class="fas fa-id-card"></i>
@@ -1099,11 +1136,11 @@
           </div>
         </div>
         <div class="qr-panel">
-          <p><i class="fas fa-qrcode"></i> Scan to start a service request on WhatsApp</p>
+          <p><i class="fas fa-qrcode"></i> <span class="i18n" data-en="Scan to start a service request on WhatsApp" data-ta="WhatsApp-இல் சேவை கோர ஸ்கேன் செய்யுங்கள்">Scan to start a service request on WhatsApp</span></p>
           <div class="qr-frame">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45" shape-rendering="crispEdges"><path fill="#ffffff" d="M0 0h45v45H0z"/><path stroke="#000000" d="M4 4.5h7m1 0h1m3 0h1m3 0h1m1 0h2m1 0h2m2 0h2m1 0h1m1 0h7M4 5.5h1m5 0h1m6 0h1m2 0h1m3 0h1m2 0h2m1 0h1m3 0h1m5 0h1M4 6.5h1m1 0h3m1 0h1m2 0h6m4 0h3m1 0h1m1 0h4m1 0h1m1 0h3m1 0h1M4 7.5h1m1 0h3m1 0h1m1 0h5m2 0h7m2 0h1m5 0h1m1 0h3m1 0h1M4 8.5h1m1 0h3m1 0h1m1 0h4m1 0h3m3 0h4m1 0h1m2 0h1m2 0h1m1 0h3m1 0h1M4 9.5h1m5 0h1m1 0h1m1 0h3m3 0h1m1 0h3m4 0h2m3 0h1m5 0h1M4 10.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M12 11.5h4m2 0h2m1 0h2m1 0h2m1 0h2m1 0h3M4 12.5h1m3 0h1m1 0h3m1 0h3m1 0h2m2 0h1m3 0h2m1 0h1m2 0h6m2 0h1M6 13.5h2m1 0h1m1 0h3m1 0h4m1 0h2m1 0h3m3 0h2m2 0h3m3 0h1M4 14.5h4m2 0h2m4 0h2m2 0h2m2 0h1m2 0h1m2 0h3m2 0h4M5 15.5h4m2 0h2m1 0h1m2 0h1m3 0h2m2 0h2m2 0h3m2 0h1m1 0h1m1 0h2M4 16.5h3m1 0h1m1 0h2m1 0h4m1 0h3m2 0h2m2 0h1m2 0h5m2 0h1m1 0h2M4 17.5h2m1 0h3m1 0h1m3 0h4m2 0h1m1 0h2m1 0h1m9 0h2m1 0h2M7 18.5h2m1 0h3m3 0h2m1 0h2m1 0h2m1 0h2m1 0h1m1 0h2m1 0h7M4 19.5h1m2 0h1m4 0h1m1 0h2m2 0h3m3 0h3m1 0h2m5 0h2m1 0h3M4 20.5h3m1 0h1m1 0h1m2 0h2m1 0h5m3 0h1m2 0h1m1 0h3m1 0h2m1 0h3m1 0h1M7 21.5h2m3 0h1m2 0h4m2 0h3m1 0h1m2 0h3m2 0h3m2 0h2M5 22.5h1m2 0h1m1 0h4m5 0h1m1 0h3m1 0h1m2 0h1m3 0h2m3 0h1M4 23.5h4m4 0h1m3 0h1m1 0h3m1 0h4m1 0h2m1 0h2m3 0h1m2 0h2M4 24.5h1m3 0h1m1 0h1m2 0h1m1 0h4m3 0h1m1 0h1m2 0h5m2 0h2m2 0h1M5 25.5h4m5 0h5m4 0h1m1 0h1m2 0h1m1 0h2m3 0h2m2 0h2M5 26.5h3m2 0h2m4 0h3m2 0h1m2 0h1m5 0h2m1 0h7M6 27.5h1m2 0h1m2 0h1m1 0h1m2 0h1m2 0h3m3 0h3m2 0h1m3 0h2m1 0h2M4 28.5h1m3 0h6m1 0h2m1 0h2m2 0h1m3 0h1m2 0h2m2 0h7M4 29.5h1m1 0h1m2 0h1m3 0h1m2 0h3m1 0h2m1 0h3m2 0h2m2 0h5m1 0h1M8 30.5h7m3 0h1m1 0h2m2 0h1m4 0h3m2 0h2m1 0h1M6 31.5h1m1 0h2m1 0h1m1 0h5m3 0h1m3 0h1m1 0h2m2 0h4m1 0h5M4 32.5h5m1 0h1m3 0h2m1 0h4m2 0h2m1 0h4m1 0h6m2 0h1M12 33.5h2m1 0h3m2 0h2m1 0h1m2 0h1m1 0h1m1 0h1m1 0h1m3 0h1M4 34.5h7m1 0h1m1 0h2m1 0h1m1 0h2m1 0h1m2 0h4m1 0h1m1 0h1m1 0h1m2 0h2M4 35.5h1m5 0h1m3 0h1m2 0h1m1 0h2m2 0h1m1 0h1m1 0h3m2 0h1m3 0h3M4 36.5h1m1 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h2m3 0h1m2 0h1m1 0h1m2 0h9M4 37.5h1m1 0h3m1 0h1m2 0h5m3 0h3m2 0h1m4 0h1m1 0h3m4 0h1M4 38.5h1m1 0h3m1 0h1m3 0h3m1 0h2m1 0h1m1 0h1m2 0h3m1 0h1m2 0h2m3 0h2M4 39.5h1m5 0h1m2 0h2m1 0h2m1 0h2m1 0h6m1 0h6m1 0h1m1 0h2M4 40.5h7m1 0h2m1 0h1m1 0h2m1 0h1m6 0h1m1 0h2m2 0h3m2 0h3"/></svg>
           </div>
-          <a href="https://wa.me/917708100871" target="_blank" rel="noopener" class="btn-primary"><i class="fab fa-whatsapp"></i> Chat on WhatsApp</a>
+          <a href="https://wa.me/917708100871" target="_blank" rel="noopener" class="btn-primary"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Chat on WhatsApp" data-ta="WhatsApp-இல் பேசுங்கள்">Chat on WhatsApp</span></a>
         </div>
       </div>
     </div>
@@ -1115,13 +1152,39 @@
       <a href="mailto:sevagan.virudhunagar@gmail.com"><i class="fas fa-envelope"></i> sevagan.virudhunagar@gmail.com</a>
       <a href="tel:+919442060644"><i class="fas fa-phone-alt"></i> +91 94420 60644</a>
       <a href="https://wa.me/917708100871" target="_blank" rel="noopener"><i class="fab fa-whatsapp wa-icon"></i> +91 77081 00871</a>
-      <a href="https://admin.sevagan.co.in/login"><i class="fas fa-right-to-bracket"></i> Admin Login</a>
+      <a href="https://admin.sevagan.co.in/login"><i class="fas fa-right-to-bracket"></i> <span class="i18n" data-en="Admin Login" data-ta="நிர்வாக உள்நுழைவு">Admin Login</span></a>
     </div>
-    <p>© 2026 Sevagan — Where trust meets excellence. All rights reserved.</p>
-    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><i class="fas fa-leaf" style="color:#FFC107;"></i> WhatsApp-first, eco-conscious home services — crafted for Virudhunagar.</p>
+    <p class="i18n" data-en="© 2026 Sevagan — Where trust meets excellence. All rights reserved." data-ta="© 2026 சேவகன் — நம்பிக்கை சிறப்பைச் சந்திக்கும் இடம். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.">© 2026 Sevagan — Where trust meets excellence. All rights reserved.</p>
+    <p style="margin-top: 0.5rem; font-size: 0.8rem;"><i class="fas fa-leaf" style="color:#FFC107;"></i> <span class="i18n" data-en="WhatsApp-first, eco-conscious home services — crafted for Virudhunagar." data-ta="WhatsApp முதன்மையிலான, சுற்றுச்சூழல் நேயம் கொண்ட வீட்டு சேவைகள் — விருதுநகருக்காக உருவாக்கப்பட்டது.">WhatsApp-first, eco-conscious home services — crafted for Virudhunagar.</span></p>
   </footer>
 
   <script>
+    const LANG_KEY = 'sevagan_lang';
+    const TITLES = {
+      en: 'Sevagan | WhatsApp-First Home Services — Virudhunagar',
+      ta: 'சேவகன் | WhatsApp வழி வீட்டு சேவைகள் — விருதுநகர்'
+    };
+
+    function applyLang(lang) {
+      lang = lang === 'ta' ? 'ta' : 'en';
+      document.documentElement.setAttribute('lang', lang);
+      document.title = TITLES[lang];
+      document.querySelectorAll('.i18n').forEach((el) => {
+        const val = el.dataset[lang];
+        if (val !== undefined) el.innerHTML = val;
+      });
+      document.querySelectorAll('.lang-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+      });
+      localStorage.setItem(LANG_KEY, lang);
+    }
+
+    document.querySelectorAll('.lang-btn').forEach((btn) => {
+      btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+    });
+
+    applyLang(localStorage.getItem(LANG_KEY) || 'en');
+
     const fadeElements = document.querySelectorAll('.fade-up');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
