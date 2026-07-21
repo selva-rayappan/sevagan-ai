@@ -227,6 +227,10 @@ export class CustomerBotService {
 
   private async handleIdle(session: ConversationSession): Promise<void> {
     session.state = ConversationState.AWAITING_LANGUAGE;
+    await this.whatsapp.sendText({
+      to: session.phone,
+      text: this.translation.translate('customer.welcome', Language.EN),
+    });
     await this.whatsapp.sendInteractiveButtons({
       to: session.phone,
       body: this.translation.translate('customer.select_language', Language.EN),

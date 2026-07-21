@@ -286,6 +286,7 @@
 ### 4.3 Language Selection Flow
 | # | Task | Status |
 |---|------|--------|
+| 4.3.0 | `handleIdle()` sends `customer.welcome` (plain text greeting) before the language buttons (added 2026-07-21); covers customers arriving from the website's `wa.me` links, some with a prefilled service-specific message. `customer.welcome` key already existed in `en.json`/`ta.json` but was unused until now | ✅ |
 | 4.3.1 | Every new session (IDLE state) triggers interactive button language selection | ✅ |
 | 4.3.2 | `1` / `lang_en` → English; `2` / `lang_ta` → Tamil | ✅ |
 | 4.3.3 | Language persisted in `customers.language` DB column + session | ✅ |

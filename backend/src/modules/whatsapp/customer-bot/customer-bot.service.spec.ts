@@ -230,12 +230,15 @@ describe('CustomerBotService', () => {
   // ─── IDLE state ─────────────────────────────────────────────────────────────
 
   describe('IDLE state', () => {
-    it('shows language selection buttons when session is IDLE', async () => {
+    it('sends a welcome message before the language selection buttons when session is IDLE', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.IDLE }));
 
       await service.handleMessage(makeTextMessage('Hello'), 'Rajesh');
 
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919876543210' }),
+      );
       expect(mockSendInteractiveButtons).toHaveBeenCalledWith(
         expect.objectContaining({
           to: '919876543210',

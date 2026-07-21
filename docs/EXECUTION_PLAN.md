@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-07-16)
+## Progress Overview (Last Updated: 2026-07-21)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -144,6 +144,7 @@
 - ✅ States: IDLE → AWAITING_LANGUAGE → AWAITING_SERVICE → AWAITING_LOCATION → AWAITING_TIME → (job created) → IDLE
 
 #### 4.2 Customer Bot Flows
+- ✅ Welcome message (added 2026-07-21): `handleIdle()` now sends `customer.welcome` (plain text) before the language-selection buttons, so first-time contacts (including those arriving via the website's `wa.me` links) get a greeting instead of jumping straight to language buttons. `customer.welcome` previously existed in `en.json`/`ta.json` but was unused/dead code.
 - ✅ Language selection (first interaction) — interactive buttons (EN/தமிழ்)
 - ✅ Service category selection — interactive list message (tap to select), generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu
 - ✅ Location capture — sent as an interactive `location_request_message` (native "Send Location" button) with typed free text as a fully-supported fallback (`WhatsAppProvider.sendLocationRequest`, added 2026-07-20)
