@@ -252,7 +252,7 @@ function EditModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="91XXXXXXXXXX"
             />
-            <p className="text-[11px] text-amber-600 mt-1">Changing this reassigns the technician's WhatsApp number — any in-progress WhatsApp session on the old number is abandoned.</p>
+            <p className="text-[11px] text-amber-600 mt-1">Changing this reassigns the technician&apos;s WhatsApp number — any in-progress WhatsApp session on the old number is abandoned.</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
