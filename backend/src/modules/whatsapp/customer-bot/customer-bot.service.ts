@@ -339,7 +339,11 @@ export class CustomerBotService {
 
     if (message.type === 'location' && message.location) {
       const { latitude, longitude, name, address } = message.location;
-      location = name ?? address ?? `${latitude},${longitude}`;
+      const label = name ?? address;
+      // Always append a Maps link (not just when name/address is missing) so the
+      // technician's job offer message has a tap-to-open pin, not just plain text.
+      const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+      location = label ? `${label} — ${mapsLink}` : mapsLink;
     } else {
       location = text.trim();
     }

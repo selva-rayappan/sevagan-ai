@@ -529,7 +529,7 @@ describe('CustomerBotService', () => {
       );
     });
 
-    it('extracts the name from a WhatsApp location share', async () => {
+    it('extracts the name from a WhatsApp location share and appends a tappable Maps link', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(
         makeSession({
@@ -542,11 +542,13 @@ describe('CustomerBotService', () => {
       await service.handleMessage(makeLocationMessage(), 'Rajesh');
 
       expect(mockSaveSession).toHaveBeenCalledWith(
-        expect.objectContaining({ location: 'Virudhunagar' }),
+        expect.objectContaining({
+          location: 'Virudhunagar — https://www.google.com/maps?q=9.9252,78.1198',
+        }),
       );
     });
 
-    it('falls back to lat,lng when location has no name or address', async () => {
+    it('falls back to a bare Maps link when location has no name or address', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(
         makeSession({
@@ -567,7 +569,9 @@ describe('CustomerBotService', () => {
       await service.handleMessage(message, 'Rajesh');
 
       expect(mockSaveSession).toHaveBeenCalledWith(
-        expect.objectContaining({ location: '9.9252,78.1198' }),
+        expect.objectContaining({
+          location: 'https://www.google.com/maps?q=9.9252,78.1198',
+        }),
       );
     });
   });
