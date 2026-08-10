@@ -19,6 +19,7 @@ import { AssignmentEngineModule } from '../assignment-engine/assignment-engine.m
 import { InvoiceModule } from '../invoice/invoice.module';
 import { PaymentModule } from '../payment/payment.module';
 import { AIDispatcherModule } from '../ai-dispatcher/ai-dispatcher.module';
+import { PaymentModeSettingsModule } from '../payment-mode-settings/payment-mode-settings.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AIDispatcherModule } from '../ai-dispatcher/ai-dispatcher.module';
     InvoiceModule,
     PaymentModule,
     AIDispatcherModule,
+    PaymentModeSettingsModule,
   ],
   controllers: [WebhookController],
   providers: [

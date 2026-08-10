@@ -59,6 +59,19 @@ async function main() {
     console.log('✅ Default UPI commission rule seeded (5%)');
   }
 
+  // Default payment mode availability: only Cash on by default
+  await prisma.paymentModeSetting.upsert({
+    where: { paymentMode: PaymentMode.CASH },
+    update: {},
+    create: { paymentMode: PaymentMode.CASH, enabled: true },
+  });
+  await prisma.paymentModeSetting.upsert({
+    where: { paymentMode: PaymentMode.UPI },
+    update: {},
+    create: { paymentMode: PaymentMode.UPI, enabled: false },
+  });
+  console.log('✅ Payment mode settings seeded (CASH enabled, UPI disabled)');
+
   // Default admin user
   const adminEmail = 'admin@sevagan.ai';
   const existingAdmin = await prisma.adminUser.findUnique({

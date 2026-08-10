@@ -62,7 +62,8 @@
     "start_button": "▶️ தொடங்கு",
     "decline_button": "❌ மறு",
     "complete_cash_button": "💵 முடிந்தது (பணம்)",
-    "complete_upi_button": "📱 முடிந்தது (UPI)"
+    "complete_upi_button": "📱 முடிந்தது (UPI)",
+    "payment_mode_disabled": "⚠️ அந்த பணம் செலுத்தும் முறை தற்போது கிடைக்கவில்லை. காட்டப்பட்ட விருப்பங்களில் ஒன்றைத் தேர்வு செய்யவும்."
   },
   "service": {
     "electrical": "மின்சாரம்",

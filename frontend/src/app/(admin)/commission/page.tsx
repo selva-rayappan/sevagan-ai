@@ -14,6 +14,66 @@ interface Rule {
   effectiveFrom: string;
 }
 
+interface PaymentModeSetting {
+  paymentMode: string;
+  enabled: boolean;
+}
+
+function PaymentModesCard() {
+  const [modes, setModes] = useState<PaymentModeSetting[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingMode, setSavingMode] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const load = () => {
+    setLoading(true);
+    apiClient.get('/api/v1/admin/payment-modes').then((r) => setModes(r.data)).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  async function toggle(mode: string, enabled: boolean) {
+    setSavingMode(mode);
+    setError('');
+    try {
+      await apiClient.patch(`/api/v1/admin/payment-modes/${mode}`, { enabled });
+      load();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed to update payment mode');
+    } finally {
+      setSavingMode(null);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
+      <h2 className="font-medium text-gray-900 mb-1 text-sm">Payment Modes</h2>
+      <p className="text-xs text-gray-500 mb-4">Which payment modes technicians can offer customers when completing a job. At least one must stay enabled.</p>
+      {loading ? (
+        <div className="h-5 w-64 bg-gray-100 rounded animate-pulse" />
+      ) : (
+        <div className="flex flex-wrap gap-4">
+          {modes.map((m) => (
+            <label key={m.paymentMode} className="flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={m.enabled}
+                disabled={savingMode === m.paymentMode}
+                onChange={(e) => toggle(m.paymentMode, e.target.checked)}
+              />
+              {m.paymentMode}
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${m.enabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                {m.enabled ? 'Enabled' : 'Disabled'}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+      {error && <p className="text-red-600 text-xs mt-3">{error}</p>}
+    </div>
+  );
+}
+
 export default function CommissionPage() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +118,8 @@ export default function CommissionPage() {
           <Plus size={16} /> New Rule
         </button>
       </div>
+
+      <PaymentModesCard />
 
       {showCreate && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">

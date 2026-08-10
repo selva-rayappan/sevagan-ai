@@ -7,6 +7,7 @@ import { GenerateSettlementDto } from './settlements.dto';
 import { CreateCommissionRuleDto } from './commission.dto';
 import { AddSkillDto, CreateTechnicianDto, UpdateTechnicianDto } from './technicians.dto';
 import { CreateServiceCategoryDto, UpdateServiceCategoryDto } from './service-categories.dto';
+import { UpdatePaymentModeDto } from './payment-modes.dto';
 import { PaymentMode, CommissionType, TechnicianStatus } from '../../../domain/enums';
 
 describe('Admin DTO validation', () => {
@@ -175,6 +176,17 @@ describe('Admin DTO validation', () => {
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
     });
+
+    it('accepts a valid phone update', async () => {
+      const dto = plainToInstance(UpdateTechnicianDto, { phone: '919876543210' });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects an invalid phone number', async () => {
+      const dto = plainToInstance(UpdateTechnicianDto, { phone: '12345' });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
   });
 
   describe('AddSkillDto', () => {
@@ -206,6 +218,19 @@ describe('Admin DTO validation', () => {
 
     it('rejects a non-boolean active value', async () => {
       const dto = plainToInstance(UpdateServiceCategoryDto, { active: 'yes' });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('UpdatePaymentModeDto', () => {
+    it('accepts a boolean enabled value', async () => {
+      const dto = plainToInstance(UpdatePaymentModeDto, { enabled: false });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects a non-boolean enabled value', async () => {
+      const dto = plainToInstance(UpdatePaymentModeDto, { enabled: 'yes' });
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
     });

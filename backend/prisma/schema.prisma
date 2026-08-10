@@ -295,6 +295,14 @@ model AdminUser {
   @@map("admin_users")
 }
 
+model PaymentModeSetting {
+  paymentMode PaymentMode @id @map("payment_mode")
+  enabled     Boolean     @default(true)
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@map("payment_mode_settings")
+}
+
 model AuditLog {
   id         String   @id @default(uuid())
   actorId    String?  @map("actor_id")

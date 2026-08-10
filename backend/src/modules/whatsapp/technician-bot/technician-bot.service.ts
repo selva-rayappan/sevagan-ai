@@ -19,6 +19,7 @@ import { ConversationState } from '../conversation/conversation-state.types';
 import { TechnicianSessionService } from './technician-session.service';
 import { TechnicianSession, TechnicianConversationState } from './technician-session.types';
 import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
+import { PaymentModeSettingsRepository } from '../../payment-mode-settings/payment-mode-settings.repository';
 
 const OFFER_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -39,6 +40,7 @@ export class TechnicianBotService {
     private readonly minioService: MinioService,
     private readonly translation: TranslationService,
     private readonly assignmentEngine: AssignmentEngineService,
+    private readonly paymentModeSettingsRepo: PaymentModeSettingsRepository,
   ) {}
 
   async handleMessage(message: InboundWhatsAppMessage, _senderName: string, technician: Technician): Promise<void> {
@@ -300,15 +302,20 @@ export class TechnicianBotService {
       await this.jobsService.updateStatus(session.activeJobId!, JobStatus.IN_PROGRESS);
       session.state = TechnicianConversationState.JOB_IN_PROGRESS;
 
+      const enabledModes = await this.paymentModeSettingsRepo.listEnabled();
+      const buttons = [
+        enabledModes.includes(PaymentMode.CASH) &&
+          { id: '1', title: this.translation.translate('technician.complete_cash_button', session.language) },
+        enabledModes.includes(PaymentMode.UPI) &&
+          { id: '2', title: this.translation.translate('technician.complete_upi_button', session.language) },
+      ].filter((b): b is { id: string; title: string } => Boolean(b));
+
       await this.whatsapp.sendInteractiveButtons({
         to: technician.phone,
         body: this.translation.translate('technician.job_started', session.language, {
           jobNumber: session.activeJobNumber ?? '',
         }),
-        buttons: [
-          { id: '1', title: this.translation.translate('technician.complete_cash_button', session.language) },
-          { id: '2', title: this.translation.translate('technician.complete_upi_button', session.language) },
-        ],
+        buttons,
       });
 
       // Notify customer
@@ -384,6 +391,14 @@ export class TechnicianBotService {
     const isCompleteUpi = normalized === '2' || normalized === 'complete upi' || normalized === 'complete_upi';
 
     if (isCompleteCash || isCompleteUpi) {
+      const chosenMode = isCompleteCash ? PaymentMode.CASH : PaymentMode.UPI;
+      if (!(await this.paymentModeSettingsRepo.isEnabled(chosenMode))) {
+        await this.whatsapp.sendText({
+          to: technician.phone,
+          text: this.translation.translate('technician.payment_mode_disabled', session.language),
+        });
+        return;
+      }
       session.pendingPaymentMode = isCompleteCash ? 'CASH' : 'UPI';
       session.state = TechnicianConversationState.AWAITING_PAYMENT_AMOUNT;
       await this.whatsapp.sendText({
@@ -398,6 +413,13 @@ export class TechnicianBotService {
     if (completeMatch) {
       const amount = parseFloat(completeMatch[1]);
       const paymentMode = completeMatch[2] as keyof typeof PaymentMode;
+      if (!(await this.paymentModeSettingsRepo.isEnabled(PaymentMode[paymentMode]))) {
+        await this.whatsapp.sendText({
+          to: technician.phone,
+          text: this.translation.translate('technician.payment_mode_disabled', session.language),
+        });
+        return;
+      }
       await this.handleCompleteCommand(session, amount, PaymentMode[paymentMode], technician);
       return;
     }

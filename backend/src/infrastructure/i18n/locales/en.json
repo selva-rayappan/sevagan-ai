@@ -62,7 +62,8 @@
     "start_button": "▶️ Start",
     "decline_button": "❌ Decline",
     "complete_cash_button": "💵 Complete (Cash)",
-    "complete_upi_button": "📱 Complete (UPI)"
+    "complete_upi_button": "📱 Complete (UPI)",
+    "payment_mode_disabled": "⚠️ That payment mode is currently unavailable. Please choose one of the options shown."
   },
   "service": {
     "electrical": "Electrical",

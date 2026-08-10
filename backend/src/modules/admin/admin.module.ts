@@ -8,6 +8,7 @@ import { DisputesAdminController } from './disputes.controller';
 import { ServiceCategoriesAdminController } from './service-categories.controller';
 import { InvoicesController } from './invoices.controller';
 import { AuditLogsController } from './audit-logs.controller';
+import { PaymentModesAdminController } from './payment-modes.controller';
 import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
 import { TechniciansModule } from '../technicians/technicians.module';
 import { SettlementModule } from '../settlement/settlement.module';
@@ -15,6 +16,7 @@ import { CommissionModule } from '../commission/commission.module';
 import { AssignmentEngineModule } from '../assignment-engine/assignment-engine.module';
 import { InvoiceModule } from '../invoice/invoice.module';
 import { PaymentModule } from '../payment/payment.module';
+import { PaymentModeSettingsModule } from '../payment-mode-settings/payment-mode-settings.module';
 
 @Module({
   imports: [
@@ -24,6 +26,7 @@ import { PaymentModule } from '../payment/payment.module';
     AssignmentEngineModule,
     InvoiceModule,
     PaymentModule,
+    PaymentModeSettingsModule,
   ],
   controllers: [
     CustomersAdminController,
@@ -35,6 +38,7 @@ import { PaymentModule } from '../payment/payment.module';
     ServiceCategoriesAdminController,
     InvoicesController,
     AuditLogsController,
+    PaymentModesAdminController,
   ],
   providers: [AuditInterceptor],
 })

@@ -59,6 +59,10 @@ export class UpdateTechnicianDto {
   name?: string;
 
   @IsOptional()
+  @IsIndianPhone()
+  phone?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(255)
   address?: string;

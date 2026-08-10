@@ -15,6 +15,7 @@ import { MinioService } from '../../../infrastructure/storage/minio.service';
 import { Language, JobStatus, TechnicianStatus, PaymentMode } from '../../../domain/enums';
 import { InboundWhatsAppMessage } from '../../../infrastructure/messaging/types/inbound-message.types';
 import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
+import { PaymentModeSettingsRepository } from '../../payment-mode-settings/payment-mode-settings.repository';
 
 // ─── Mock factories ───────────────────────────────────────────────────────────
 
@@ -93,6 +94,13 @@ const mockAssignmentEngineService = {
   triggerReassignment: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockListEnabled = jest.fn();
+const mockIsEnabled = jest.fn();
+const mockPaymentModeSettingsRepo = {
+  listEnabled: mockListEnabled,
+  isEnabled: mockIsEnabled,
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const makeTechnician = (overrides = {}): any => ({
@@ -169,6 +177,7 @@ describe('TechnicianBotService', () => {
         { provide: ConversationStateService, useValue: mockCustomerSessionService },
         { provide: MinioService, useValue: mockMinioService },
         { provide: AssignmentEngineService, useValue: mockAssignmentEngineService },
+        { provide: PaymentModeSettingsRepository, useValue: mockPaymentModeSettingsRepo },
       ],
     }).compile();
 
@@ -178,6 +187,10 @@ describe('TechnicianBotService', () => {
     mockMarkAsRead.mockResolvedValue(undefined);
     mockSaveSession.mockResolvedValue(undefined);
     mockSaveCustomerSession.mockResolvedValue(undefined);
+    // Default: both modes enabled, matching pre-existing test expectations —
+    // individual tests override this to exercise the gating behavior.
+    mockListEnabled.mockResolvedValue([PaymentMode.CASH, PaymentMode.UPI]);
+    mockIsEnabled.mockResolvedValue(true);
   });
 
   // ─── HELP command ─────────────────────────────────────────────────────────
@@ -509,6 +522,19 @@ describe('TechnicianBotService', () => {
       );
     });
 
+    it('only shows the Cash button when UPI is disabled', async () => {
+      mockGetSession.mockResolvedValue(acceptedSession());
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.IN_PROGRESS });
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockListEnabled.mockResolvedValue([PaymentMode.CASH]);
+
+      await service.handleMessage(makeTextMessage('START'), 'Kumar', makeTechnician());
+
+      expect(mockSendInteractiveButtons).toHaveBeenCalledWith(
+        expect.objectContaining({ buttons: [expect.objectContaining({ id: '1' })] }),
+      );
+    });
+
     it('declines on "2" reply: frees the technician, resets the job, and reassigns', async () => {
       mockGetSession.mockResolvedValue(acceptedSession());
       mockFindByJobId.mockResolvedValue({ id: 'assign-1', jobId: 'job-1' });
@@ -658,6 +684,34 @@ describe('TechnicianBotService', () => {
           state: TechnicianConversationState.AWAITING_PAYMENT_AMOUNT,
           pendingPaymentMode: 'UPI',
         }),
+      );
+    });
+
+    it('rejects "2" (UPI) reply when UPI is currently disabled', async () => {
+      mockGetSession.mockResolvedValue(inProgressSession());
+      mockIsEnabled.mockResolvedValue(false);
+
+      await service.handleMessage(makeTextMessage('2'), 'Kumar', makeTechnician());
+
+      expect(mockIsEnabled).toHaveBeenCalledWith(PaymentMode.UPI);
+      expect(mockSaveSession).not.toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.AWAITING_PAYMENT_AMOUNT }),
+      );
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919100000000' }),
+      );
+    });
+
+    it('rejects a COMPLETE command using a currently-disabled payment mode', async () => {
+      mockGetSession.mockResolvedValue(inProgressSession());
+      mockIsEnabled.mockResolvedValue(false);
+
+      await service.handleMessage(makeTextMessage('COMPLETE 500 UPI'), 'Kumar', makeTechnician());
+
+      expect(mockIsEnabled).toHaveBeenCalledWith(PaymentMode.UPI);
+      expect(mockSetCompletion).not.toHaveBeenCalled();
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919100000000' }),
       );
     });
   });
