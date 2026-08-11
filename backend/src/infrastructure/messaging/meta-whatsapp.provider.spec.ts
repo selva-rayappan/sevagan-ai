@@ -58,12 +58,15 @@ describe('MetaWhatsAppProvider', () => {
   });
 
   describe('sendTemplate()', () => {
-    it('posts a template message with body parameters', async () => {
+    it('posts a template message with named body parameters', async () => {
       await provider.sendTemplate({
         to: '919876543210',
         templateName: 'technician_welcome',
         languageCode: 'en_US',
-        bodyParams: ['Electrical', 'Virudhunagar'],
+        bodyParams: [
+          { name: 'service_name', value: 'Electrical' },
+          { name: 'service_area', value: 'Virudhunagar' },
+        ],
       });
 
       expect(mockPost).toHaveBeenCalledWith(
@@ -79,8 +82,8 @@ describe('MetaWhatsAppProvider', () => {
               {
                 type: 'body',
                 parameters: [
-                  { type: 'text', text: 'Electrical' },
-                  { type: 'text', text: 'Virudhunagar' },
+                  { type: 'text', parameter_name: 'service_name', text: 'Electrical' },
+                  { type: 'text', parameter_name: 'service_area', text: 'Virudhunagar' },
                 ],
               },
             ],
@@ -116,7 +119,7 @@ describe('MetaWhatsAppProvider', () => {
         templateName: 'order_confirmation',
         languageCode: 'en_US',
         headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
-        bodyParams: ['Kumar'],
+        bodyParams: [{ name: 'customer_name', value: 'Kumar' }],
       });
 
       const [, payload] = mockPost.mock.calls[0];

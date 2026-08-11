@@ -79,9 +79,14 @@ export class TechniciansAdminController {
     // Onboarding is a business-initiated message — the technician has never
     // messaged us, so it's outside WhatsApp's 24-hour session window and must
     // go through a pre-approved template rather than free-form text. The
-    // approved technician_welcome template has a static body (no variables)
-    // and an IMAGE header, which Meta requires supplying at send-time.
+    // approved technician_welcome template has an IMAGE header (required at
+    // send-time) and two named body variables, service_name/service_area —
+    // confirmed via GET /{waba-id}/message_templates against the WABA that
+    // actually owns the sending number (templates are scoped per-WABA).
     const lang = (body.language as Language) ?? Language.EN;
+    const primaryCategory = body.categoryIds?.length
+      ? await this.prisma.serviceCategory.findUnique({ where: { id: body.categoryIds[0] } })
+      : null;
 
     let welcomeMessageSent = true;
     try {
@@ -93,6 +98,10 @@ export class TechniciansAdminController {
         ),
         languageCode: toMetaTemplateLanguageCode(lang),
         headerImageUrl: this.configService.get<string>('whatsapp.templates.technicianWelcomeHeaderImage'),
+        bodyParams: [
+          { name: 'service_name', value: primaryCategory?.name ?? 'Home Services' },
+          { name: 'service_area', value: body.serviceArea },
+        ],
       });
     } catch (err) {
       welcomeMessageSent = false;

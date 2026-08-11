@@ -25,8 +25,9 @@ export class MockWhatsAppProvider implements WhatsAppProvider {
   }
 
   async sendTemplate({ to, templateName, languageCode, bodyParams, headerImageUrl }: SendTemplateOptions): Promise<void> {
+    const params = (bodyParams ?? []).map(({ name, value }) => `${name}=${value}`).join(', ');
     this.logger.log(
-      `[MOCK] sendTemplate -> ${to}: ${templateName} (${languageCode}) [${(bodyParams ?? []).join(', ')}]${headerImageUrl ? ` header=${headerImageUrl}` : ''}`,
+      `[MOCK] sendTemplate -> ${to}: ${templateName} (${languageCode}) [${params}]${headerImageUrl ? ` header=${headerImageUrl}` : ''}`,
     );
   }
 

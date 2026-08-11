@@ -3,11 +3,20 @@ export interface SendTextOptions {
   text: string;
 }
 
+export interface TemplateBodyParam {
+  // Must match the template's {{named_variable}} exactly, per Meta's named
+  // parameter format (confirmed via the template's
+  // example.body_text_named_params — this template does not use positional
+  // {{1}}/{{2}} variables).
+  name: string;
+  value: string;
+}
+
 export interface SendTemplateOptions {
   to: string;
   templateName: string;
   languageCode: string;
-  bodyParams?: string[];
+  bodyParams?: TemplateBodyParam[];
   // Only for templates whose approved HEADER is an IMAGE — Meta requires the
   // image be supplied at send-time; the "example" image shown during template
   // review/approval is not reused automatically for real sends.

@@ -51,7 +51,16 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
         ? [{ type: 'header', parameters: [{ type: 'image', image: { link: headerImageUrl } }] }]
         : []),
       ...(bodyParams?.length
-        ? [{ type: 'body', parameters: bodyParams.map((text) => ({ type: 'text', text })) }]
+        ? [
+            {
+              type: 'body',
+              parameters: bodyParams.map(({ name, value }) => ({
+                type: 'text',
+                parameter_name: name,
+                text: value,
+              })),
+            },
+          ]
         : []),
     ];
 

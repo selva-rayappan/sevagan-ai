@@ -113,6 +113,7 @@ describe('TechniciansAdminController', () => {
     it('creates a technician, assigns skills, and sends a WhatsApp onboarding message', async () => {
       mockCreate.mockResolvedValue({ id: 'tech-1' });
       mockSkillCreateMany.mockResolvedValue({ count: 1 });
+      mockCategoryFindUnique.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
       mockFindUnique.mockResolvedValue({ id: 'tech-1', skills: [] });
 
       const result = await controller.create(
@@ -139,12 +140,15 @@ describe('TechniciansAdminController', () => {
         data: [{ technicianId: 'tech-1', categoryId: 'cat-1' }],
         skipDuplicates: true,
       });
-      expect(mockCategoryFindUnique).not.toHaveBeenCalled();
       expect(mockSendTemplate).toHaveBeenCalledWith({
         to: '919876543210',
         templateName: 'technician_welcome',
         languageCode: 'en',
         headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
+        bodyParams: [
+          { name: 'service_name', value: 'Electrical' },
+          { name: 'service_area', value: 'Virudhunagar' },
+        ],
       });
       expect(result).toEqual({ id: 'tech-1', skills: [], welcomeMessageSent: true });
       expect(mockAuditLog).toHaveBeenCalledWith(
