@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-08-10 (Bug fix: technician welcome message — see Phase 3.2/8.5 notes below. Phase 12 Security complete — JWT rotation, RBAC, rate limiting, input validation, audit logging, HTTPS; 427 tests. Phase 13 artifacts ready — EC2 provisioning pending)
+**Last Updated:** 2026-08-11 (Technician welcome message confirmed working end-to-end in production — see Phase 3.1/8.5 notes below; required fixing a wrong-WABA template approval, a language-code mismatch, and switching to named body parameters, on top of the 2026-08-10 sendTemplate code fix. Phase 12 Security complete — JWT rotation, RBAC, rate limiting, input validation, audit logging, HTTPS; 427 tests. Phase 13 artifacts ready — EC2 provisioning pending)
 
 ---
 
@@ -212,7 +212,7 @@
 | 3.2.1 | `MessagingModule` created (global) | ✅ |
 | 3.2.2 | `MetaWhatsAppProvider` — injects `WA_ACCESS_TOKEN`, `WA_PHONE_NUMBER_ID` | ✅ |
 | 3.2.3 | Unit tests: `meta-whatsapp.provider.spec.ts` | ✅ |
-| 3.2.4 | `sendTemplate()` on `IWhatsAppProvider`/`MetaWhatsAppProvider`/`MockWhatsAppProvider` (added 2026-08-10) — bug fix: newly onboarded technicians never received their welcome message because it was sent via free-form `sendText`, which WhatsApp Cloud API rejects for business-initiated messages outside the 24h session window (a new technician has never messaged the bot). Approved-template sending now exists as a first-class provider method; `whatsapp.templates.technicianWelcome` config (env `WA_TEMPLATE_TECHNICIAN_WELCOME`) + `toMetaTemplateLanguageCode()` util map `Language` → Meta's BCP-47 codes (EN→`en_US`, TA→`ta`) | ✅ |
+| 3.2.4 | `sendTemplate()` on `IWhatsAppProvider`/`MetaWhatsAppProvider`/`MockWhatsAppProvider` (added 2026-08-10, confirmed live 2026-08-11) — bug fix: newly onboarded technicians never received their welcome message because it was sent via free-form `sendText`, which WhatsApp Cloud API rejects for business-initiated messages outside the 24h session window (a new technician has never messaged the bot). Approved-template sending now exists as a first-class provider method with `headerImageUrl` (Meta requires the IMAGE header supplied at send-time) and named `bodyParams: Array<{name, value}>` support (this template uses `{{service_name}}`/`{{service_area}}`, not positional `{{1}}`/`{{2}}`); `whatsapp.templates.technicianWelcome`/`technicianWelcomeHeaderImage` config + `toMetaTemplateLanguageCode()` util map `Language` → Meta's actual approved code (EN→`en`). Getting to a working state also required fixing a wrong-WABA template approval (`WA_TEMPLATE_TECHNICIAN_WELCOME` in `/etc/sevagan/.env` now points at `technician_welcom` — note the approved template name is actually missing its trailing "e", not a typo in this doc) — diagnosed each issue via `GET /{waba-id}/message_templates` directly rather than guessing. TA is still `PENDING` Meta approval as of 2026-08-11. | ✅ |
 
 ### 3.3 Webhook Endpoint
 | # | Task | Status |
