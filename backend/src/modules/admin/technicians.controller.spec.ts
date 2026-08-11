@@ -135,7 +135,7 @@ describe('TechniciansAdminController', () => {
       expect(mockSendTemplate).toHaveBeenCalledWith({
         to: '919876543210',
         templateName: 'technician_welcome',
-        languageCode: 'en_US',
+        languageCode: 'en',
         bodyParams: ['Electrical', 'Virudhunagar'],
       });
       expect(result).toEqual({ id: 'tech-1', skills: [], welcomeMessageSent: true });
