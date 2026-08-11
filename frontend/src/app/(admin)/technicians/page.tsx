@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Plus, X, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, X, Pencil, ChevronDown, ChevronRight, MessageSquare, Power, PowerOff } from 'lucide-react';
 
 interface Category { id: string; name: string; }
 interface Technician {
@@ -358,6 +358,81 @@ function EditModal({
   );
 }
 
+function MessageModal({
+  technician,
+  onClose,
+}: {
+  technician: Technician;
+  onClose: () => void;
+}) {
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ sent: boolean; error?: string } | null>(null);
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setResult(null);
+    try {
+      const { data } = await apiClient.post(`/api/v1/admin/technicians/${technician.id}/send-message`, { message });
+      setResult(data);
+      if (data.sent) setMessage('');
+    } catch (err: any) {
+      setResult({ sent: false, error: err?.response?.data?.message ?? 'Failed to send message' });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900">Message {technician.name}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <form onSubmit={handleSend} className="p-5 space-y-4">
+          <p className="text-xs text-gray-500">
+            Sends a WhatsApp text directly to {technician.phone}. This only reaches them if they've messaged the bot within the last 24 hours — that's a WhatsApp platform rule, not a bug.
+          </p>
+          <textarea
+            required
+            rows={4}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            maxLength={2000}
+            placeholder="Type your message…"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          {result && (
+            result.sent ? (
+              <p className="text-emerald-600 text-xs">Message sent.</p>
+            ) : (
+              <p className="text-red-600 text-xs">Not delivered: {result.error ?? 'Unknown error'}</p>
+            )
+          )}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              disabled={sending || !message.trim()}
+              className="flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {sending ? 'Sending…' : 'Send'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function TechniciansPage() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -366,9 +441,23 @@ export default function TechniciansPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<Technician | null>(null);
+  const [messaging, setMessaging] = useState<Technician | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, TechnicianDetail>>({});
+  const [activeFilter, setActiveFilter] = useState<'true' | 'false' | 'all'>('true');
   const limit = 20;
+
+  async function toggleActive(t: Technician) {
+    if (t.active && !window.confirm(`Deactivate ${t.name}? They will stop receiving new job offers.`)) return;
+    setTogglingId(t.id);
+    try {
+      await apiClient.patch(`/api/v1/admin/technicians/${t.id}`, { active: !t.active });
+      load();
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   function toggleExpand(t: Technician) {
     if (expandedId === t.id) {
@@ -386,7 +475,7 @@ export default function TechniciansPage() {
   const load = () => {
     setLoading(true);
     apiClient
-      .get(`/api/v1/admin/technicians?page=${page}&limit=${limit}`)
+      .get(`/api/v1/admin/technicians?page=${page}&limit=${limit}&active=${activeFilter}`)
       .then((r) => {
         setTechnicians(r.data.data);
         setTotal(r.data.total);
@@ -394,7 +483,7 @@ export default function TechniciansPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => { load(); }, [page, activeFilter]);
   useEffect(() => {
     apiClient.get('/api/v1/admin/service-categories').then((r) => setCategories(r.data));
   }, []);
@@ -408,12 +497,23 @@ export default function TechniciansPage() {
           <h1 className="text-xl font-bold text-gray-900">Technicians</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} total technicians</p>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
-        >
-          <Plus size={16} /> Add Technician
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={activeFilter}
+            onChange={(e) => { setActiveFilter(e.target.value as 'true' | 'false' | 'all'); setPage(1); }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="true">Active</option>
+            <option value="false">Deactivated</option>
+            <option value="all">All</option>
+          </select>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+          >
+            <Plus size={16} /> Add Technician
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -480,13 +580,32 @@ export default function TechniciansPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{t.serviceArea}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => setEditing(t)}
-                          title="Edit technician"
-                          className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
-                        >
-                          <Pencil size={14} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditing(t)}
+                            title="Edit technician"
+                            className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => setMessaging(t)}
+                            title="Message technician"
+                            className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
+                          >
+                            <MessageSquare size={14} />
+                          </button>
+                          <button
+                            onClick={() => toggleActive(t)}
+                            disabled={togglingId === t.id}
+                            title={t.active ? 'Deactivate technician' : 'Activate technician'}
+                            className={`p-1.5 rounded transition-colors disabled:opacity-40 ${
+                              t.active ? 'hover:bg-red-50 text-red-600' : 'hover:bg-emerald-50 text-emerald-600'
+                            }`}
+                          >
+                            {t.active ? <PowerOff size={14} /> : <Power size={14} />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {isExpanded && (
@@ -544,6 +663,9 @@ export default function TechniciansPage() {
           onClose={() => setEditing(null)}
           onSaved={load}
         />
+      )}
+      {messaging && (
+        <MessageModal technician={messaging} onClose={() => setMessaging(null)} />
       )}
     </div>
   );

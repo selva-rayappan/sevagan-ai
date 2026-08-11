@@ -12,7 +12,7 @@ import { toMetaTemplateLanguageCode } from '../../infrastructure/messaging/whats
 import { CurrentUser, CurrentUserPayload } from '../auth/current-user.decorator';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
-import { AddSkillDto, CreateTechnicianDto, UpdateTechnicianDto } from './dto/technicians.dto';
+import { AddSkillDto, CreateTechnicianDto, SendTechnicianMessageDto, UpdateTechnicianDto } from './dto/technicians.dto';
 import { normalizePhone } from '../../common/utils/phone.utils';
 
 @UseInterceptors(AuditInterceptor)
@@ -30,10 +30,17 @@ export class TechniciansAdminController {
 
   @Get()
   @Version('1')
-  async list(@Query('page') page = '1', @Query('limit') limit = '20', @Query('status') status?: string) {
+  async list(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Query('status') status?: string,
+    @Query('active') active?: string,
+  ) {
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const take = parseInt(limit, 10);
-    const where: any = { active: true };
+    // Defaults to active-only for backward compatibility; ?active=false surfaces
+    // deactivated technicians (otherwise unreachable once toggled off), ?active=all shows both.
+    const where: any = active === 'all' ? {} : { active: active !== 'false' };
     if (status) where.status = status;
     const [technicians, total] = await Promise.all([
       this.prisma.technician.findMany({
@@ -150,6 +157,41 @@ export class TechniciansAdminController {
     });
 
     return technician;
+  }
+
+  @Post(':id/send-message')
+  @Version('1')
+  async sendMessage(
+    @Param('id') id: string,
+    @Body() body: SendTechnicianMessageDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const technician = await this.prisma.technician.findUniqueOrThrow({ where: { id } });
+
+    // Free-form text only reaches the technician within an active 24-hour
+    // WhatsApp session (i.e. they've messaged the bot recently) — unlike
+    // onboarding, there's no fixed template for arbitrary admin text, so we
+    // just surface success/failure honestly rather than silently swallowing it.
+    let sent = true;
+    let errorMessage: string | undefined;
+    try {
+      await this.whatsapp.sendText({ to: technician.phone, text: body.message });
+    } catch (err) {
+      sent = false;
+      errorMessage = (err as Error).message;
+      this.logger.error(`Failed to send admin message to technician ${id}: ${errorMessage}`);
+    }
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'SEND_TECHNICIAN_MESSAGE',
+      entityType: 'Technician',
+      entityId: id,
+      metadata: { message: body.message, sent },
+    });
+
+    return { sent, error: sent ? undefined : errorMessage };
   }
 
   @Post(':id/skills')

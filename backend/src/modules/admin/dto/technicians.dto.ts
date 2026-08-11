@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -94,4 +95,11 @@ export class UpdateTechnicianDto {
 export class AddSkillDto {
   @IsUUID()
   categoryId: string;
+}
+
+export class SendTechnicianMessageDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(2000)
+  message: string;
 }

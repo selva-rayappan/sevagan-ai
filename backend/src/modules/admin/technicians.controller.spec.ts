@@ -39,7 +39,8 @@ const mockUpdate = jest.fn();
 const mockTechniciansRepo = { create: mockCreate, update: mockUpdate } as any;
 
 const mockSendTemplate = jest.fn();
-const mockWhatsApp = { sendTemplate: mockSendTemplate } as any;
+const mockSendText = jest.fn();
+const mockWhatsApp = { sendTemplate: mockSendTemplate, sendText: mockSendText } as any;
 
 const mockConfigGet = jest.fn().mockReturnValue('technician_welcome');
 const mockConfigService = { get: mockConfigGet } as any;
@@ -56,6 +57,7 @@ describe('TechniciansAdminController', () => {
     jest.clearAllMocks();
     mockConfigGet.mockReturnValue('technician_welcome');
     mockSendTemplate.mockResolvedValue(undefined);
+    mockSendText.mockResolvedValue(undefined);
   });
 
   describe('list()', () => {
@@ -78,6 +80,24 @@ describe('TechniciansAdminController', () => {
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { active: true, status: 'AVAILABLE' } }),
       );
+    });
+
+    it('surfaces deactivated technicians when active=false', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      await controller.list('1', '20', undefined, 'false');
+
+      expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { active: false } }));
+    });
+
+    it('omits the active filter entirely when active=all', async () => {
+      mockFindMany.mockResolvedValue([]);
+      mockCount.mockResolvedValue(0);
+
+      await controller.list('1', '20', undefined, 'all');
+
+      expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: {} }));
     });
   });
 
@@ -202,6 +222,37 @@ describe('TechniciansAdminController', () => {
       expect(mockUpdate).toHaveBeenCalledWith('tech-1', { name: 'New Name' });
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ actorId: 'admin-1', action: 'UPDATE_TECHNICIAN', entityId: 'tech-1' }),
+      );
+    });
+  });
+
+  describe('sendMessage()', () => {
+    it('sends a free-form WhatsApp message to the technician and audits it', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({ id: 'tech-1', phone: '919876543210' });
+
+      const result = await controller.sendMessage('tech-1', { message: 'Please call the office.' }, mockUser);
+
+      expect(mockSendText).toHaveBeenCalledWith({ to: '919876543210', text: 'Please call the office.' });
+      expect(result).toEqual({ sent: true, error: undefined });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: 'admin-1',
+          action: 'SEND_TECHNICIAN_MESSAGE',
+          entityId: 'tech-1',
+          metadata: { message: 'Please call the office.', sent: true },
+        }),
+      );
+    });
+
+    it('reports failure instead of throwing when the message cannot be delivered', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({ id: 'tech-1', phone: '919876543210' });
+      mockSendText.mockRejectedValue(new Error('(#131047) Re-engagement message'));
+
+      const result = await controller.sendMessage('tech-1', { message: 'Hello' }, mockUser);
+
+      expect(result).toEqual({ sent: false, error: '(#131047) Re-engagement message' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: { message: 'Hello', sent: false } }),
       );
     });
   });
