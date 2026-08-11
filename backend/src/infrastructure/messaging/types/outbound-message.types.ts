@@ -3,6 +3,13 @@ export interface SendTextOptions {
   text: string;
 }
 
+export interface SendTemplateOptions {
+  to: string;
+  templateName: string;
+  languageCode: string;
+  bodyParams?: string[];
+}
+
 export interface InteractiveButton {
   id: string;
   title: string;

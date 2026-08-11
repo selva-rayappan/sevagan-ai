@@ -8,6 +8,7 @@ import {
   SendInteractiveButtonsOptions,
   SendInteractiveListOptions,
   SendLocationRequestOptions,
+  SendTemplateOptions,
   SendTextOptions,
 } from './types/outbound-message.types';
 
@@ -41,6 +42,27 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       to,
       type: 'text',
       text: { preview_url: false, body: text },
+    });
+  }
+
+  async sendTemplate({ to, templateName, languageCode, bodyParams }: SendTemplateOptions): Promise<void> {
+    await this.post('/messages', {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+        ...(bodyParams?.length && {
+          components: [
+            {
+              type: 'body',
+              parameters: bodyParams.map((text) => ({ type: 'text', text })),
+            },
+          ],
+        }),
+      },
     });
   }
 

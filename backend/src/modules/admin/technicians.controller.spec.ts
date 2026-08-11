@@ -38,11 +38,11 @@ const mockCreate = jest.fn();
 const mockUpdate = jest.fn();
 const mockTechniciansRepo = { create: mockCreate, update: mockUpdate } as any;
 
-const mockSendText = jest.fn();
-const mockWhatsApp = { sendText: mockSendText } as any;
+const mockSendTemplate = jest.fn();
+const mockWhatsApp = { sendTemplate: mockSendTemplate } as any;
 
-const mockTranslate = jest.fn().mockReturnValue('Welcome aboard!');
-const mockTranslation = { translate: mockTranslate } as any;
+const mockConfigGet = jest.fn().mockReturnValue('technician_welcome');
+const mockConfigService = { get: mockConfigGet } as any;
 
 const mockAuditLog = jest.fn().mockResolvedValue(undefined);
 const mockAuditService = { log: mockAuditLog } as any;
@@ -52,9 +52,10 @@ describe('TechniciansAdminController', () => {
   let controller: TechniciansAdminController;
 
   beforeEach(() => {
-    controller = new TechniciansAdminController(mockPrisma, mockTechniciansRepo, mockWhatsApp, mockTranslation, mockAuditService);
+    controller = new TechniciansAdminController(mockPrisma, mockTechniciansRepo, mockWhatsApp, mockConfigService, mockAuditService);
     jest.clearAllMocks();
-    mockSendText.mockResolvedValue(undefined);
+    mockConfigGet.mockReturnValue('technician_welcome');
+    mockSendTemplate.mockResolvedValue(undefined);
   });
 
   describe('list()', () => {
@@ -111,12 +112,20 @@ describe('TechniciansAdminController', () => {
         data: [{ technicianId: 'tech-1', categoryId: 'cat-1' }],
         skipDuplicates: true,
       });
-      expect(mockSendText).toHaveBeenCalledWith(
-        expect.objectContaining({ to: '919876543210' }),
-      );
-      expect(result).toEqual({ id: 'tech-1', skills: [] });
+      expect(mockSendTemplate).toHaveBeenCalledWith({
+        to: '919876543210',
+        templateName: 'technician_welcome',
+        languageCode: 'en_US',
+        bodyParams: ['Electrical', 'Virudhunagar'],
+      });
+      expect(result).toEqual({ id: 'tech-1', skills: [], welcomeMessageSent: true });
       expect(mockAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ actorId: 'admin-1', action: 'CREATE_TECHNICIAN', entityId: 'tech-1' }),
+        expect.objectContaining({
+          actorId: 'admin-1',
+          action: 'CREATE_TECHNICIAN',
+          entityId: 'tech-1',
+          metadata: expect.objectContaining({ welcomeMessageSent: true }),
+        }),
       );
     });
 
@@ -133,14 +142,17 @@ describe('TechniciansAdminController', () => {
       expect(mockCategoryFindUnique).not.toHaveBeenCalled();
     });
 
-    it('still creates the technician even when the WhatsApp onboarding message fails', async () => {
+    it('still creates the technician but reports the failure when the WhatsApp welcome template fails', async () => {
       mockCreate.mockResolvedValue({ id: 'tech-1' });
       mockFindUnique.mockResolvedValue({ id: 'tech-1', skills: [] });
-      mockSendText.mockRejectedValue(new Error('WhatsApp API down'));
+      mockSendTemplate.mockRejectedValue(new Error('WhatsApp API down'));
 
       const result = await controller.create({ name: 'Kumar', phone: '919876543210', address: 'Virudhunagar', serviceArea: 'Virudhunagar' }, mockUser);
 
-      expect(result).toEqual({ id: 'tech-1', skills: [] });
+      expect(result).toEqual({ id: 'tech-1', skills: [], welcomeMessageSent: false });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: expect.objectContaining({ welcomeMessageSent: false }) }),
+      );
     });
   });
 

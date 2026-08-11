@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseInterceptors, Version } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Query, UseInterceptors, Version } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TechniciansRepository } from '../technicians/technicians.repository';
 import { Language } from '../../domain/enums';
@@ -7,7 +8,7 @@ import {
   WHATSAPP_PROVIDER,
   WhatsAppProvider,
 } from '../../infrastructure/messaging/whatsapp.provider.interface';
-import { TranslationService } from '../../infrastructure/i18n/translation.service';
+import { toMetaTemplateLanguageCode } from '../../infrastructure/messaging/whatsapp-language.util';
 import { CurrentUser, CurrentUserPayload } from '../auth/current-user.decorator';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AuditInterceptor } from '../../common/interceptors/audit.interceptor';
@@ -17,11 +18,13 @@ import { normalizePhone } from '../../common/utils/phone.utils';
 @UseInterceptors(AuditInterceptor)
 @Controller('admin/technicians')
 export class TechniciansAdminController {
+  private readonly logger = new Logger(TechniciansAdminController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly techniciansRepo: TechniciansRepository,
     @Inject(WHATSAPP_PROVIDER) private readonly whatsapp: WhatsAppProvider,
-    private readonly translation: TranslationService,
+    private readonly configService: ConfigService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -66,21 +69,29 @@ export class TechniciansAdminController {
       });
     }
 
-    // Send onboarding message
+    // Onboarding is a business-initiated message — the technician has never
+    // messaged us, so it's outside WhatsApp's 24-hour session window and must
+    // go through a pre-approved template rather than free-form text.
     const lang = (body.language as Language) ?? Language.EN;
     const primaryCategory = body.categoryIds?.length
       ? await this.prisma.serviceCategory.findUnique({ where: { id: body.categoryIds[0] } })
       : null;
 
-    await this.whatsapp
-      .sendText({
+    let welcomeMessageSent = true;
+    try {
+      await this.whatsapp.sendTemplate({
         to: phone,
-        text: this.translation.translate('technician.welcome', lang, {
-          service: primaryCategory?.name ?? 'Home Services',
-          serviceArea: body.serviceArea,
-        }),
-      })
-      .catch(() => undefined);
+        templateName: this.configService.get<string>(
+          'whatsapp.templates.technicianWelcome',
+          'technician_welcome',
+        ),
+        languageCode: toMetaTemplateLanguageCode(lang),
+        bodyParams: [primaryCategory?.name ?? 'Home Services', body.serviceArea],
+      });
+    } catch (err) {
+      welcomeMessageSent = false;
+      this.logger.error(`Failed to send welcome template to technician ${technician.id}: ${(err as Error).message}`);
+    }
 
     await this.auditService.log({
       actorId: user.id,
@@ -88,13 +99,15 @@ export class TechniciansAdminController {
       action: 'CREATE_TECHNICIAN',
       entityType: 'Technician',
       entityId: technician.id,
-      metadata: { name: body.name, phone, serviceArea: body.serviceArea },
+      metadata: { name: body.name, phone, serviceArea: body.serviceArea, welcomeMessageSent },
     });
 
-    return this.prisma.technician.findUnique({
+    const created = await this.prisma.technician.findUnique({
       where: { id: technician.id },
       include: { skills: { include: { category: true } } },
     });
+
+    return { ...created, welcomeMessageSent };
   }
 
   @Get(':id')

@@ -23,6 +23,11 @@ export const appConfig = () => ({
     accessToken: process.env.WA_ACCESS_TOKEN,
     appSecret: process.env.WA_APP_SECRET,
     webhookVerifyToken: process.env.WA_WEBHOOK_VERIFY_TOKEN,
+    templates: {
+      // Business-initiated messages (e.g. technician onboarding) require a
+      // pre-approved Meta template name, registered per-language in Business Manager.
+      technicianWelcome: process.env.WA_TEMPLATE_TECHNICIAN_WELCOME ?? 'technician_welcome',
+    },
   },
 
   minio: {

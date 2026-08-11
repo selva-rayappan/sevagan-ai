@@ -57,6 +57,60 @@ describe('MetaWhatsAppProvider', () => {
     });
   });
 
+  describe('sendTemplate()', () => {
+    it('posts a template message with body parameters', async () => {
+      await provider.sendTemplate({
+        to: '919876543210',
+        templateName: 'technician_welcome',
+        languageCode: 'en_US',
+        bodyParams: ['Electrical', 'Virudhunagar'],
+      });
+
+      expect(mockPost).toHaveBeenCalledWith(
+        '/messages',
+        expect.objectContaining({
+          messaging_product: 'whatsapp',
+          to: '919876543210',
+          type: 'template',
+          template: {
+            name: 'technician_welcome',
+            language: { code: 'en_US' },
+            components: [
+              {
+                type: 'body',
+                parameters: [
+                  { type: 'text', text: 'Electrical' },
+                  { type: 'text', text: 'Virudhunagar' },
+                ],
+              },
+            ],
+          },
+        }),
+      );
+    });
+
+    it('omits components when no body parameters are given', async () => {
+      await provider.sendTemplate({
+        to: '919876543210',
+        templateName: 'technician_welcome',
+        languageCode: 'ta',
+      });
+
+      const [, payload] = mockPost.mock.calls[0];
+      expect(payload.template).toEqual({
+        name: 'technician_welcome',
+        language: { code: 'ta' },
+      });
+    });
+
+    it('propagates API errors after logging', async () => {
+      mockPost.mockRejectedValue(new Error('Template not approved'));
+      await expect(
+        provider.sendTemplate({ to: '919876543210', templateName: 'technician_welcome', languageCode: 'en_US' }),
+      ).rejects.toThrow('Template not approved');
+    });
+  });
+
   describe('sendInteractiveButtons()', () => {
     it('posts an interactive button message with correct action shape', async () => {
       await provider.sendInteractiveButtons({
