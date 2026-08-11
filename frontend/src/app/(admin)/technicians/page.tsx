@@ -393,7 +393,7 @@ function MessageModal({
         </div>
         <form onSubmit={handleSend} className="p-5 space-y-4">
           <p className="text-xs text-gray-500">
-            Sends a WhatsApp text directly to {technician.phone}. This only reaches them if they've messaged the bot within the last 24 hours — that's a WhatsApp platform rule, not a bug.
+            Sends a WhatsApp text directly to {technician.phone}. This only reaches them if they&apos;ve messaged the bot within the last 24 hours — that&apos;s a WhatsApp platform rule, not a bug.
           </p>
           <textarea
             required
