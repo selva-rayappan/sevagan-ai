@@ -89,6 +89,40 @@ describe('MetaWhatsAppProvider', () => {
       );
     });
 
+    it('posts a header image component when headerImageUrl is given, with no body params', async () => {
+      await provider.sendTemplate({
+        to: '919876543210',
+        templateName: 'technician_welcome',
+        languageCode: 'en',
+        headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
+      });
+
+      const [, payload] = mockPost.mock.calls[0];
+      expect(payload.template).toEqual({
+        name: 'technician_welcome',
+        language: { code: 'en' },
+        components: [
+          {
+            type: 'header',
+            parameters: [{ type: 'image', image: { link: 'https://sevagan.co.in/index_files/logo-new.png' } }],
+          },
+        ],
+      });
+    });
+
+    it('puts the header component before the body component when both are given', async () => {
+      await provider.sendTemplate({
+        to: '919876543210',
+        templateName: 'order_confirmation',
+        languageCode: 'en_US',
+        headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
+        bodyParams: ['Kumar'],
+      });
+
+      const [, payload] = mockPost.mock.calls[0];
+      expect(payload.template.components.map((c: { type: string }) => c.type)).toEqual(['header', 'body']);
+    });
+
     it('omits components when no body parameters are given', async () => {
       await provider.sendTemplate({
         to: '919876543210',

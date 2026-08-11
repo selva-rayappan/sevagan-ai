@@ -42,7 +42,11 @@ const mockSendTemplate = jest.fn();
 const mockSendText = jest.fn();
 const mockWhatsApp = { sendTemplate: mockSendTemplate, sendText: mockSendText } as any;
 
-const mockConfigGet = jest.fn().mockReturnValue('technician_welcome');
+const mockConfigGet = jest.fn((key: string) => {
+  if (key === 'whatsapp.templates.technicianWelcome') return 'technician_welcome';
+  if (key === 'whatsapp.templates.technicianWelcomeHeaderImage') return 'https://sevagan.co.in/index_files/logo-new.png';
+  return undefined;
+});
 const mockConfigService = { get: mockConfigGet } as any;
 
 const mockAuditLog = jest.fn().mockResolvedValue(undefined);
@@ -55,7 +59,11 @@ describe('TechniciansAdminController', () => {
   beforeEach(() => {
     controller = new TechniciansAdminController(mockPrisma, mockTechniciansRepo, mockWhatsApp, mockConfigService, mockAuditService);
     jest.clearAllMocks();
-    mockConfigGet.mockReturnValue('technician_welcome');
+    mockConfigGet.mockImplementation((key: string) => {
+      if (key === 'whatsapp.templates.technicianWelcome') return 'technician_welcome';
+      if (key === 'whatsapp.templates.technicianWelcomeHeaderImage') return 'https://sevagan.co.in/index_files/logo-new.png';
+      return undefined;
+    });
     mockSendTemplate.mockResolvedValue(undefined);
     mockSendText.mockResolvedValue(undefined);
   });
@@ -105,7 +113,6 @@ describe('TechniciansAdminController', () => {
     it('creates a technician, assigns skills, and sends a WhatsApp onboarding message', async () => {
       mockCreate.mockResolvedValue({ id: 'tech-1' });
       mockSkillCreateMany.mockResolvedValue({ count: 1 });
-      mockCategoryFindUnique.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
       mockFindUnique.mockResolvedValue({ id: 'tech-1', skills: [] });
 
       const result = await controller.create(
@@ -132,11 +139,12 @@ describe('TechniciansAdminController', () => {
         data: [{ technicianId: 'tech-1', categoryId: 'cat-1' }],
         skipDuplicates: true,
       });
+      expect(mockCategoryFindUnique).not.toHaveBeenCalled();
       expect(mockSendTemplate).toHaveBeenCalledWith({
         to: '919876543210',
         templateName: 'technician_welcome',
         languageCode: 'en',
-        bodyParams: ['Electrical', 'Virudhunagar'],
+        headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
       });
       expect(result).toEqual({ id: 'tech-1', skills: [], welcomeMessageSent: true });
       expect(mockAuditLog).toHaveBeenCalledWith(

@@ -8,6 +8,10 @@ export interface SendTemplateOptions {
   templateName: string;
   languageCode: string;
   bodyParams?: string[];
+  // Only for templates whose approved HEADER is an IMAGE — Meta requires the
+  // image be supplied at send-time; the "example" image shown during template
+  // review/approval is not reused automatically for real sends.
+  headerImageUrl?: string;
 }
 
 export interface InteractiveButton {

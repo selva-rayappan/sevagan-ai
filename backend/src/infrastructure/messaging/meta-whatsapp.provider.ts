@@ -45,7 +45,16 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
     });
   }
 
-  async sendTemplate({ to, templateName, languageCode, bodyParams }: SendTemplateOptions): Promise<void> {
+  async sendTemplate({ to, templateName, languageCode, bodyParams, headerImageUrl }: SendTemplateOptions): Promise<void> {
+    const components = [
+      ...(headerImageUrl
+        ? [{ type: 'header', parameters: [{ type: 'image', image: { link: headerImageUrl } }] }]
+        : []),
+      ...(bodyParams?.length
+        ? [{ type: 'body', parameters: bodyParams.map((text) => ({ type: 'text', text })) }]
+        : []),
+    ];
+
     await this.post('/messages', {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -54,14 +63,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       template: {
         name: templateName,
         language: { code: languageCode },
-        ...(bodyParams?.length && {
-          components: [
-            {
-              type: 'body',
-              parameters: bodyParams.map((text) => ({ type: 'text', text })),
-            },
-          ],
-        }),
+        ...(components.length && { components }),
       },
     });
   }

@@ -27,6 +27,11 @@ export const appConfig = () => ({
       // Business-initiated messages (e.g. technician onboarding) require a
       // pre-approved Meta template name, registered per-language in Business Manager.
       technicianWelcome: process.env.WA_TEMPLATE_TECHNICIAN_WELCOME ?? 'technician_welcome',
+      // The approved technician_welcome template has an IMAGE header with no
+      // body variables — Meta requires the header image at send-time (the
+      // template's "example" image is preview-only, never reused for real sends).
+      technicianWelcomeHeaderImage:
+        process.env.WA_TEMPLATE_TECHNICIAN_WELCOME_HEADER_IMAGE ?? 'https://sevagan.co.in/index_files/logo-new.png',
     },
   },
 
