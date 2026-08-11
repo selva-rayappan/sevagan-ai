@@ -122,18 +122,17 @@ describe('TechniciansRepository', () => {
   });
 
   describe('findBestAvailable()', () => {
-    it('queries by category, availability, and location keyword, excluding given ids', async () => {
+    it('queries by category and availability only, excluding given ids', async () => {
       const tech = { id: 't-1', priorityRank: 50, trustScore: 100, rating: 5 };
       mockFindMany.mockResolvedValueOnce([tech]);
 
-      const result = await repo.findBestAvailable('cat-1', 'Allampatti, Virudhunagar', ['t-2']);
+      const result = await repo.findBestAvailable('cat-1', ['t-2']);
 
       expect(result).toBe(tech);
       expect(mockFindMany).toHaveBeenCalledWith({
         where: {
           status: TechnicianStatus.AVAILABLE,
           active: true,
-          serviceArea: { contains: 'Virudhunagar', mode: 'insensitive' },
           skills: { some: { categoryId: 'cat-1' } },
           id: { notIn: ['t-2'] },
         },
@@ -141,9 +140,9 @@ describe('TechniciansRepository', () => {
     });
 
     it('omits the notIn clause when there are no excluded ids', async () => {
-      mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockFindMany.mockResolvedValueOnce([]);
 
-      await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
+      await repo.findBestAvailable('cat-1', []);
 
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -152,41 +151,10 @@ describe('TechniciansRepository', () => {
       );
     });
 
-    it('falls back to any available technician with the skill when no area match exists', async () => {
-      const fallbackTech = { id: 't-3', priorityRank: 50, trustScore: 100, rating: 5 };
-      mockFindMany
-        .mockResolvedValueOnce([]) // area-scoped query finds nobody
-        .mockResolvedValueOnce([fallbackTech]); // area-agnostic fallback finds someone
+    it('returns null when no technician is available', async () => {
+      mockFindMany.mockResolvedValueOnce([]);
 
-      const result = await repo.findBestAvailable('cat-1', 'Somewhere Unmapped', []);
-
-      expect(result).toBe(fallbackTech);
-      expect(mockFindMany).toHaveBeenCalledTimes(2);
-      expect(mockFindMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
-        where: expect.objectContaining({ serviceArea: expect.anything() }),
-      }));
-      expect(mockFindMany).toHaveBeenNthCalledWith(2, {
-        where: {
-          status: TechnicianStatus.AVAILABLE,
-          active: true,
-          skills: { some: { categoryId: 'cat-1' } },
-        },
-      });
-    });
-
-    it('does not fall back when an area match is found', async () => {
-      const tech = { id: 't-1', priorityRank: 50, trustScore: 100, rating: 5 };
-      mockFindMany.mockResolvedValueOnce([tech]);
-
-      await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
-
-      expect(mockFindMany).toHaveBeenCalledTimes(1);
-    });
-
-    it('returns null when no technician is available anywhere', async () => {
-      mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-
-      const result = await repo.findBestAvailable('cat-1', 'Somewhere Unmapped', []);
+      const result = await repo.findBestAvailable('cat-1', []);
 
       expect(result).toBeNull();
     });
@@ -196,7 +164,7 @@ describe('TechniciansRepository', () => {
       const higherScore = { id: 't-2', priorityRank: 90, trustScore: 40, rating: 3 };
       mockFindMany.mockResolvedValueOnce([lowerScore, higherScore]);
 
-      const result = await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
+      const result = await repo.findBestAvailable('cat-1', []);
 
       // t-1 score: 50*2 + 90 + 4*10 = 230; t-2 score: 90*2 + 40 + 3*10 = 250
       expect(result).toBe(higherScore);
@@ -207,7 +175,7 @@ describe('TechniciansRepository', () => {
       const boostedRank = { id: 't-2', priorityRank: 100, trustScore: 90, rating: 5 };
       mockFindMany.mockResolvedValueOnce([highTrustLowRank, boostedRank]);
 
-      const result = await repo.findBestAvailable('cat-1', 'Virudhunagar', []);
+      const result = await repo.findBestAvailable('cat-1', []);
 
       // t-1 score: 10*2 + 100 + 5*10 = 170; t-2 score: 100*2 + 90 + 5*10 = 340
       expect(result).toBe(boostedRank);

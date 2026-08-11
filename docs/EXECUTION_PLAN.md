@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-07-21)
+## Progress Overview (Last Updated: 2026-08-10)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -116,6 +116,7 @@
 - ✅ `IWhatsAppProvider` interface
 - ✅ `MetaWhatsAppProvider` implementation
 - ✅ `MessagingModule` (global)
+- ✅ `WhatsAppProvider.sendTemplate` (added 2026-08-10) — bug fix: the technician welcome message was going out via `sendText` (free-form `type: 'text'`), which WhatsApp Cloud API silently rejects for business-initiated messages outside the 24h customer-service session window (error 131047) — a brand-new technician has never messaged the bot, so every welcome message was failing. `technicians.controller.ts` now calls `sendTemplate` with an approved template name (`whatsapp.templates.technicianWelcome` config, env `WA_TEMPLATE_TECHNICIAN_WELCOME`) and a BCP-47 language code (`toMetaTemplateLanguageCode()` in `whatsapp-language.util.ts`, EN→`en_US`/TA→`ta`). The old failure was also silently swallowed (`.catch(() => undefined)`); the controller now logs the error and returns `welcomeMessageSent: true/false` on the created technician so a delivery failure is visible instead of looking like success. `MockWhatsAppProvider.sendTemplate` logs the call for dev/testing. Requires registering and getting Meta approval for a `technician_welcome` template (EN + TA) in Business Manager before this works against the real Graph API.
 
 #### 3.2 Webhook
 - ✅ `POST /api/v1/webhooks/whatsapp`
@@ -317,7 +318,7 @@ display).
 #### Acceptance Criteria
 - ✅ Admin can log in; JWT auth guard protects all admin routes
 - ✅ Dashboard KPIs match database counts (auto-refresh every 30s)
-- ✅ Creating technician from dashboard sends WhatsApp onboarding message via translation service
+- ✅ Creating technician from dashboard sends WhatsApp onboarding message via an approved template (see 3.1, fixed 2026-08-10 — previously a free-text `sendText` call that WhatsApp rejects outside the 24h session window, so no newly onboarded technician ever received it)
 - ✅ `AssignmentEngineService.manualAssign(jobId, technicianId)` — admin picks a specific technician (not just re-running auto-match); frees the previously-assigned technician back to AVAILABLE first; exposed via the "Assign" button on NEW/ASSIGNED/ACCEPTED jobs (updated 2026-07-16 — the endpoint previously accepted but silently ignored `technicianId`)
 - ✅ **224 tests, 24 suites — all passing**
 - ✅ Unit tests backfilled 2026-06-30 for all 7 admin controllers, the auth module (controller/service/guard/strategy), and the dashboard module — these had zero coverage despite the original sign-off; see Phase 9 note (now resolved)

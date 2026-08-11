@@ -78,30 +78,20 @@ export class TechniciansRepository {
     });
   }
 
-  async findBestAvailable(
-    categoryId: string,
-    location: string,
-    excludedIds: string[],
-  ): Promise<Technician | null> {
-    const baseWhere = {
-      status: TechnicianStatus.AVAILABLE as any,
-      active: true,
-      skills: { some: { categoryId } },
-      ...(excludedIds.length > 0 ? { id: { notIn: excludedIds } } : {}),
-    };
-
-    const locationKeyword = this.extractLocationKeyword(location);
-    const areaMatches = await this.prisma.technician.findMany({
-      where: { ...baseWhere, serviceArea: { contains: locationKeyword, mode: 'insensitive' } },
+  // Service area is not part of the filter: the app is currently restricted to
+  // a single locality (Virudhunagar), so every technician should get an equal
+  // shot regardless of the job's location.
+  async findBestAvailable(categoryId: string, excludedIds: string[]): Promise<Technician | null> {
+    const candidates = await this.prisma.technician.findMany({
+      where: {
+        status: TechnicianStatus.AVAILABLE as any,
+        active: true,
+        skills: { some: { categoryId } },
+        ...(excludedIds.length > 0 ? { id: { notIn: excludedIds } } : {}),
+      },
     });
-    if (areaMatches.length > 0) return this.pickHighestScoring(areaMatches);
-
-    // No technician covers this specific area — fall back to the best
-    // available technician with the right skill regardless of service area,
-    // rather than leaving the job unassigned.
-    const fallback = await this.prisma.technician.findMany({ where: baseWhere });
-    if (fallback.length === 0) return null;
-    return this.pickHighestScoring(fallback);
+    if (candidates.length === 0) return null;
+    return this.pickHighestScoring(candidates);
   }
 
   private pickHighestScoring(technicians: Technician[]): Technician {
@@ -142,10 +132,5 @@ export class TechniciansRepository {
       updateData.phone = normalizePhone(updateData.phone);
     }
     return this.prisma.technician.update({ where: { id }, data: updateData as any });
-  }
-
-  private extractLocationKeyword(location: string): string {
-    const parts = location.split(',');
-    return parts[parts.length - 1].trim();
   }
 }

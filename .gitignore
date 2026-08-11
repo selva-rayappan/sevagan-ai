@@ -50,3 +50,9 @@ ollama_data/
 *.pem
 *.ppk
 *.key
+
+# Local Claude Code settings — accumulates machine-specific paths and can
+# capture secrets verbatim from approved command strings (e.g. tokens passed
+# inline on a curl/ssh command line get recorded as part of the allowlist)
+.claude/settings.json
+.claude/settings.local.json

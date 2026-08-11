@@ -142,11 +142,9 @@ describe('AssignmentEngineService', () => {
 
       await service.tryAssignJob('job-1', '919876543210');
 
-      expect(mockTechniciansRepo.findBestAvailable).toHaveBeenCalledWith(
-        'cat-1',
-        'Main Street, Allampatti',
-        ['tech-excluded'],
-      );
+      expect(mockTechniciansRepo.findBestAvailable).toHaveBeenCalledWith('cat-1', [
+        'tech-excluded',
+      ]);
     });
 
     it('returns early if job not found', async () => {

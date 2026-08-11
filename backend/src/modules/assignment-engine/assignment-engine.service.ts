@@ -44,7 +44,6 @@ export class AssignmentEngineService {
     const excludedIds = await this.getRejectedTechIds(jobId);
     const technician = await this.techniciansRepository.findBestAvailable(
       job.serviceCategoryId,
-      job.location,
       excludedIds,
     );
 

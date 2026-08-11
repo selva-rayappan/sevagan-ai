@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-07-14 (Phase 12 Security complete — JWT rotation, RBAC, rate limiting, input validation, audit logging, HTTPS; 427 tests. Phase 13 artifacts ready — EC2 provisioning pending)
+**Last Updated:** 2026-08-10 (Bug fix: technician welcome message — see Phase 3.2/8.5 notes below. Phase 12 Security complete — JWT rotation, RBAC, rate limiting, input validation, audit logging, HTTPS; 427 tests. Phase 13 artifacts ready — EC2 provisioning pending)
 
 ---
 
@@ -212,6 +212,7 @@
 | 3.2.1 | `MessagingModule` created (global) | ✅ |
 | 3.2.2 | `MetaWhatsAppProvider` — injects `WA_ACCESS_TOKEN`, `WA_PHONE_NUMBER_ID` | ✅ |
 | 3.2.3 | Unit tests: `meta-whatsapp.provider.spec.ts` | ✅ |
+| 3.2.4 | `sendTemplate()` on `IWhatsAppProvider`/`MetaWhatsAppProvider`/`MockWhatsAppProvider` (added 2026-08-10) — bug fix: newly onboarded technicians never received their welcome message because it was sent via free-form `sendText`, which WhatsApp Cloud API rejects for business-initiated messages outside the 24h session window (a new technician has never messaged the bot). Approved-template sending now exists as a first-class provider method; `whatsapp.templates.technicianWelcome` config (env `WA_TEMPLATE_TECHNICIAN_WELCOME`) + `toMetaTemplateLanguageCode()` util map `Language` → Meta's BCP-47 codes (EN→`en_US`, TA→`ta`) | ✅ |
 
 ### 3.3 Webhook Endpoint
 | # | Task | Status |
@@ -635,7 +636,7 @@
 ### 8.5 Technician Management
 | # | Task | Status |
 |---|------|--------|
-| 8.5.1 | `POST /api/v1/admin/technicians` — create + add skills + send WhatsApp `technician.welcome` | ✅ |
+| 8.5.1 | `POST /api/v1/admin/technicians` — create + add skills + send WhatsApp welcome template (fixed 2026-08-10: was `sendText`/`technician.welcome`, silently failing outside the 24h session window; now `sendTemplate` via approved `technician_welcome` template, see 3.2.4). Failure is now logged and returned as `welcomeMessageSent: false` on the response instead of being swallowed by `.catch(() => undefined)` | ✅ |
 | 8.5.2 | `GET /api/v1/admin/technicians` (paginated), `GET /:id` (+ `totalJobs`/`totalEarnings`/`totalCommission` via `JobCommission.aggregate`), `PATCH /:id` | ✅ |
 | 8.5.3 | Technicians page: table + create modal with skill pill toggles; clicking a technician's name folds open a detail row with Joined date, Total Jobs, Total Earnings, Total Commission (lazy-fetched + cached per row) | ✅ |
 
@@ -678,7 +679,7 @@
 |---|-----------|--------|
 | AC-8.1 | Admin can log in; JWT auth guard protects all admin routes | ✅ |
 | AC-8.2 | Dashboard KPIs fetched live from database | ✅ |
-| AC-8.3 | Technician created from dashboard sends WhatsApp onboarding via TranslationService | ✅ |
+| AC-8.3 | Technician created from dashboard sends WhatsApp onboarding via an approved template (fixed 2026-08-10 — see 3.2.4/8.5.1; previously via `TranslationService` + free-text `sendText`, which WhatsApp rejects for a technician's first-ever message from us) | ✅ |
 | AC-8.4 | Job list filters by status correctly | ✅ |
 | AC-8.5 | Manual assignment triggers AssignmentEngineService | ✅ |
 | AC-8.6 | Settlement generation computes correct amounts | ✅ |
