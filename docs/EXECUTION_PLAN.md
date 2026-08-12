@@ -26,7 +26,7 @@
 | Phase 11 | Reports | ✅ COMPLETE |
 | Phase 12 | Security | ✅ COMPLETE |
 | Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
-| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — code + tests complete, not yet deployed |
+| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — deployed and verified live, no real call tested yet |
 
 ---
 
@@ -518,6 +518,7 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 #### Acceptance Criteria
 - ✅ Unit tests: `PlivoVoiceCallProvider`, `VoiceWebhookTokenGuard`, `VoiceWebhookController`, `TechnicianOfferEscalationService`, `TechnicianBotService.handlePhoneCallResponse()` — all passing
 - ✅ Full backend suite green (72 suites / 590 tests) after the change
-- ❌ Not yet deployed to the production backend/EC2 — `PLIVO_*`/`VOICE_WEBHOOK_TOKEN` only exist in the local `backend/.env`; only the static audio files are live on `sevagan.co.in`
-- ❌ No real end-to-end call placed/tested yet (Plivo India number KYC/signup was still being resolved during this phase)
+- ✅ **Deployed to production (2026-08-12)** — `scripts/deploy.sh` run against `54.208.201.48`; `PLIVO_*`/`VOICE_WEBHOOK_TOKEN` added to `/etc/sevagan/.env`; `sevagan-api` rebuilt and healthy
+- ✅ Verified live: `GET https://api.sevagan.co.in/api/v1/voice/answer` returns correct Plivo XML with the right `<Play>` URL per `lang`; missing/wrong `token` correctly 401s
+- ❌ No real end-to-end call placed/tested yet (Plivo India number KYC/signup was still being resolved during this phase) — the escalation poller is live and will attempt a real Plivo call the next time a job offer goes unanswered for 1 minute
 - ❌ Plivo's HMAC-V3 webhook signature not implemented (shared-secret token only) — documented gap, not a blocker for MVP
