@@ -5,6 +5,7 @@ import { PrismaModule } from './infrastructure/database/prisma.module';
 import { RedisModule } from './infrastructure/cache/redis.module';
 import { TranslationModule } from './infrastructure/i18n/translation.module';
 import { MessagingModule } from './infrastructure/messaging/messaging.module';
+import { TelephonyModule } from './infrastructure/telephony/telephony.module';
 import { MinioModule } from './infrastructure/storage/minio.module';
 import { HealthModule } from './modules/health/health.module';
 import { WhatsAppModule } from './modules/whatsapp/whatsapp.module';
@@ -50,6 +51,7 @@ import { validate } from './config/env.validation';
     RedisModule,
     TranslationModule,
     MessagingModule,
+    TelephonyModule,
     MinioModule,
     AIModule,
     AuditModule,

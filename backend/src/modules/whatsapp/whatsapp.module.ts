@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { WebhookController } from './webhook/webhook.controller';
 import { WebhookHmacGuard } from './guards/webhook-hmac.guard';
+import { VoiceWebhookController } from './voice/voice-webhook.controller';
 import { ConversationStateService } from './conversation/conversation-state.service';
 import { CustomerBotService } from './customer-bot/customer-bot.service';
 import { CustomerIdleNudgeService } from './customer-bot/customer-idle-nudge.service';
 import { TechnicianSessionModule } from './technician-bot/technician-session.module';
 import { TechnicianBotService } from './technician-bot/technician-bot.service';
+import { TechnicianOfferEscalationService } from './technician-bot/technician-offer-escalation.service';
 import { CustomersModule } from '../customers/customers.module';
 import { JobsModule } from '../jobs/jobs.module';
 import { ServiceCategoriesModule } from '../service-categories/service-categories.module';
@@ -39,13 +41,14 @@ import { PaymentModeSettingsModule } from '../payment-mode-settings/payment-mode
     AIDispatcherModule,
     PaymentModeSettingsModule,
   ],
-  controllers: [WebhookController],
+  controllers: [WebhookController, VoiceWebhookController],
   providers: [
     WebhookHmacGuard,
     ConversationStateService,
     CustomerBotService,
     CustomerIdleNudgeService,
     TechnicianBotService,
+    TechnicianOfferEscalationService,
   ],
   exports: [TechnicianBotService],
 })

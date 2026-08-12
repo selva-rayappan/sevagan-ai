@@ -42,8 +42,10 @@ const mockTechSessionService = {
 };
 
 const mockUpdateTechStatus = jest.fn().mockResolvedValue(undefined);
+const mockFindByPhone = jest.fn();
 const mockTechniciansRepository = {
   updateStatus: mockUpdateTechStatus,
+  findByPhone: mockFindByPhone,
 };
 
 const mockFindByJobId = jest.fn();
@@ -872,6 +874,88 @@ describe('TechnicianBotService', () => {
       await expect(
         service.handleMessage(makeTextMessage('HELP'), 'Kumar', makeTechnician()),
       ).resolves.not.toThrow();
+    });
+  });
+
+  // ─── handlePhoneCallResponse() — DTMF from the escalation call ─────────────
+
+  describe('handlePhoneCallResponse()', () => {
+    const pendingSession = () =>
+      makeSession({
+        state: TechnicianConversationState.JOB_OFFER_PENDING,
+        activeJobId: 'job-1',
+        activeJobNumber: 'JOB-20260614-0001',
+        customerPhone: '919876543210',
+        offerExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      });
+
+    it('accepts the job on digit "1", same as a WhatsApp "1" reply', async () => {
+      mockFindByPhone.mockResolvedValue(makeTechnician());
+      mockGetSession.mockResolvedValue(pendingSession());
+      const assignment = { id: 'assign-1', jobId: 'job-1' };
+      mockFindByJobId.mockResolvedValue(assignment);
+      mockAcceptAssignment.mockResolvedValue({ ...assignment, acceptedAt: new Date() });
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.ACCEPTED });
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE',
+        phone: '919876543210',
+        language: Language.EN,
+        updatedAt: new Date().toISOString(),
+      });
+
+      await service.handlePhoneCallResponse('919100000000', '1');
+
+      expect(mockAcceptAssignment).toHaveBeenCalledWith('assign-1');
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.ACCEPTED);
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.JOB_ACCEPTED }),
+      );
+    });
+
+    it('rejects the job on digit "2", same as a WhatsApp "2" reply', async () => {
+      mockFindByPhone.mockResolvedValue(makeTechnician());
+      mockGetSession.mockResolvedValue(pendingSession());
+      mockFindByJobId.mockResolvedValue({ id: 'assign-1', jobId: 'job-1' });
+
+      await service.handlePhoneCallResponse('919100000000', '2');
+
+      expect(mockDeleteById).toHaveBeenCalledWith('assign-1');
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.NEW);
+      expect(mockAssignmentEngineService.triggerReassignment).toHaveBeenCalledWith('job-1', 'tech-1');
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.IDLE }),
+      );
+    });
+
+    it('does nothing for an unrecognized phone number', async () => {
+      mockFindByPhone.mockResolvedValue(null);
+
+      await service.handlePhoneCallResponse('919999999999', '1');
+
+      expect(mockGetSession).not.toHaveBeenCalled();
+      expect(mockSaveSession).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when there is no pending offer for that technician', async () => {
+      mockFindByPhone.mockResolvedValue(makeTechnician());
+      mockGetSession.mockResolvedValue(makeSession({ state: TechnicianConversationState.IDLE }));
+
+      await service.handlePhoneCallResponse('919100000000', '1');
+
+      expect(mockAcceptAssignment).not.toHaveBeenCalled();
+      expect(mockSaveSession).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the technician has no session at all', async () => {
+      mockFindByPhone.mockResolvedValue(makeTechnician());
+      mockGetSession.mockResolvedValue(null);
+
+      await service.handlePhoneCallResponse('919100000000', '1');
+
+      expect(mockAcceptAssignment).not.toHaveBeenCalled();
+      expect(mockSaveSession).not.toHaveBeenCalled();
     });
   });
 });

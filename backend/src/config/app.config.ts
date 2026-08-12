@@ -69,4 +69,17 @@ export const appConfig = () => ({
     razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
     razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET,
   },
+
+  voice: {
+    plivoAuthId: process.env.PLIVO_AUTH_ID,
+    plivoAuthToken: process.env.PLIVO_AUTH_TOKEN,
+    plivoNumber: process.env.PLIVO_NUMBER,
+    // Shared secret appended as a query param on the answer/DTMF callback URLs
+    // Plivo hits — the only auth those endpoints have (see voice-webhook-token.guard.ts).
+    webhookToken: process.env.VOICE_WEBHOOK_TOKEN,
+    audioUrls: {
+      jobOfferEn: process.env.VOICE_JOB_OFFER_AUDIO_EN ?? 'https://sevagan.co.in/audio/job_offer_call_en.mp3',
+      jobOfferTa: process.env.VOICE_JOB_OFFER_AUDIO_TA ?? 'https://sevagan.co.in/audio/job_offer_call_ta.mp3',
+    },
+  },
 });

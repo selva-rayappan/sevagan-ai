@@ -110,6 +110,31 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   RAZORPAY_WEBHOOK_SECRET: string;
+
+  // Voice calling (Plivo)
+  @IsString()
+  @IsOptional()
+  PLIVO_AUTH_ID: string;
+
+  @IsString()
+  @IsOptional()
+  PLIVO_AUTH_TOKEN: string;
+
+  @IsString()
+  @IsOptional()
+  PLIVO_NUMBER: string;
+
+  @IsString()
+  @IsOptional()
+  VOICE_WEBHOOK_TOKEN: string;
+
+  @IsString()
+  @IsOptional()
+  VOICE_JOB_OFFER_AUDIO_EN: string;
+
+  @IsString()
+  @IsOptional()
+  VOICE_JOB_OFFER_AUDIO_TA: string;
 }
 
 export function validate(config: Record<string, unknown>) {

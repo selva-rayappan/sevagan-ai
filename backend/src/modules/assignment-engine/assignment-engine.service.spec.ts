@@ -124,6 +124,7 @@ describe('AssignmentEngineService', () => {
       expect(savedSession.activeJobNumber).toBe('JOB-20260615-0001');
       expect(savedSession.customerPhone).toBe('919876543210');
       expect(savedSession.offerExpiresAt).toBeDefined();
+      expect(savedSession.offerSentAt).toBeDefined();
     });
 
     it('notifies customer when no technician is available', async () => {

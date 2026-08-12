@@ -116,6 +116,33 @@ export class TechnicianBotService {
     }
   }
 
+  /**
+   * Entry point for the escalation call's DTMF response (see
+   * VoiceWebhookController) — reuses the same accept/reject/expiry logic as a
+   * WhatsApp "1"/"2" button reply, since GetDigits collects the identical values.
+   */
+  async handlePhoneCallResponse(technicianPhone: string, digit: string): Promise<void> {
+    const technician = await this.techniciansRepository.findByPhone(technicianPhone);
+    if (!technician) {
+      this.logger.warn(`DTMF response from unrecognized phone ${technicianPhone}`);
+      return;
+    }
+
+    const session = await this.techSessionService.getSession(technician.phone);
+    if (!session || session.state !== TechnicianConversationState.JOB_OFFER_PENDING) {
+      this.logger.warn(
+        `DTMF response for ${technician.phone} but no pending offer (state=${session?.state ?? 'none'})`,
+      );
+      return;
+    }
+
+    try {
+      await this.handleOfferResponse(session, digit, technician);
+    } finally {
+      await this.techSessionService.saveSession(session);
+    }
+  }
+
   async sendJobOffer(technician: Technician, job: Job, customer: Customer): Promise<void> {
     let session = await this.techSessionService.getSession(technician.phone);
     if (!session) {

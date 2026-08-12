@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-08-12 (Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5. Prior: Technician welcome message confirmed working end-to-end in production 2026-08-11 — see 3.2.4/8.5.1.)
+**Last Updated:** 2026-08-12 (Phase 14 added — technician job-offer voice escalation via Plivo: code, config, and unit tests complete; not yet deployed to production or tested against a real call — see Phase 14. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5. Prior: Technician welcome message confirmed working end-to-end in production 2026-08-11 — see 3.2.4/8.5.1.)
 
 ---
 
@@ -25,6 +25,7 @@
 | [Phase 11](#phase-11--reports) | Reports | ✅ COMPLETE | 13/13 |
 | [Phase 12](#phase-12--security) | Security | ✅ COMPLETE | 18/18 |
 | [Phase 13](#phase-13--production-deployment) | Production Deployment | 🔄 IN PROGRESS | 12/22 (artifacts ready; EC2 provisioning/DNS/SSL execution pending) |
+| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS | 14/17 (code + tests complete; not yet deployed, no real call tested) |
 
 ---
 
@@ -999,6 +1000,54 @@
 | AC-13.4 | `docker compose -f docker-compose.prod.yml ps` shows all services healthy | ❌ Pending live deploy |
 | AC-13.5 | Daily backup job visible in crontab; test restore completes | ❌ Pending live deploy |
 | AC-13.6 | Deployment script runs without manual intervention | ✅ `scripts/deploy.sh` (untested against a real host) |
+
+---
+
+## Phase 14 — Technician Job-Offer Voice Escalation
+
+**Status: 🔄 IN PROGRESS**
+**Goal:** If a technician hasn't responded to a job offer within 5 minutes, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress.
+
+### 14.1 Voice Provider Abstraction
+| # | Task | Status |
+|---|------|--------|
+| 14.1.1 | `VoiceCallProvider` interface, mirrors `WhatsAppProvider`'s swap-implementation pattern | ✅ |
+| 14.1.2 | `PlivoVoiceCallProvider` — real implementation via Plivo REST Call API | ✅ |
+| 14.1.3 | `MockVoiceCallProvider` — logs only, `VOICE_MOCK_MODE=true` | ✅ |
+| 14.1.4 | `TelephonyModule` (global), registered in `AppModule` | ✅ |
+
+### 14.2 Call Audio
+| # | Task | Status |
+|---|------|--------|
+| 14.2.1 | EN + TA prompts recorded via Google Cloud TTS (real Tamil voice — Polly and Plivo's `<Speak>` both lack Tamil, confirmed against their docs first) | ✅ |
+| 14.2.2 | Deployed to `sevagan.co.in/audio/job_offer_call_{en,ta}.mp3` via existing nginx static site | ✅ |
+
+### 14.3 Answer/DTMF Webhooks
+| # | Task | Status |
+|---|------|--------|
+| 14.3.1 | `VoiceWebhookController`: `GET /voice/answer` (Plivo XML: `<Play>` + `<GetDigits>`), `POST /voice/dtmf` | ✅ |
+| 14.3.2 | `VoiceWebhookTokenGuard` — shared-secret query token (Plivo's HMAC-V3 signature scheme not implemented — follow-up) | ✅ |
+| 14.3.3 | `TechnicianBotService.handlePhoneCallResponse()` reuses the existing WhatsApp accept/reject/expiry logic — no duplicated business rules | ✅ |
+
+### 14.4 Escalation Trigger
+| # | Task | Status |
+|---|------|--------|
+| 14.4.1 | `TechnicianSession.offerSentAt`/`escalationCallSentAt` added; `offerSentAt` set in `AssignmentEngineService.assignJobToTechnician` | ✅ |
+| 14.4.2 | `TechnicianOfferEscalationService` — 60s Redis-scan poller, same shape as `CustomerIdleNudgeService` | ✅ |
+
+### 14.5 Config
+| # | Task | Status |
+|---|------|--------|
+| 14.5.1 | `PLIVO_AUTH_ID`/`PLIVO_AUTH_TOKEN`/`PLIVO_NUMBER`/`VOICE_WEBHOOK_TOKEN`/`VOICE_JOB_OFFER_AUDIO_{EN,TA}` in `app.config.ts`/`env.validation.ts`/`.env.example`; local `backend/.env` populated | ✅ |
+
+### Acceptance Criteria
+| # | Criterion | Status |
+|---|-----------|--------|
+| AC-14.1 | Unit tests for provider, guard, controller, poller, `handlePhoneCallResponse()` — all passing | ✅ |
+| AC-14.2 | Full backend suite green after the change (72 suites / 590 tests) | ✅ |
+| AC-14.3 | Deployed to the production backend/EC2 (`PLIVO_*`/`VOICE_WEBHOOK_TOKEN` on the live host) | ❌ Only local `backend/.env` has these; only the static audio is live |
+| AC-14.4 | Real end-to-end call placed and verified | ❌ Plivo India number/KYC was still being resolved during this phase |
+| AC-14.5 | Plivo HMAC-V3 webhook signature validation implemented | ❌ Shared-secret token only — documented gap |
 
 ---
 

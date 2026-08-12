@@ -26,6 +26,7 @@
 | Phase 11 | Reports | ✅ COMPLETE |
 | Phase 12 | Security | ✅ COMPLETE |
 | Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
+| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — code + tests complete, not yet deployed |
 
 ---
 
@@ -485,3 +486,38 @@ All deployable artifacts are built and committed; execution against a real AWS a
 - ❌ Operations runbook
 
 See `docs/DEPLOYMENT.md` for full deployment guide.
+
+---
+
+## Phase 14 — Technician Job-Offer Voice Escalation 🔄 IN PROGRESS
+
+**Goal:** If a technician hasn't responded to a job offer within 5 minutes, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress — same outcome as a WhatsApp button reply.
+
+#### 14.1 Voice Provider Abstraction
+- ✅ `VoiceCallProvider` interface (`infrastructure/telephony/voice-call.provider.interface.ts`) — mirrors `WhatsAppProvider`'s swap-the-implementation pattern
+- ✅ `PlivoVoiceCallProvider` — real implementation, `POST /Account/{id}/Call/` via Plivo REST API
+- ✅ `MockVoiceCallProvider` — logs only, enabled via `VOICE_MOCK_MODE=true`
+- ✅ `TelephonyModule` (global), switches provider via `VOICE_MOCK_MODE`, registered in `AppModule`
+
+#### 14.2 Call Audio
+- ✅ EN + TA prompts pre-recorded (Google Cloud TTS, user-generated) — not live TTS: Amazon Polly and Plivo's own `<Speak>` verb both lack Tamil support, confirmed against their docs before choosing the pre-recorded-`<Play>` approach
+- ✅ Deployed to `sevagan.co.in/audio/job_offer_call_{en,ta}.mp3` via the existing nginx static site (`infrastructure/site/audio/`) — same mechanism as the WhatsApp template header image
+
+#### 14.3 Answer/DTMF Webhooks
+- ✅ `VoiceWebhookController` (`modules/whatsapp/voice/`) — `GET /voice/answer` returns Plivo XML (`<Play>` the language-appropriate prompt + `<GetDigits>`), `POST /voice/dtmf` receives the keypress
+- ✅ `VoiceWebhookTokenGuard` — shared-secret query token on both callback URLs (Plivo's own HMAC-V3 signature scheme was not implemented — flagged as a follow-up, not blocking)
+- ✅ `TechnicianBotService.handlePhoneCallResponse()` — routes digit "1"/"2" through the exact same `handleOfferResponse` accept/reject/expiry logic a WhatsApp "1"/"2" reply uses; no duplicated business logic
+
+#### 14.4 Escalation Trigger
+- ✅ `TechnicianSession` gained `offerSentAt` (set in `AssignmentEngineService.assignJobToTechnician`, alongside the existing `offerExpiresAt`) and `escalationCallSentAt` (idempotency flag)
+- ✅ `TechnicianOfferEscalationService` — 60s Redis-scan poller (`tech_session:*`), same shape as `CustomerIdleNudgeService`; places one call per offer at the 5-minute mark
+
+#### 14.5 Config
+- ✅ `PLIVO_AUTH_ID`, `PLIVO_AUTH_TOKEN`, `PLIVO_NUMBER`, `VOICE_WEBHOOK_TOKEN`, `VOICE_JOB_OFFER_AUDIO_{EN,TA}` added to `app.config.ts` / `env.validation.ts` / `.env.example`; local `backend/.env` populated
+
+#### Acceptance Criteria
+- ✅ Unit tests: `PlivoVoiceCallProvider`, `VoiceWebhookTokenGuard`, `VoiceWebhookController`, `TechnicianOfferEscalationService`, `TechnicianBotService.handlePhoneCallResponse()` — all passing
+- ✅ Full backend suite green (72 suites / 590 tests) after the change
+- ❌ Not yet deployed to the production backend/EC2 — `PLIVO_*`/`VOICE_WEBHOOK_TOKEN` only exist in the local `backend/.env`; only the static audio files are live on `sevagan.co.in`
+- ❌ No real end-to-end call placed/tested yet (Plivo India number KYC/signup was still being resolved during this phase)
+- ❌ Plivo's HMAC-V3 webhook signature not implemented (shared-secret token only) — documented gap, not a blocker for MVP
