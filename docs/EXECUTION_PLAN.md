@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-08-11)
+## Progress Overview (Last Updated: 2026-08-12)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -124,6 +124,7 @@
 - ✅ `POST /api/v1/webhooks/whatsapp`
 - ✅ `WebhookHmacGuard` (HMAC-SHA256 verification)
 - ✅ Inbound/outbound message type definitions
+- ✅ Message trail audit log (added 2026-08-12) — every inbound webhook message and every outbound send (`TrackedWhatsAppProvider` decorating `WHATSAPP_PROVIDER`) is written to real AWS S3 (`arn:aws:s3:::sevagan-ai`, `us-east-1`, auth via the EC2 instance's IAM role — not the self-hosted MinIO used for uploads), keyed under `message-trails/job/{jobId}/...`. `MessageTrailService.resolveJobId(phone)` attributes each message to whichever job the phone is currently attached to (a technician's most recent assignment, or a customer's most recent job) so no business service has to thread `jobId` through its send calls. Trail writes are fire-and-forget — never block message delivery. See 8.3 for the admin-facing viewer.
 
 #### 3.3 i18n
 - ✅ `TranslationService` + `TranslationModule`
@@ -311,7 +312,7 @@ display).
 #### 8.3 Entity Management Pages
 - ✅ Customers: list with pagination (GET /admin/customers, GET /admin/customers/:id, PATCH)
 - ✅ Technicians: list, create modal with skill selection + WhatsApp onboarding, skills CRUD; `GET /admin/technicians/:id` also returns `totalJobs`/`totalEarnings`/`totalCommission` (aggregated from `JobCommission`) and `createdAt`, shown in a fold/expand detail row when the admin clicks a technician's name (added 2026-07-16)
-- ✅ Jobs: list with status filter + date filters, detail (GET /admin/jobs, POST /admin/jobs/:id/assign, POST /admin/jobs/:id/cancel)
+- ✅ Jobs: list with status filter + date filters, detail (GET /admin/jobs, POST /admin/jobs/:id/assign, POST /admin/jobs/:id/cancel); `GET /admin/jobs/:id/message-trail` (added 2026-08-12) surfaces the S3-backed WhatsApp message trail (see 3.2) as a chat-style modal opened via the message icon on each Jobs row; `POST /admin/jobs/:id/complete` (added 2026-08-12) — manual override for ASSIGNED/ACCEPTED/IN_PROGRESS jobs when the technician↔customer WhatsApp completion handshake doesn't happen (call-in, stuck dispute, bot outage): records commission, generates the invoice + payment record, frees the technician, and notifies both parties via translated WhatsApp messages. Exposed as a "Complete" button on the Jobs table.
 - ✅ Settlements: list, generate modal, mark paid (GET, POST /admin/settlements/generate, POST /:id/pay)
 - ✅ Commission Rules: list + inline create form (GET, POST /admin/commission-rules)
 - ✅ Disputes: list with status filter, resolve with notes (GET, POST /admin/disputes/:id/resolve)

@@ -25,6 +25,7 @@ import {
 import { CustomerBotService } from '../customer-bot/customer-bot.service';
 import { TechnicianBotService } from '../technician-bot/technician-bot.service';
 import { TechniciansRepository } from '../../technicians/technicians.repository';
+import { MessageTrailService } from '../../../infrastructure/messaging/message-trail.service';
 
 @Public()
 @ApiExcludeController()
@@ -37,6 +38,7 @@ export class WebhookController {
     private readonly customerBotService: CustomerBotService,
     private readonly technicianBotService: TechnicianBotService,
     private readonly techniciansRepository: TechniciansRepository,
+    private readonly messageTrail: MessageTrailService,
   ) {}
 
   /**
@@ -116,11 +118,38 @@ export class WebhookController {
   }
 
   private async routeMessage(message: InboundWhatsAppMessage, senderName: string): Promise<void> {
+    void this.messageTrail.record(message.from, 'INBOUND', message.type, this.summarizeInbound(message));
+
     const technician = await this.techniciansRepository.findByPhone(message.from);
     if (technician) {
       await this.technicianBotService.handleMessage(message, senderName, technician);
     } else {
       await this.customerBotService.handleMessage(message, senderName);
+    }
+  }
+
+  private summarizeInbound(message: InboundWhatsAppMessage): string {
+    switch (message.type) {
+      case 'text':
+        return message.text?.body ?? '';
+      case 'interactive':
+        return (
+          message.interactive?.button_reply?.title ??
+          message.interactive?.list_reply?.title ??
+          '(interactive reply)'
+        );
+      case 'location':
+        return message.location
+          ? `${message.location.name ?? ''} ${message.location.latitude},${message.location.longitude}`.trim()
+          : '(location)';
+      case 'image':
+        return message.image?.caption ?? '(image)';
+      case 'audio':
+        return '(audio)';
+      case 'document':
+        return message.document?.caption ?? '(document)';
+      default:
+        return `(${message.type})`;
     }
   }
 }

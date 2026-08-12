@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { X } from 'lucide-react';
+import { X, MessageSquare, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -14,6 +14,16 @@ interface Job {
   customer: { name: string | null; phone: string };
   serviceCategory: { name: string };
   assignment: { technician: { name: string; phone: string } } | null;
+}
+
+interface MessageTrailEntry {
+  id: string;
+  jobId: string | null;
+  phone: string;
+  direction: 'INBOUND' | 'OUTBOUND';
+  messageType: string;
+  summary: string;
+  timestamp: string;
 }
 
 interface Technician {
@@ -34,6 +44,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const ALL_STATUSES = ['NEW', 'ASSIGNED', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 const ASSIGNABLE_STATUSES = ['NEW', 'ASSIGNED', 'ACCEPTED'];
+const COMPLETABLE_STATUSES = ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS'];
 
 function AssignModal({
   job,
@@ -117,6 +128,154 @@ function AssignModal({
   );
 }
 
+function CompleteModal({
+  job,
+  onClose,
+  onCompleted,
+}: {
+  job: Job;
+  onClose: () => void;
+  onCompleted: () => void;
+}) {
+  const [amount, setAmount] = useState('');
+  const [paymentMode, setPaymentMode] = useState('CASH');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!amount) return;
+    setLoading(true);
+    setError('');
+    try {
+      await apiClient.post(`/api/v1/admin/jobs/${job.id}/complete`, {
+        amount: Number(amount),
+        paymentMode,
+      });
+      onCompleted();
+      onClose();
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Failed to complete job');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <div>
+            <h2 className="font-semibold text-gray-900">Complete Job</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{job.jobNumber} — {job.serviceCategory.name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Amount (₹)</label>
+            <input
+              type="number"
+              required
+              min="1"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Payment Mode</label>
+            <select
+              value={paymentMode}
+              onChange={(e) => setPaymentMode(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="CASH">Cash</option>
+              <option value="UPI">UPI</option>
+            </select>
+          </div>
+          {error && <p className="text-red-600 text-xs">{error}</p>}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || !amount}
+              className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {loading ? 'Completing…' : 'Complete Job'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function MessageTrailModal({ job, onClose }: { job: Job; onClose: () => void }) {
+  const [entries, setEntries] = useState<MessageTrailEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    apiClient
+      .get(`/api/v1/admin/jobs/${job.id}/message-trail`)
+      .then((r) => setEntries(r.data))
+      .catch((err: any) => setError(err?.response?.data?.message ?? 'Failed to load message trail'))
+      .finally(() => setLoading(false));
+  }, [job.id]);
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <div>
+            <h2 className="font-semibold text-gray-900">Message Trail</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{job.jobNumber} — {job.serviceCategory.name}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-3 overflow-y-auto">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+            ))
+          ) : error ? (
+            <p className="text-red-600 text-xs">{error}</p>
+          ) : entries.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-8">No WhatsApp messages recorded for this job yet.</p>
+          ) : (
+            entries.map((e) => (
+              <div
+                key={e.id}
+                className={`flex gap-2 max-w-[85%] ${e.direction === 'OUTBOUND' ? 'ml-auto flex-row-reverse' : ''}`}
+              >
+                <div className={`mt-1 shrink-0 ${e.direction === 'OUTBOUND' ? 'text-indigo-500' : 'text-emerald-500'}`}>
+                  {e.direction === 'OUTBOUND' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
+                </div>
+                <div
+                  className={`rounded-lg px-3 py-2 text-sm ${
+                    e.direction === 'OUTBOUND' ? 'bg-indigo-50 text-indigo-900' : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap break-words">{e.summary || `(${e.messageType})`}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">{e.phone} · {formatDate(e.timestamp)} · {e.messageType}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
@@ -124,6 +283,8 @@ export default function JobsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<Job | null>(null);
+  const [completing, setCompleting] = useState<Job | null>(null);
+  const [viewingTrail, setViewingTrail] = useState<Job | null>(null);
   const limit = 20;
 
   const load = () => {
@@ -204,7 +365,7 @@ export default function JobsPage() {
                   <td className="px-4 py-3 text-gray-600">{j.assignment?.technician.name ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">{j.location}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(j.createdAt)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 space-x-2">
                     {ASSIGNABLE_STATUSES.includes(j.status) && (
                       <button
                         onClick={() => setAssigning(j)}
@@ -213,6 +374,21 @@ export default function JobsPage() {
                         Assign
                       </button>
                     )}
+                    {COMPLETABLE_STATUSES.includes(j.status) && (
+                      <button
+                        onClick={() => setCompleting(j)}
+                        className="px-2.5 py-1 text-xs font-medium text-emerald-600 border border-emerald-200 rounded hover:bg-emerald-50"
+                      >
+                        Complete
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setViewingTrail(j)}
+                      title="View message trail"
+                      className="p-1.5 text-gray-500 border border-gray-200 rounded hover:bg-gray-50 hover:text-gray-700 inline-flex"
+                    >
+                      <MessageSquare size={14} />
+                    </button>
                   </td>
                 </tr>
               ))
@@ -232,6 +408,12 @@ export default function JobsPage() {
 
       {assigning && (
         <AssignModal job={assigning} onClose={() => setAssigning(null)} onAssigned={load} />
+      )}
+      {completing && (
+        <CompleteModal job={completing} onClose={() => setCompleting(null)} onCompleted={load} />
+      )}
+      {viewingTrail && (
+        <MessageTrailModal job={viewingTrail} onClose={() => setViewingTrail(null)} />
       )}
     </div>
   );

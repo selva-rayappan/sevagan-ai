@@ -40,6 +40,14 @@ export const appConfig = () => ({
     },
   },
 
+  messageTrail: {
+    // Real AWS S3 (not the self-hosted MinIO used for uploads) — the audit
+    // trail must survive independently of our own infra. Auth is via the EC2
+    // instance's IAM role (default AWS SDK credential chain), no keys here.
+    s3Bucket: process.env.MESSAGE_TRAIL_S3_BUCKET ?? 'sevagan-ai',
+    s3Region: process.env.MESSAGE_TRAIL_S3_REGION ?? 'us-east-1',
+  },
+
   minio: {
     endpoint: process.env.MINIO_ENDPOINT ?? 'localhost',
     port: parseInt(process.env.MINIO_PORT ?? '9000', 10),

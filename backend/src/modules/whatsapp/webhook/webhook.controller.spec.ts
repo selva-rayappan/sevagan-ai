@@ -6,6 +6,7 @@ import { CustomerBotService } from '../customer-bot/customer-bot.service';
 import { TechnicianBotService } from '../technician-bot/technician-bot.service';
 import { TechniciansRepository } from '../../technicians/technicians.repository';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { MessageTrailService } from '../../../infrastructure/messaging/message-trail.service';
 import {
   InboundWhatsAppMessage,
   WhatsAppStatusUpdate,
@@ -16,6 +17,7 @@ const mockHandleMessage = jest.fn().mockResolvedValue(undefined);
 const mockTechHandleMessage = jest.fn().mockResolvedValue(undefined);
 const mockFindByPhone = jest.fn().mockResolvedValue(null); // default: not a technician
 const mockAuditLog = jest.fn().mockResolvedValue(undefined);
+const mockRecordTrail = jest.fn().mockResolvedValue(undefined);
 
 describe('WebhookController', () => {
   let controller: WebhookController;
@@ -44,6 +46,10 @@ describe('WebhookController', () => {
           provide: AuditService,
           useValue: { log: mockAuditLog },
         },
+        {
+          provide: MessageTrailService,
+          useValue: { record: mockRecordTrail },
+        },
       ],
     }).compile();
 
@@ -58,6 +64,8 @@ describe('WebhookController', () => {
     mockTechHandleMessage.mockResolvedValue(undefined);
     mockFindByPhone.mockReset();
     mockFindByPhone.mockResolvedValue(null);
+    mockRecordTrail.mockReset();
+    mockRecordTrail.mockResolvedValue(undefined);
   });
 
   it('should be defined', () => {
@@ -130,6 +138,40 @@ describe('WebhookController', () => {
 
       const result = controller.handleWebhook(payload, rawBody);
       expect(result).toEqual({ status: 'ok' });
+    });
+
+    it('records an inbound trail entry for every message before routing', async () => {
+      const payload = buildPayload([
+        {
+          from: '919876543210',
+          id: 'msg_001',
+          timestamp: '1718000000',
+          type: 'text',
+          text: { body: 'Hello' },
+        },
+      ]);
+
+      controller.handleWebhook(payload, rawBody);
+      await Promise.resolve();
+
+      expect(mockRecordTrail).toHaveBeenCalledWith('919876543210', 'INBOUND', 'text', 'Hello');
+    });
+
+    it('summarizes a button reply for the trail', async () => {
+      const payload = buildPayload([
+        {
+          from: '919876543210',
+          id: 'msg_002',
+          timestamp: '1718000001',
+          type: 'interactive',
+          interactive: { type: 'button_reply', button_reply: { id: '1', title: 'Accept' } },
+        },
+      ]);
+
+      controller.handleWebhook(payload, rawBody);
+      await Promise.resolve();
+
+      expect(mockRecordTrail).toHaveBeenCalledWith('919876543210', 'INBOUND', 'interactive', 'Accept');
     });
 
     it('routes to CustomerBotService when sender is not a technician (fire-and-forget)', async () => {

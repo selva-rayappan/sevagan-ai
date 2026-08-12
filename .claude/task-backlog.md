@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-08-11 (Technician welcome message confirmed working end-to-end in production — see Phase 3.1/8.5 notes below; required fixing a wrong-WABA template approval, a language-code mismatch, and switching to named body parameters, on top of the 2026-08-10 sendTemplate code fix. Phase 12 Security complete — JWT rotation, RBAC, rate limiting, input validation, audit logging, HTTPS; 427 tests. Phase 13 artifacts ready — EC2 provisioning pending)
+**Last Updated:** 2026-08-12 (Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5. Prior: Technician welcome message confirmed working end-to-end in production 2026-08-11 — see 3.2.4/8.5.1.)
 
 ---
 
@@ -222,6 +222,7 @@
 | 3.3.3 | HMAC-SHA256 signature verification via `X-Hub-Signature-256` header (`WebhookHmacGuard`) | ✅ |
 | 3.3.4 | Returns `200 OK` immediately; async processing | ✅ |
 | 3.3.5 | Unit tests: `webhook.controller.spec.ts` | ✅ |
+| 3.3.6 | Message trail audit log (added 2026-08-12) — `MessageTrailService` writes every inbound webhook message (`WebhookController.routeMessage`) and every outbound send (`TrackedWhatsAppProvider`, decorating `WHATSAPP_PROVIDER` in `MessagingModule`) to real AWS S3 (`arn:aws:s3:::sevagan-ai`, `us-east-1` — a separate bucket from the self-hosted MinIO used for uploads; auth via the EC2 instance's IAM role, no keys in `.env`). Each entry is attributed to a job via `resolveJobId(phone)` — a technician's most recent `Assignment` or a customer's most recent `Job` — so `jobId` doesn't need threading through the ~5 services that call `sendText`/`sendTemplate`/etc. Trail writes are `void`-fired and swallow their own errors — a trail failure never blocks message delivery. Admin view: `GET /admin/jobs/:id/message-trail` (8.3), chat-style modal on the Jobs page. | ✅ |
 
 ### 3.4 Webhook Message Parser
 | # | Task | Status |
@@ -647,6 +648,8 @@
 | 8.6.2 | `POST /api/v1/admin/jobs/:id/assign` — genuine manual pick via `AssignmentEngineService.manualAssign(jobId, technicianId)`; frees the previous technician back to AVAILABLE first | ✅ |
 | 8.6.3 | `POST /api/v1/admin/jobs/:id/cancel` | ✅ |
 | 8.6.4 | Jobs page: table with status filter dropdown, all 6 `JobStatus` color badges, "Assign" button + technician-picker modal on NEW/ASSIGNED/ACCEPTED rows | ✅ |
+| 8.6.5 | `GET /api/v1/admin/jobs/:id/message-trail` (added 2026-08-12) — returns the S3-backed WhatsApp trail for a job, see 3.3.6; Jobs page gets a message-icon button per row opening a chat-style modal (inbound left, outbound right) with phone/timestamp/message-type per entry | ✅ |
+| 8.6.6 | `POST /api/v1/admin/jobs/:id/complete` (added 2026-08-12) — admin manually completes an ASSIGNED/ACCEPTED/IN_PROGRESS job (amount + payment mode), for when the technician↔customer WhatsApp completion handshake doesn't happen; records `JobCommission`, generates the invoice + payment record, frees the assigned technician back to AVAILABLE, and sends translated `customer.job_completed_by_admin`/`technician.job_completed_by_admin` WhatsApp notices to both parties. Blocked with 409 outside those statuses. Jobs page gets a "Complete" button + amount/payment-mode modal on completable rows. | ✅ |
 
 ### 8.7 Settlement Management
 | # | Task | Status |

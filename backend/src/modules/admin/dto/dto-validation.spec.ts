@@ -2,7 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { UpdateCustomerDto } from './customers.dto';
 import { ResolveDisputeDto } from './disputes.dto';
-import { ManualAssignDto } from './jobs.dto';
+import { CompleteJobDto, ManualAssignDto } from './jobs.dto';
 import { GenerateSettlementDto } from './settlements.dto';
 import { CreateCommissionRuleDto } from './commission.dto';
 import { AddSkillDto, CreateTechnicianDto, UpdateTechnicianDto } from './technicians.dto';
@@ -45,6 +45,25 @@ describe('Admin DTO validation', () => {
 
     it('rejects a non-UUID technicianId', async () => {
       const dto = plainToInstance(ManualAssignDto, { technicianId: 'not-a-uuid' });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('CompleteJobDto', () => {
+    it('accepts a valid amount and payment mode', async () => {
+      const dto = plainToInstance(CompleteJobDto, { amount: 500, paymentMode: PaymentMode.CASH });
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects a non-positive amount', async () => {
+      const dto = plainToInstance(CompleteJobDto, { amount: 0, paymentMode: PaymentMode.CASH });
+      const errors = await validate(dto);
+      expect(errors.length).toBeGreaterThan(0);
+    });
+
+    it('rejects an invalid paymentMode enum value', async () => {
+      const dto = plainToInstance(CompleteJobDto, { amount: 500, paymentMode: 'BITCOIN' });
       const errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
     });
