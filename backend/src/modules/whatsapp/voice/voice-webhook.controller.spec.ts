@@ -54,6 +54,18 @@ describe('VoiceWebhookController', () => {
       expect(xml).toContain('https://api.sevagan.co.in/api/v1/voice/dtmf?token=test-token');
       expect(xml).toContain('numDigits="1"');
     });
+
+    it('sets a GetDigits timeout comfortably above either prompt\'s real duration', () => {
+      const xml = controller.answer(Language.EN);
+      expect(xml).toContain('timeout="35"');
+    });
+  });
+
+  describe('answerPostCallback()', () => {
+    it('acknowledges Plivo\'s post-hangup callback on the same path instead of 404ing', () => {
+      const xml = controller.answerPostCallback({ CallUUID: 'call-1', CallStatus: 'completed' });
+      expect(xml).toContain('<Response>');
+    });
   });
 
   describe('dtmf()', () => {

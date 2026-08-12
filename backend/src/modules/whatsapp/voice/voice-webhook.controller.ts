@@ -42,12 +42,34 @@ export class VoiceWebhookController {
     return [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<Response>',
-      `  <GetDigits action="${actionUrl}" method="POST" timeout="10" numDigits="1" retries="1">`,
+      // timeout runs from when GetDigits starts executing, not from when the
+      // nested <Play> finishes — confirmed live 2026-08-12: a 10s timeout cut
+      // the 18s EN / 22s TA prompt off mid-sentence, well before the "press 1"
+      // instruction. Set well above the longer (TA) prompt plus a real
+      // response window.
+      `  <GetDigits action="${actionUrl}" method="POST" timeout="35" numDigits="1" retries="1">`,
       `    <Play>${audioUrl}</Play>`,
       '  </GetDigits>',
       '  <Hangup/>',
       '</Response>',
     ].join('\n');
+  }
+
+  /**
+   * Observed live (2026-08-12): Plivo also POSTs to this same answer path
+   * after the call ends — looks like a default post-hangup status callback
+   * when no distinct hangup_url is configured. Harmless (arrives after the
+   * call is already over) but was 404ing since only GET was handled; this
+   * just acknowledges it cleanly instead.
+   */
+  @Post('answer')
+  @Version('1')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(VoiceWebhookTokenGuard)
+  @Header('Content-Type', XML_HEADER)
+  answerPostCallback(@Body() body: Record<string, string>): string {
+    this.logger.debug(`Post-call callback on answer path: ${JSON.stringify(body)}`);
+    return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 
   @Post('dtmf')
