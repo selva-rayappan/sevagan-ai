@@ -73,58 +73,62 @@ function CreateModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900">Add Technician</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {['name', 'phone', 'address', 'serviceArea'].map((field) => (
-            <div key={field}>
-              <label className="block text-xs font-medium text-gray-700 mb-1 capitalize">
-                {field === 'serviceArea' ? 'Service Area (comma-separated localities)' : field}
-              </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {['name', 'phone', 'address', 'serviceArea'].map((field) => (
+              <div key={field}>
+                <label className="block text-xs font-medium text-gray-700 mb-1 capitalize">
+                  {field === 'serviceArea' ? 'Service Area (comma-separated localities)' : field}
+                </label>
+                <input
+                  required
+                  value={(form as any)[field]}
+                  onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder={field === 'serviceArea' ? 'Allampatti,Sivakasi' : field === 'phone' ? '91XXXXXXXXXX' : ''}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Aadhar Number (optional)</label>
               <input
-                required
-                value={(form as any)[field]}
-                onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
+                value={form.aadharNumber}
+                onChange={(e) => setForm((f) => ({ ...f, aadharNumber: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder={field === 'serviceArea' ? 'Allampatti,Sivakasi' : field === 'phone' ? '91XXXXXXXXXX' : ''}
+                placeholder="12-digit Aadhar number"
+                maxLength={12}
+                pattern="\d{12}"
               />
             </div>
-          ))}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Aadhar Number (optional)</label>
-            <input
-              value={form.aadharNumber}
-              onChange={(e) => setForm((f) => ({ ...f, aadharNumber: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="12-digit Aadhar number"
-              maxLength={12}
-              pattern="\d{12}"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Language</label>
-            <select
-              value={form.language}
-              onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="EN">English</option>
-              <option value="TA">Tamil</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Priority Rank (0-100, higher = offered jobs first)</label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={form.priorityRank}
-              onChange={(e) => setForm((f) => ({ ...f, priorityRank: Number(e.target.value) }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Language</label>
+              <select
+                value={form.language}
+                onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="EN">English</option>
+                <option value="TA">Tamil</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Priority Rank (0-100)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={form.priorityRank}
+                onChange={(e) => setForm((f) => ({ ...f, priorityRank: Number(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">Skills</label>
@@ -228,93 +232,101 @@ function EditModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900">Edit Technician</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-            <input
-              required
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
-            <input
-              required
-              value={form.phone}
-              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="91XXXXXXXXXX"
-            />
-            <p className="text-[11px] text-amber-600 mt-1">Changing this reassigns the technician&apos;s WhatsApp number — any in-progress WhatsApp session on the old number is abandoned.</p>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
-            <input
-              required
-              value={form.address}
-              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Aadhar Number (optional)</label>
-            <input
-              value={form.aadharNumber}
-              onChange={(e) => setForm((f) => ({ ...f, aadharNumber: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="12-digit Aadhar number"
-              maxLength={12}
-              pattern="\d{12}"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Service Area (comma-separated localities)</label>
-            <input
-              required
-              value={form.serviceArea}
-              onChange={(e) => setForm((f) => ({ ...f, serviceArea: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="AVAILABLE">Available</option>
-              <option value="BUSY">Busy</option>
-              <option value="OFFLINE">Offline</option>
-            </select>
-          </div>
-          <div>
-            <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
               <input
-                type="checkbox"
-                checked={form.active}
-                onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+                required
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
-              Active
-            </label>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+              <input
+                required
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="91XXXXXXXXXX"
+              />
+              <p className="text-[11px] text-amber-600 mt-1">Changing this reassigns the technician&apos;s WhatsApp number — any in-progress WhatsApp session on the old number is abandoned.</p>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Priority Rank (0-100, higher = offered jobs first)</label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={form.priorityRank}
-              onChange={(e) => setForm((f) => ({ ...f, priorityRank: Number(e.target.value) }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Address</label>
+              <input
+                required
+                value={form.address}
+                onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Aadhar Number (optional)</label>
+              <input
+                value={form.aadharNumber}
+                onChange={(e) => setForm((f) => ({ ...f, aadharNumber: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="12-digit Aadhar number"
+                maxLength={12}
+                pattern="\d{12}"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Service Area (comma-separated localities)</label>
+              <input
+                required
+                value={form.serviceArea}
+                onChange={(e) => setForm((f) => ({ ...f, serviceArea: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="AVAILABLE">Available</option>
+                <option value="BUSY">Busy</option>
+                <option value="OFFLINE">Offline</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Priority Rank (0-100, higher = offered jobs first)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={form.priorityRank}
+                onChange={(e) => setForm((f) => ({ ...f, priorityRank: Number(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-xs font-medium text-gray-700 py-2">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+                />
+                Active
+              </label>
+            </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2">Skills</label>
