@@ -26,7 +26,7 @@
 | Phase 11 | Reports | ✅ COMPLETE |
 | Phase 12 | Security | ✅ COMPLETE |
 | Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
-| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — live in production, real call placed and a real bug fixed from it |
+| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — live in production; 2 real calls each surfaced and fixed a different bug (timeout, silent WAV-as-MP3 audio); full success not yet confirmed |
 
 ---
 
@@ -502,6 +502,7 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 #### 14.2 Call Audio
 - ✅ EN + TA prompts pre-recorded (Google Cloud TTS, user-generated) — not live TTS: Amazon Polly and Plivo's own `<Speak>` verb both lack Tamil support, confirmed against their docs before choosing the pre-recorded-`<Play>` approach
 - ✅ Deployed to `sevagan.co.in/audio/job_offer_call_{en,ta}.mp3` via the existing nginx static site (`infrastructure/site/audio/`) — same mechanism as the WhatsApp template header image
+- ✅ **Fixed 2026-08-12**: the originally-provided files were raw `pcm_s16le` WAV at 48kHz saved with a `.mp3` extension, not actual MP3 — Plivo's `<Play>` decoded them as silence for the full call duration (see AC below). Re-encoded via `ffmpeg`/`libmp3lame` to genuine MP3 at Plivo's documented recommendation (16kHz, mono); files shrank 1.2MB→104KB (EN) / 2.3MB→190KB (TA) as a side effect of no longer being uncompressed
 
 #### 14.3 Answer/DTMF Webhooks
 - ✅ `VoiceWebhookController` (`modules/whatsapp/voice/`) — `GET /voice/answer` returns Plivo XML (`<Play>` the language-appropriate prompt + `<GetDigits>`), `POST /voice/dtmf` receives the keypress
@@ -520,6 +521,8 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 - ✅ Full backend suite green (72 suites / 590 tests) after the change
 - ✅ **Deployed to production (2026-08-12)** — `scripts/deploy.sh` run against `54.208.201.48`; `PLIVO_*`/`VOICE_WEBHOOK_TOKEN` added to `/etc/sevagan/.env`; `sevagan-api` rebuilt and healthy
 - ✅ Verified live: `GET https://api.sevagan.co.in/api/v1/voice/answer` returns correct Plivo XML with the right `<Play>` URL per `lang`; missing/wrong `token` correctly 401s
-- ✅ **Real end-to-end call placed and diagnosed (2026-08-12, JOB-20260812-0003 → Selva, 919585909045)**: Plivo answered, fetched the XML and full audio file, technician's phone rang and was answered — but the call was cut off after 13s by `GetDigits timeout="10"`, well before the real prompt duration (measured: EN 18.2s, TA 21.9s). Fixed by raising `timeout` to `35`; also fixed a stray `POST /voice/answer` 404 (Plivo's post-hangup callback, no `hangup_url` configured) found in the same trace. Deployed and verified live; the next unanswered offer will use the corrected timeout — not yet re-verified with a full end-to-end call that a technician actually hears the whole message and can respond
-- ✅ Earlier call attempt (Vetri, 919626191907) also surfaced two independent findings, not fixed here: (1) carrier-level `Rejected` hangup on an unanswered call — likely DND/NCPR filtering on that number, needs checking separately; (2) the original WhatsApp job-offer message to Vetri failed with Meta error 131047 ("Re-engagement message" — outside the 24h customer-service window), a pre-existing gap unrelated to this feature
+- ✅ **Call #1, diagnosed and fixed (2026-08-12 12:57 UTC, JOB-20260812-0003 → Selva)**: answered, fetched XML + audio, but cut off after 13s by `GetDigits timeout="10"` — before the real prompt could finish. Fixed: `timeout` raised to `35`; also fixed a stray `POST /voice/answer` 404 (Plivo's post-hangup callback, no `hangup_url` configured)
+- ✅ **Call #2, diagnosed and fixed (2026-08-12 14:33 UTC, same job, reassigned to Selva again)**: confirmed the timeout fix worked mechanically (call ran the full 38s = ~35s timeout + overhead) — but reported "silent," nothing heard. Root cause: the audio files were WAV mislabeled as MP3 (see 14.2) — Plivo fetched them successfully but couldn't decode them, producing silence for the whole call instead of an error. Fixed via re-encode; deployed live and confirmed the URLs now serve genuine, ffmpeg-decodable MP3
+- ❌ **Still not confirmed**: an end-to-end call where a technician actually hears the complete message and successfully accepts/rejects by keypress — two real calls in a row have each surfaced a different defect before reaching that point; the next unanswered offer will be the first real test of the now-corrected audio + timeout together
+- ✅ Call #1's attempt to Vetri (919626191907, before reassignment) also surfaced two independent findings, not fixed here: (1) carrier-level `Rejected` hangup on an unanswered call — likely DND/NCPR filtering on that number, needs checking separately; (2) the original WhatsApp job-offer message to Vetri failed with Meta error 131047 ("Re-engagement message" — outside the 24h customer-service window), a pre-existing gap unrelated to this feature
 - ❌ Plivo's HMAC-V3 webhook signature not implemented (shared-secret token only) — documented gap, not a blocker for MVP
