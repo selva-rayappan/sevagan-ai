@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Plus, X, Pencil, ChevronDown, ChevronRight, MessageSquare, Power, PowerOff, Send } from 'lucide-react';
+import { Plus, X, Pencil, ChevronDown, ChevronRight, MessageSquare, Power, PowerOff, Send, Trash2 } from 'lucide-react';
 
 interface Category { id: string; name: string; }
 interface Technician {
@@ -456,6 +456,7 @@ export default function TechniciansPage() {
   const [messaging, setMessaging] = useState<Technician | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, TechnicianDetail>>({});
   const [activeFilter, setActiveFilter] = useState<'true' | 'false' | 'all'>('true');
@@ -469,6 +470,19 @@ export default function TechniciansPage() {
       load();
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  async function deleteTechnician(t: Technician) {
+    if (!window.confirm(`Delete ${t.name}? This is blocked if they have any active job. This cannot be undone from this screen.`)) return;
+    setDeletingId(t.id);
+    try {
+      await apiClient.delete(`/api/v1/admin/technicians/${t.id}`);
+      load();
+    } catch (err: any) {
+      window.alert(err?.response?.data?.message ?? 'Failed to delete technician');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -637,6 +651,14 @@ export default function TechniciansPage() {
                             }`}
                           >
                             {t.active ? <PowerOff size={14} /> : <Power size={14} />}
+                          </button>
+                          <button
+                            onClick={() => deleteTechnician(t)}
+                            disabled={deletingId === t.id}
+                            title="Delete technician (blocked if they have active jobs)"
+                            className="p-1.5 rounded hover:bg-red-50 text-red-600 transition-colors disabled:opacity-40"
+                          >
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>

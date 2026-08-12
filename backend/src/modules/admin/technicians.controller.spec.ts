@@ -13,6 +13,8 @@ const mockJobCommissionAggregate = jest.fn().mockResolvedValue({
   _sum: { technicianAmount: null, commissionAmount: null },
   _count: 0,
 });
+const mockTechnicianUpdate = jest.fn();
+const mockAssignmentCount = jest.fn();
 
 const mockPrisma = {
   technician: {
@@ -20,6 +22,7 @@ const mockPrisma = {
     count: mockCount,
     findUniqueOrThrow: mockFindUniqueOrThrow,
     findUnique: mockFindUnique,
+    update: mockTechnicianUpdate,
   },
   serviceCategory: {
     findUnique: mockCategoryFindUnique,
@@ -31,6 +34,9 @@ const mockPrisma = {
   },
   jobCommission: {
     aggregate: mockJobCommissionAggregate,
+  },
+  assignment: {
+    count: mockAssignmentCount,
   },
 } as any;
 
@@ -249,6 +255,40 @@ describe('TechniciansAdminController', () => {
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ actorId: 'admin-1', action: 'UPDATE_TECHNICIAN', entityId: 'tech-1' }),
       );
+    });
+  });
+
+  describe('remove()', () => {
+    it('deactivates the technician when they have no active jobs', async () => {
+      mockAssignmentCount.mockResolvedValue(0);
+      mockTechnicianUpdate.mockResolvedValue({ id: 'tech-1', active: false });
+
+      const result = await controller.remove('tech-1', mockUser);
+
+      expect(mockAssignmentCount).toHaveBeenCalledWith({
+        where: {
+          technicianId: 'tech-1',
+          job: { status: { in: ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS'] } },
+        },
+      });
+      expect(mockTechnicianUpdate).toHaveBeenCalledWith({
+        where: { id: 'tech-1' },
+        data: { active: false, status: 'OFFLINE' },
+      });
+      expect(result).toEqual({ deleted: true });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ actorId: 'admin-1', action: 'DELETE_TECHNICIAN', entityId: 'tech-1' }),
+      );
+    });
+
+    it('rejects deletion when the technician has active jobs, without touching the record', async () => {
+      mockAssignmentCount.mockResolvedValue(2);
+
+      await expect(controller.remove('tech-1', mockUser)).rejects.toThrow(
+        'Cannot delete technician with 2 active job(s) — reassign or complete them first.',
+      );
+      expect(mockTechnicianUpdate).not.toHaveBeenCalled();
+      expect(mockAuditLog).not.toHaveBeenCalled();
     });
   });
 

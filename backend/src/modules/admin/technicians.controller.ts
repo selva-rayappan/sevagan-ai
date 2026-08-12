@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Query, UseInterceptors, Version } from '@nestjs/common';
+import { Body, ConflictException, Controller, Delete, Get, Logger, Param, Patch, Post, Query, UseInterceptors, Version } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TechniciansRepository } from '../technicians/technicians.repository';
-import { Language } from '../../domain/enums';
+import { Language, JobStatus, TechnicianStatus } from '../../domain/enums';
 import {
   WHATSAPP_PROVIDER,
   WhatsAppProvider,
@@ -148,6 +148,41 @@ export class TechniciansAdminController {
     });
 
     return technician;
+  }
+
+  // Preserves assignment/rating/settlement history (financial records) rather than
+  // hard-deleting the row — "delete" here means permanently removed from the active
+  // roster, blocked while the technician still has work in flight.
+  @Delete(':id')
+  @Version('1')
+  async remove(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    const activeJobsCount = await this.prisma.assignment.count({
+      where: {
+        technicianId: id,
+        job: { status: { in: [JobStatus.ASSIGNED, JobStatus.ACCEPTED, JobStatus.IN_PROGRESS] } },
+      },
+    });
+    if (activeJobsCount > 0) {
+      throw new ConflictException(
+        `Cannot delete technician with ${activeJobsCount} active job(s) — reassign or complete them first.`,
+      );
+    }
+
+    await this.prisma.technician.update({
+      where: { id },
+      data: { active: false, status: TechnicianStatus.OFFLINE },
+    });
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'DELETE_TECHNICIAN',
+      entityType: 'Technician',
+      entityId: id,
+      metadata: {},
+    });
+
+    return { deleted: true };
   }
 
   @Post(':id/resend-welcome')
