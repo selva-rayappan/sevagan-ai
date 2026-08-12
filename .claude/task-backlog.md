@@ -1006,7 +1006,7 @@
 ## Phase 14 — Technician Job-Offer Voice Escalation
 
 **Status: 🔄 IN PROGRESS**
-**Goal:** If a technician hasn't responded to a job offer within 5 minutes, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress.
+**Goal:** If a technician hasn't responded to a job offer within 1 minute, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress.
 
 ### 14.1 Voice Provider Abstraction
 | # | Task | Status |

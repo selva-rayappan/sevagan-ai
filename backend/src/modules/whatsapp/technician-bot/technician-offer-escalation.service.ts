@@ -9,14 +9,17 @@ import { TechnicianSessionService } from './technician-session.service';
 import { TechnicianSession, TechnicianConversationState } from './technician-session.types';
 
 const CHECK_INTERVAL_MS = 60_000;
-const ESCALATION_AFTER_MS = 5 * 60_000;
+const ESCALATION_AFTER_MS = 60_000;
 const SESSION_KEY_PATTERN = 'tech_session:*';
 const SCAN_COUNT = 100;
 
 /**
  * Places an automated voice call to a technician who hasn't responded to a
- * job offer within 5 minutes — same "poll Redis session timestamps" shape as
+ * job offer within 1 minute — same "poll Redis session timestamps" shape as
  * CustomerIdleNudgeService, applied to the technician-offer side instead.
+ * Since the check interval is also 60s, the call can fire anywhere from 1 to
+ * ~2 minutes after the offer depending on poll timing — same granularity
+ * tradeoff CustomerIdleNudgeService already accepts at its own thresholds.
  */
 @Injectable()
 export class TechnicianOfferEscalationService implements OnModuleInit, OnModuleDestroy {

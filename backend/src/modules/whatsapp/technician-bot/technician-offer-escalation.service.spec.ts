@@ -27,14 +27,15 @@ const mockConfigService = { get: mockConfigGet };
 
 const NOW = new Date('2026-08-12T10:00:00.000Z');
 const minutesAgo = (n: number) => new Date(NOW.getTime() - n * 60_000).toISOString();
+const secondsAgo = (n: number) => new Date(NOW.getTime() - n * 1_000).toISOString();
 
 const baseSession = (overrides: Record<string, unknown> = {}) => ({
   state: TechnicianConversationState.JOB_OFFER_PENDING,
   phone: '919626191907',
   language: Language.EN,
   activeJobId: 'job-1',
-  updatedAt: minutesAgo(6),
-  offerSentAt: minutesAgo(6),
+  updatedAt: secondsAgo(90),
+  offerSentAt: secondsAgo(90),
   ...overrides,
 });
 
@@ -93,7 +94,7 @@ describe('TechnicianOfferEscalationService', () => {
   });
 
   it('does not call again once escalationCallSentAt is already set', async () => {
-    mockSingleSession(baseSession({ escalationCallSentAt: minutesAgo(1) }));
+    mockSingleSession(baseSession({ escalationCallSentAt: secondsAgo(10) }));
 
     await service.checkPendingOffers();
 
@@ -101,8 +102,8 @@ describe('TechnicianOfferEscalationService', () => {
     expect(mockSaveSession).not.toHaveBeenCalled();
   });
 
-  it('does nothing before the 5-minute threshold', async () => {
-    mockSingleSession(baseSession({ offerSentAt: minutesAgo(3) }));
+  it('does nothing before the 1-minute threshold', async () => {
+    mockSingleSession(baseSession({ offerSentAt: secondsAgo(30) }));
 
     await service.checkPendingOffers();
 

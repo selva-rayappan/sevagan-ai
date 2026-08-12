@@ -19,7 +19,7 @@ export interface TechnicianSession {
   customerPhone?: string;
   offerExpiresAt?: string;
   // When the current offer was sent — drives TechnicianOfferEscalationService's
-  // 5-minute no-response call trigger. Distinct from offerExpiresAt (15 min)
+  // 1-minute no-response call trigger. Distinct from offerExpiresAt (15 min)
   // so the escalation window isn't coupled to the WhatsApp-side offer TTL.
   offerSentAt?: string;
   escalationCallSentAt?: string;

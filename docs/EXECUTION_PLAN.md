@@ -491,7 +491,7 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 
 ## Phase 14 — Technician Job-Offer Voice Escalation 🔄 IN PROGRESS
 
-**Goal:** If a technician hasn't responded to a job offer within 5 minutes, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress — same outcome as a WhatsApp button reply.
+**Goal:** If a technician hasn't responded to a job offer within 1 minute, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress — same outcome as a WhatsApp button reply.
 
 #### 14.1 Voice Provider Abstraction
 - ✅ `VoiceCallProvider` interface (`infrastructure/telephony/voice-call.provider.interface.ts`) — mirrors `WhatsAppProvider`'s swap-the-implementation pattern
@@ -510,7 +510,7 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 
 #### 14.4 Escalation Trigger
 - ✅ `TechnicianSession` gained `offerSentAt` (set in `AssignmentEngineService.assignJobToTechnician`, alongside the existing `offerExpiresAt`) and `escalationCallSentAt` (idempotency flag)
-- ✅ `TechnicianOfferEscalationService` — 60s Redis-scan poller (`tech_session:*`), same shape as `CustomerIdleNudgeService`; places one call per offer at the 5-minute mark
+- ✅ `TechnicianOfferEscalationService` — 60s Redis-scan poller (`tech_session:*`), same shape as `CustomerIdleNudgeService`; places one call per offer at the 1-minute mark
 
 #### 14.5 Config
 - ✅ `PLIVO_AUTH_ID`, `PLIVO_AUTH_TOKEN`, `PLIVO_NUMBER`, `VOICE_WEBHOOK_TOKEN`, `VOICE_JOB_OFFER_AUDIO_{EN,TA}` added to `app.config.ts` / `env.validation.ts` / `.env.example`; local `backend/.env` populated
