@@ -42,11 +42,12 @@ const mockSendTemplate = jest.fn();
 const mockSendText = jest.fn();
 const mockWhatsApp = { sendTemplate: mockSendTemplate, sendText: mockSendText } as any;
 
-const mockConfigGet = jest.fn((key: string) => {
-  if (key === 'whatsapp.templates.technicianWelcome') return 'technician_welcome';
-  if (key === 'whatsapp.templates.technicianWelcomeHeaderImage') return 'https://sevagan.co.in/index_files/logo-new.png';
-  return undefined;
-});
+const CONFIG_VALUES: Record<string, string> = {
+  'whatsapp.templates.technicianWelcomeEn': 'technician_welcom',
+  'whatsapp.templates.technicianWelcomeTa': 'technician_welcome',
+  'whatsapp.templates.technicianWelcomeHeaderImage': 'https://sevagan.co.in/index_files/logo-new.png',
+};
+const mockConfigGet = jest.fn((key: string) => CONFIG_VALUES[key]);
 const mockConfigService = { get: mockConfigGet } as any;
 
 const mockAuditLog = jest.fn().mockResolvedValue(undefined);
@@ -59,11 +60,7 @@ describe('TechniciansAdminController', () => {
   beforeEach(() => {
     controller = new TechniciansAdminController(mockPrisma, mockTechniciansRepo, mockWhatsApp, mockConfigService, mockAuditService);
     jest.clearAllMocks();
-    mockConfigGet.mockImplementation((key: string) => {
-      if (key === 'whatsapp.templates.technicianWelcome') return 'technician_welcome';
-      if (key === 'whatsapp.templates.technicianWelcomeHeaderImage') return 'https://sevagan.co.in/index_files/logo-new.png';
-      return undefined;
-    });
+    mockConfigGet.mockImplementation((key: string) => CONFIG_VALUES[key]);
     mockSendTemplate.mockResolvedValue(undefined);
     mockSendText.mockResolvedValue(undefined);
   });
@@ -142,7 +139,7 @@ describe('TechniciansAdminController', () => {
       });
       expect(mockSendTemplate).toHaveBeenCalledWith({
         to: '919876543210',
-        templateName: 'technician_welcome',
+        templateName: 'technician_welcom',
         languageCode: 'en',
         headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
         bodyParams: [
@@ -172,6 +169,23 @@ describe('TechniciansAdminController', () => {
       );
       expect(mockSkillCreateMany).not.toHaveBeenCalled();
       expect(mockCategoryFindUnique).not.toHaveBeenCalled();
+    });
+
+    it('uses the Tamil template name with no body params for a TA-language technician', async () => {
+      mockCreate.mockResolvedValue({ id: 'tech-1' });
+      mockFindUnique.mockResolvedValue({ id: 'tech-1', skills: [] });
+
+      await controller.create(
+        { name: 'Kumar', phone: '919876543210', address: 'Virudhunagar', serviceArea: 'Virudhunagar', language: Language.TA },
+        mockUser,
+      );
+
+      expect(mockSendTemplate).toHaveBeenCalledWith({
+        to: '919876543210',
+        templateName: 'technician_welcome',
+        languageCode: 'ta',
+        headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
+      });
     });
 
     it('still creates the technician but reports the failure when the WhatsApp welcome template fails', async () => {
@@ -234,6 +248,77 @@ describe('TechniciansAdminController', () => {
       expect(mockUpdate).toHaveBeenCalledWith('tech-1', { name: 'New Name' });
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ actorId: 'admin-1', action: 'UPDATE_TECHNICIAN', entityId: 'tech-1' }),
+      );
+    });
+  });
+
+  describe('resendWelcome()', () => {
+    it('resends the EN welcome template using the technician\'s first skill and service area', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({
+        id: 'tech-1',
+        phone: '919876543210',
+        language: Language.EN,
+        serviceArea: 'Virudhunagar',
+        skills: [{ category: { name: 'Plumbing' } }],
+      });
+
+      const result = await controller.resendWelcome('tech-1', mockUser);
+
+      expect(mockSendTemplate).toHaveBeenCalledWith({
+        to: '919876543210',
+        templateName: 'technician_welcom',
+        languageCode: 'en',
+        headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
+        bodyParams: [
+          { name: 'service_name', value: 'Plumbing' },
+          { name: 'service_area', value: 'Virudhunagar' },
+        ],
+      });
+      expect(result).toEqual({ sent: true, error: undefined });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: 'admin-1',
+          action: 'RESEND_TECHNICIAN_WELCOME',
+          entityId: 'tech-1',
+          metadata: { sent: true },
+        }),
+      );
+    });
+
+    it('resends the TA welcome template with no body params', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({
+        id: 'tech-1',
+        phone: '919876543210',
+        language: Language.TA,
+        serviceArea: 'Virudhunagar',
+        skills: [],
+      });
+
+      await controller.resendWelcome('tech-1', mockUser);
+
+      expect(mockSendTemplate).toHaveBeenCalledWith({
+        to: '919876543210',
+        templateName: 'technician_welcome',
+        languageCode: 'ta',
+        headerImageUrl: 'https://sevagan.co.in/index_files/logo-new.png',
+      });
+    });
+
+    it('reports failure instead of throwing when the resend fails', async () => {
+      mockFindUniqueOrThrow.mockResolvedValue({
+        id: 'tech-1',
+        phone: '919876543210',
+        language: Language.EN,
+        serviceArea: 'Virudhunagar',
+        skills: [],
+      });
+      mockSendTemplate.mockRejectedValue(new Error('Template not approved'));
+
+      const result = await controller.resendWelcome('tech-1', mockUser);
+
+      expect(result).toEqual({ sent: false, error: 'Template not approved' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: { sent: false } }),
       );
     });
   });

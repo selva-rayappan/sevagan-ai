@@ -76,36 +76,19 @@ export class TechniciansAdminController {
       });
     }
 
-    // Onboarding is a business-initiated message — the technician has never
-    // messaged us, so it's outside WhatsApp's 24-hour session window and must
-    // go through a pre-approved template rather than free-form text. The
-    // approved technician_welcome template has an IMAGE header (required at
-    // send-time) and two named body variables, service_name/service_area —
-    // confirmed via GET /{waba-id}/message_templates against the WABA that
-    // actually owns the sending number (templates are scoped per-WABA).
     const lang = (body.language as Language) ?? Language.EN;
     const primaryCategory = body.categoryIds?.length
       ? await this.prisma.serviceCategory.findUnique({ where: { id: body.categoryIds[0] } })
       : null;
 
-    let welcomeMessageSent = true;
-    try {
-      await this.whatsapp.sendTemplate({
-        to: phone,
-        templateName: this.configService.get<string>(
-          'whatsapp.templates.technicianWelcome',
-          'technician_welcome',
-        ),
-        languageCode: toMetaTemplateLanguageCode(lang),
-        headerImageUrl: this.configService.get<string>('whatsapp.templates.technicianWelcomeHeaderImage'),
-        bodyParams: [
-          { name: 'service_name', value: primaryCategory?.name ?? 'Home Services' },
-          { name: 'service_area', value: body.serviceArea },
-        ],
-      });
-    } catch (err) {
-      welcomeMessageSent = false;
-      this.logger.error(`Failed to send welcome template to technician ${technician.id}: ${(err as Error).message}`);
+    const { sent: welcomeMessageSent, error: welcomeError } = await this.sendWelcomeTemplate(
+      phone,
+      lang,
+      primaryCategory?.name ?? 'Home Services',
+      body.serviceArea,
+    );
+    if (!welcomeMessageSent) {
+      this.logger.error(`Failed to send welcome template to technician ${technician.id}: ${welcomeError}`);
     }
 
     await this.auditService.log({
@@ -165,6 +148,73 @@ export class TechniciansAdminController {
     });
 
     return technician;
+  }
+
+  @Post(':id/resend-welcome')
+  @Version('1')
+  async resendWelcome(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    const technician = await this.prisma.technician.findUniqueOrThrow({
+      where: { id },
+      include: { skills: { include: { category: true } } },
+    });
+
+    const { sent, error } = await this.sendWelcomeTemplate(
+      technician.phone,
+      technician.language as Language,
+      technician.skills[0]?.category.name ?? 'Home Services',
+      technician.serviceArea,
+    );
+    if (!sent) {
+      this.logger.error(`Failed to resend welcome template to technician ${id}: ${error}`);
+    }
+
+    await this.auditService.log({
+      actorId: user.id,
+      actorType: 'ADMIN_USER',
+      action: 'RESEND_TECHNICIAN_WELCOME',
+      entityType: 'Technician',
+      entityId: id,
+      metadata: { sent },
+    });
+
+    return { sent, error };
+  }
+
+  // Onboarding is a business-initiated message — the technician has never
+  // messaged us, so it's outside WhatsApp's 24-hour session window and must
+  // go through a pre-approved template rather than free-form text. EN and TA
+  // were submitted as two separate template names/structures (not language
+  // variants of one name) — confirmed via GET /{waba-id}/message_templates
+  // against the WABA that actually owns the sending number (templates are
+  // scoped per-WABA): EN has an IMAGE header + 2 named body variables
+  // (service_name/service_area), TA has the same IMAGE header but a fully
+  // static body with no variables.
+  private async sendWelcomeTemplate(
+    phone: string,
+    language: Language,
+    serviceCategoryName: string,
+    serviceArea: string,
+  ): Promise<{ sent: boolean; error?: string }> {
+    const isEnglish = language !== Language.TA;
+    try {
+      await this.whatsapp.sendTemplate({
+        to: phone,
+        templateName: isEnglish
+          ? this.configService.get<string>('whatsapp.templates.technicianWelcomeEn', 'technician_welcom')
+          : this.configService.get<string>('whatsapp.templates.technicianWelcomeTa', 'technician_welcome'),
+        languageCode: toMetaTemplateLanguageCode(language),
+        headerImageUrl: this.configService.get<string>('whatsapp.templates.technicianWelcomeHeaderImage'),
+        ...(isEnglish && {
+          bodyParams: [
+            { name: 'service_name', value: serviceCategoryName },
+            { name: 'service_area', value: serviceArea },
+          ],
+        }),
+      });
+      return { sent: true };
+    } catch (err) {
+      return { sent: false, error: (err as Error).message };
+    }
   }
 
   @Post(':id/send-message')

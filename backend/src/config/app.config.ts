@@ -25,11 +25,16 @@ export const appConfig = () => ({
     webhookVerifyToken: process.env.WA_WEBHOOK_VERIFY_TOKEN,
     templates: {
       // Business-initiated messages (e.g. technician onboarding) require a
-      // pre-approved Meta template name, registered per-language in Business Manager.
-      technicianWelcome: process.env.WA_TEMPLATE_TECHNICIAN_WELCOME ?? 'technician_welcome',
-      // The approved technician_welcome template has an IMAGE header with no
-      // body variables — Meta requires the header image at send-time (the
-      // template's "example" image is preview-only, never reused for real sends).
+      // pre-approved Meta template, registered per-language in Business Manager.
+      // The EN and TA translations were submitted as separate template names
+      // (not just language variants of one name) — confirmed via
+      // GET /{waba-id}/message_templates — so both name and body-param shape
+      // must be selected per language, not shared.
+      technicianWelcomeEn: process.env.WA_TEMPLATE_TECHNICIAN_WELCOME_EN ?? 'technician_welcom',
+      technicianWelcomeTa: process.env.WA_TEMPLATE_TECHNICIAN_WELCOME_TA ?? 'technician_welcome',
+      // Both approved templates have an IMAGE header — Meta requires the
+      // header image at send-time (the template's "example" image is
+      // preview-only, never reused for real sends).
       technicianWelcomeHeaderImage:
         process.env.WA_TEMPLATE_TECHNICIAN_WELCOME_HEADER_IMAGE ?? 'https://sevagan.co.in/index_files/logo-new.png',
     },

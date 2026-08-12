@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Plus, X, Pencil, ChevronDown, ChevronRight, MessageSquare, Power, PowerOff } from 'lucide-react';
+import { Plus, X, Pencil, ChevronDown, ChevronRight, MessageSquare, Power, PowerOff, Send } from 'lucide-react';
 
 interface Category { id: string; name: string; }
 interface Technician {
@@ -443,6 +443,7 @@ export default function TechniciansPage() {
   const [editing, setEditing] = useState<Technician | null>(null);
   const [messaging, setMessaging] = useState<Technician | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, TechnicianDetail>>({});
   const [activeFilter, setActiveFilter] = useState<'true' | 'false' | 'all'>('true');
@@ -456,6 +457,18 @@ export default function TechniciansPage() {
       load();
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  async function resendWelcome(t: Technician) {
+    setResendingId(t.id);
+    try {
+      const { data } = await apiClient.post(`/api/v1/admin/technicians/${t.id}/resend-welcome`);
+      window.alert(data.sent ? `Welcome message resent to ${t.name}.` : `Not delivered: ${data.error ?? 'Unknown error'}`);
+    } catch (err: any) {
+      window.alert(err?.response?.data?.message ?? 'Failed to resend welcome message');
+    } finally {
+      setResendingId(null);
     }
   }
 
@@ -594,6 +607,14 @@ export default function TechniciansPage() {
                             className="p-1.5 rounded hover:bg-indigo-50 text-indigo-600 transition-colors"
                           >
                             <MessageSquare size={14} />
+                          </button>
+                          <button
+                            onClick={() => resendWelcome(t)}
+                            disabled={resendingId === t.id}
+                            title="Resend onboarding welcome message"
+                            className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600 transition-colors disabled:opacity-40"
+                          >
+                            <Send size={14} />
                           </button>
                           <button
                             onClick={() => toggleActive(t)}
