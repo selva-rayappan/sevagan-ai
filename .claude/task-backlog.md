@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-08-12 (Phase 14 deployed to production — escalation trigger shortened to 1 minute per request, `PLIVO_*`/`VOICE_WEBHOOK_TOKEN` added to `/etc/sevagan/.env`, `sevagan-api` rebuilt and healthy, `/voice/answer` verified live end-to-end (XML + auth guard); no real Plivo call tested yet, KYC/account status still unresolved — see Phase 14. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5. Prior: Technician welcome message confirmed working end-to-end in production 2026-08-11 — see 3.2.4/8.5.1.)
+**Last Updated:** 2026-08-12 (Phase 14: first real Plivo call placed live (JOB-20260812-0003 → Selva) — answered, but `GetDigits timeout="10"` cut the 18-22s prompt off after 13s before reaching "press 1"; fixed to `timeout="35"` and redeployed, verified live. Also fixed a stray `POST /voice/answer` 404. Separately surfaced (not fixed): a carrier-rejected call likely due to DND on Vetri's number, and a pre-existing WhatsApp 131047 "outside 24h window" send failure — see Phase 14. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5. Prior: Technician welcome message confirmed working end-to-end in production 2026-08-11 — see 3.2.4/8.5.1.)
 
 ---
 
@@ -25,7 +25,7 @@
 | [Phase 11](#phase-11--reports) | Reports | ✅ COMPLETE | 13/13 |
 | [Phase 12](#phase-12--security) | Security | ✅ COMPLETE | 18/18 |
 | [Phase 13](#phase-13--production-deployment) | Production Deployment | 🔄 IN PROGRESS | 12/22 (artifacts ready; EC2 provisioning/DNS/SSL execution pending) |
-| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS | 15/17 (deployed and verified live; no real call tested) |
+| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS | 16/17 (live in production; first real call surfaced and fixed a GetDigits timeout bug) |
 
 ---
 
@@ -1046,7 +1046,7 @@
 | AC-14.1 | Unit tests for provider, guard, controller, poller, `handlePhoneCallResponse()` — all passing | ✅ |
 | AC-14.2 | Full backend suite green after the change (72 suites / 590 tests) | ✅ |
 | AC-14.3 | Deployed to the production backend/EC2 (`PLIVO_*`/`VOICE_WEBHOOK_TOKEN` on the live host) | ✅ Deployed 2026-08-12 via `scripts/deploy.sh`; verified live — `GET /api/v1/voice/answer` returns correct XML per language, bad/missing token 401s |
-| AC-14.4 | Real end-to-end call placed and verified | ❌ Plivo India number/KYC was still being resolved during this phase |
+| AC-14.4 | Real end-to-end call placed and verified | ✅ 2026-08-12, JOB-20260812-0003 → Selva: call answered, audio fetched — but `GetDigits timeout="10"` cut the 18-22s prompt off after 13s, before "press 1". Fixed (`timeout="35"`), redeployed, verified live. Also found/fixed a stray `POST /voice/answer` 404 (Plivo's post-hangup callback). Separately (Vetri attempt): carrier `Rejected` hangup (likely DND) and a WhatsApp 131047 "outside 24h window" failure on the original offer — both noted, not fixed (pre-existing/out of scope) |
 | AC-14.5 | Plivo HMAC-V3 webhook signature validation implemented | ❌ Shared-secret token only — documented gap |
 
 ---

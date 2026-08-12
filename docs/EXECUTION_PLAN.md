@@ -26,7 +26,7 @@
 | Phase 11 | Reports | ✅ COMPLETE |
 | Phase 12 | Security | ✅ COMPLETE |
 | Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
-| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — deployed and verified live, no real call tested yet |
+| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — live in production, real call placed and a real bug fixed from it |
 
 ---
 
@@ -520,5 +520,6 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 - ✅ Full backend suite green (72 suites / 590 tests) after the change
 - ✅ **Deployed to production (2026-08-12)** — `scripts/deploy.sh` run against `54.208.201.48`; `PLIVO_*`/`VOICE_WEBHOOK_TOKEN` added to `/etc/sevagan/.env`; `sevagan-api` rebuilt and healthy
 - ✅ Verified live: `GET https://api.sevagan.co.in/api/v1/voice/answer` returns correct Plivo XML with the right `<Play>` URL per `lang`; missing/wrong `token` correctly 401s
-- ❌ No real end-to-end call placed/tested yet (Plivo India number KYC/signup was still being resolved during this phase) — the escalation poller is live and will attempt a real Plivo call the next time a job offer goes unanswered for 1 minute
+- ✅ **Real end-to-end call placed and diagnosed (2026-08-12, JOB-20260812-0003 → Selva, 919585909045)**: Plivo answered, fetched the XML and full audio file, technician's phone rang and was answered — but the call was cut off after 13s by `GetDigits timeout="10"`, well before the real prompt duration (measured: EN 18.2s, TA 21.9s). Fixed by raising `timeout` to `35`; also fixed a stray `POST /voice/answer` 404 (Plivo's post-hangup callback, no `hangup_url` configured) found in the same trace. Deployed and verified live; the next unanswered offer will use the corrected timeout — not yet re-verified with a full end-to-end call that a technician actually hears the whole message and can respond
+- ✅ Earlier call attempt (Vetri, 919626191907) also surfaced two independent findings, not fixed here: (1) carrier-level `Rejected` hangup on an unanswered call — likely DND/NCPR filtering on that number, needs checking separately; (2) the original WhatsApp job-offer message to Vetri failed with Meta error 131047 ("Re-engagement message" — outside the 24h customer-service window), a pre-existing gap unrelated to this feature
 - ❌ Plivo's HMAC-V3 webhook signature not implemented (shared-secret token only) — documented gap, not a blocker for MVP
