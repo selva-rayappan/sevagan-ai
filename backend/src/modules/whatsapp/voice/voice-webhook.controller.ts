@@ -135,25 +135,29 @@ export class VoiceWebhookController {
     }
 
     // Spoken confirmation, matching the WhatsApp accept/reject tone. Same
-    // Tamil-TTS constraint as the main prompt — pre-recorded, not <Speak>.
+    // Tamil-TTS constraint as the main prompt — pre-recorded, not <Speak>,
+    // for everything except the English accept case below.
     const isTa = lang === Language.TA;
-    let confirmationUrl: string | undefined;
-    if (digits === '1') {
-      confirmationUrl = this.configService.get<string>(
-        isTa ? 'voice.audioUrls.acceptedTa' : 'voice.audioUrls.acceptedEn',
-        '',
-      );
+    let confirmationVerb: string | undefined;
+    if (digits === '1' && !isTa) {
+      // Plivo's <Speak> supports English natively (unlike Tamil — same
+      // limitation that forced the main prompts to be pre-recorded MP3s) —
+      // no audio asset needed for a short acknowledgment.
+      confirmationVerb = '  <Speak>Thank you for choosing Sevagan Services</Speak>';
+    } else if (digits === '1') {
+      confirmationVerb = `  <Play>${this.escapeXml(this.configService.get<string>('voice.audioUrls.acceptedTa', ''))}</Play>`;
     } else if (digits === '2') {
-      confirmationUrl = this.configService.get<string>(
+      const rejectedUrl = this.configService.get<string>(
         isTa ? 'voice.audioUrls.rejectedTa' : 'voice.audioUrls.rejectedEn',
         '',
       );
+      confirmationVerb = `  <Play>${this.escapeXml(rejectedUrl)}</Play>`;
     }
 
     return [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<Response>',
-      ...(confirmationUrl ? [`  <Play>${this.escapeXml(confirmationUrl)}</Play>`] : []),
+      ...(confirmationVerb ? [confirmationVerb] : []),
       '  <Hangup/>',
       '</Response>',
     ].join('\n');

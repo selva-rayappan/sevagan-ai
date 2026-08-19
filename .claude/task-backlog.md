@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-08-19 (Phase 14: the actual root cause of every "Invalid Answer XML" hangup finally identified — by Plivo support's own parse trace, not our diagnostics. `buildAnswerXml()`'s `action="..."` attribute contained a bare `&` from the DTMF callback URL's `?token=...&lang=EN` — invalid inside an XML attribute per spec (must be `&amp;`). Every check we'd made (curl, eyeballing the string, nginx byte counts matching exactly) validated the *bytes* were right, never that the content was *well-formed XML* — those are different claims, and conflating them is what kept 14.6-14.8 chasing network/latency theories for two days on the wrong trail. Fixed with a proper `escapeXml()` applied everywhere a URL gets interpolated into hand-built XML in `VoiceWebhookController`. Third fix attempt for the same symptom — unconfirmed on a real call yet. The job-offer WhatsApp template (the primary notification) is unaffected and already delivers reliably — this is specifically the voice-call fallback. See 14.9. Prior same day: job-offer Meta templates approved and activated: `technician_job_offer_v2` (TA, UTILITY) and `technician_job_offer_en_v3` (EN, UTILITY). The EN half needed a second round — Meta had reclassified the original EN submission as `MARKETING`, which triggers a per-recipient 131049 throttle; Meta refuses to edit an approved template's category and blocks resubmitting the same name+language for 4 weeks, so EN moved to a new template name with plainer wording and came back APPROVED as UTILITY within minutes. Validated live end-to-end for Selva (sent→delivered, zero errors); a different technician (Maha/"Vetri", `919626191907`) hit the 131049 throttle plus a carrier-level DND rejection on the escalation call — both channels down for that one number, flagged as needing a direct conversation, not a code fix. See 14.7. Prior same day: end-to-end voice escalation confirmed, and the WhatsApp-131047-then-premature-call bug fixed via `escalateOnDeliveryFailure()` — see 14.6. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5.)
+**Last Updated:** 2026-08-19 (Phase 14: EN accept confirmation (digit "1") now live-spoken via Plivo `<Speak>` — "Thank you for choosing Sevagan Services" — replacing the pre-recorded `job_accepted_call_en.mp3`; TA unchanged since Plivo's `<Speak>` has no Tamil support. See 14.10. Prior same day: the actual root cause of every "Invalid Answer XML" hangup finally identified — by Plivo support's own parse trace, not our diagnostics. `buildAnswerXml()`'s `action="..."` attribute contained a bare `&` from the DTMF callback URL's `?token=...&lang=EN` — invalid inside an XML attribute per spec (must be `&amp;`). Every check we'd made (curl, eyeballing the string, nginx byte counts matching exactly) validated the *bytes* were right, never that the content was *well-formed XML* — those are different claims, and conflating them is what kept 14.6-14.8 chasing network/latency theories for two days on the wrong trail. Fixed with a proper `escapeXml()` applied everywhere a URL gets interpolated into hand-built XML in `VoiceWebhookController`. Third fix attempt for the same symptom — unconfirmed on a real call yet. The job-offer WhatsApp template (the primary notification) is unaffected and already delivers reliably — this is specifically the voice-call fallback. See 14.9. Prior same day: job-offer Meta templates approved and activated: `technician_job_offer_v2` (TA, UTILITY) and `technician_job_offer_en_v3` (EN, UTILITY). The EN half needed a second round — Meta had reclassified the original EN submission as `MARKETING`, which triggers a per-recipient 131049 throttle; Meta refuses to edit an approved template's category and blocks resubmitting the same name+language for 4 weeks, so EN moved to a new template name with plainer wording and came back APPROVED as UTILITY within minutes. Validated live end-to-end for Selva (sent→delivered, zero errors); a different technician (Maha/"Vetri", `919626191907`) hit the 131049 throttle plus a carrier-level DND rejection on the escalation call — both channels down for that one number, flagged as needing a direct conversation, not a code fix. See 14.7. Prior same day: end-to-end voice escalation confirmed, and the WhatsApp-131047-then-premature-call bug fixed via `escalateOnDeliveryFailure()` — see 14.6. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5.)
 
 ---
 
@@ -25,7 +25,7 @@
 | [Phase 11](#phase-11--reports) | Reports | ✅ COMPLETE | 13/13 |
 | [Phase 12](#phase-12--security) | Security | ✅ COMPLETE | 18/18 |
 | [Phase 13](#phase-13--production-deployment) | Production Deployment | 🔄 IN PROGRESS | 12/22 (artifacts ready; EC2 provisioning/DNS/SSL execution pending) |
-| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | ✅ COMPLETE | 53/56 (job offers — the primary notification — deliver reliably outside the 24h WhatsApp session via approved templates, validated live 2026-08-19; the voice-call fallback's "Invalid Answer XML" was finally root-caused via Plivo support's own parse trace as a genuine bug — a bare `&` in an XML attribute — fixed, unconfirmed on a real call yet; Plivo HMAC-V3 signature and a carrier-level DND issue on one technician's number remain documented non-blocking gaps) |
+| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | ✅ COMPLETE | 58/61 (job offers — the primary notification — deliver reliably outside the 24h WhatsApp session via approved templates, validated live 2026-08-19; the voice-call fallback's "Invalid Answer XML" was finally root-caused via Plivo support's own parse trace as a genuine bug — a bare `&` in an XML attribute — fixed, unconfirmed on a real call yet; EN accept confirmation now live-spoken "Thank you for choosing Sevagan Services", TA unchanged; Plivo HMAC-V3 signature and a carrier-level DND issue on one technician's number remain documented non-blocking gaps) |
 
 ---
 
@@ -309,6 +309,7 @@
 | 4.5.2 | Accepts native WhatsApp location share | ✅ |
 | 4.5.3 | WhatsApp location: uses `name` → `address` → `lat,lng` fallback chain | ✅ |
 | 4.5.4 | Location stored in session, advance to AWAITING_TIME | ✅ |
+| 4.5.5 | MVP: location-request step paused (customer no longer asked to share location) — `job.location` set to a translated placeholder and flow skips straight to AWAITING_TIME; `handleLocation()` commented out, not deleted, to be revived with the commission-based model — see `docs/EXECUTION_PLAN.md` §4.2 (2026-08-19) | ✅ |
 
 ### 4.6 Time Scheduling
 | # | Task | Status |
@@ -415,6 +416,7 @@
 | 5.6.2 | Call `JobsService.setCompletion(id, amount, paymentMode)` — sets `jobAmount`, `paymentMode`, `status = COMPLETED` | ✅ |
 | 5.6.3 | Send `job_completed` to technician (commission calculated via Phase 6 engine) | ✅ |
 | 5.6.4 | Send `confirm_amount` to customer as interactive buttons: Yes Correct / No Incorrect; set customer session to `AWAITING_AMOUNT_CONFIRMATION` | ✅ |
+| 5.6.5 | MVP: "enter the amount" step paused, Cash/UPI buttons replaced by a single Complete button — technician taps once, job completes with no `jobAmount`/`paymentMode` (`jobsService.updateStatus`, not `setCompletion`), is freed immediately, and the customer skips straight to the rating flow (amount confirmation + invoice sharing also paused, see §4.5.5 and `docs/EXECUTION_PLAN.md` §4.2/§5.2). Old handlers commented out, not deleted, to be revived with the commission-based model (2026-08-19) | ✅ |
 
 ### 5.7 Photo Upload
 | # | Task | Status |
@@ -1087,6 +1089,15 @@
 | 14.9.3 | Unit tests: DTMF action URL asserts `&amp;lang=TA` (not bare `&`); blanket test asserting no unescaped `&` appears anywhere in the generated answer XML | ✅ |
 | 14.9.4 | Full backend suite green (73 suites / 623 tests), `tsc --noEmit` clean, coverage 96.83%/88%/92.07%/97.21%, `voice-webhook.controller.ts` 100% all four metrics | ✅ |
 | 14.9.5 | Confirm on a real call — third fix attempt for the same symptom (14.6 logging → 14.8 GET→POST + Event routing → 14.9 XML escaping) | ❌ Unconfirmed — watching the next live escalation call |
+
+### 14.10 Accept Confirmation: Live-Spoken "Thank You" (EN)
+| # | Task | Status |
+|---|------|--------|
+| 14.10.1 | On pressing "1" (accept), EN calls now say `<Speak>Thank you for choosing Sevagan Services</Speak>` instead of playing the pre-recorded `job_accepted_call_en.mp3` — Plivo's `<Speak>` supports English natively, no new audio asset needed | ✅ |
+| 14.10.2 | TA left unchanged — still plays the pre-recorded `acceptedTa` audio, since Plivo's `<Speak>` has no Tamil support (confirmed with the user rather than guessing on live technician-heard content) | ✅ |
+| 14.10.3 | Reject confirmation (digit "2") unchanged for both languages — out of scope for this request | ✅ |
+| 14.10.4 | Unit tests: EN accept asserts the `<Speak>` text and no reference to `job_accepted_call_en.mp3`; TA accept asserts the pre-recorded audio still plays and no `<Speak>` appears | ✅ |
+| 14.10.5 | Full backend suite green (73 suites / 613 tests), `tsc --noEmit` clean, coverage 97.21%/88%/92.98%/97.62%, `voice-webhook.controller.ts` 100% all four metrics | ✅ |
 
 ### Acceptance Criteria
 | # | Criterion | Status |

@@ -146,18 +146,20 @@
 
 #### 4.1 State Machine
 - ✅ `ConversationStateService` (Redis, 24h TTL)
-- ✅ States: IDLE → AWAITING_LANGUAGE → AWAITING_SERVICE → AWAITING_LOCATION → AWAITING_TIME → (job created) → IDLE
+- ✅ States: IDLE → AWAITING_LANGUAGE → AWAITING_SERVICE → AWAITING_LOCATION → AWAITING_TIME → (job created) → IDLE. **As of 2026-08-19, AWAITING_LOCATION is skipped** (paused, see 4.2) — the live path is AWAITING_SERVICE → AWAITING_TIME directly; the state and its handler remain defined for a clean revival.
 
 #### 4.2 Customer Bot Flows
 - ✅ Welcome message (added 2026-07-21): `handleIdle()` now sends `customer.welcome` (plain text) before the language-selection buttons, so first-time contacts (including those arriving via the website's `wa.me` links) get a greeting instead of jumping straight to language buttons. `customer.welcome` previously existed in `en.json`/`ta.json` but was unused/dead code.
 - ✅ Language selection (first interaction) — interactive buttons (EN/தமிழ்)
 - ✅ Service category selection — interactive list message (tap to select), generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu
-- ✅ Location capture — sent as an interactive `location_request_message` (native "Send Location" button) with typed free text as a fully-supported fallback (`WhatsAppProvider.sendLocationRequest`, added 2026-07-20). A native location share always has a tappable `https://www.google.com/maps?q=lat,lng` link appended to `job.location` (added 2026-07-21) — previously a name/address-only pin rendered as unclickable plain text in the technician's job offer message; typed free-text locations are unaffected since there are no coordinates to link.
+- 🔄 **MVP (2026-08-19): location-request and amount-confirmation steps paused** to shorten the customer flow, to be revived when the business moves to a commission-based pricing model. Location: `handleServiceSelection()`/`tryAiServiceMatch()` no longer send `sendLocationRequest` or wait in `AWAITING_LOCATION` — they set `job.location` straight to a translated placeholder (`customer.location_deferred`, EN "To be shared with the technician by phone") and go directly to the time-slot menu; `handleLocation()` is commented out, not deleted. Amount confirmation: `TechnicianBotService.handleCompleteCommand()` no longer sends `confirm_amount` buttons or waits for a Yes/No reply — the customer gets a plain `customer.job_completed_simple` notice and moves straight into the rating flow; `CustomerBotService.handleAmountConfirmation()`/`sendAmountConfirmationPrompt()` are commented out, not deleted. See the matching Phase 5 note (5.2) for the technician side, and 4.2's invoice-sharing line below for the third paused step. To revive any of these: search the affected files for "MVP:" comments referencing this date and uncomment the blocks named there.
+- ~~Location capture — sent as an interactive `location_request_message` (native "Send Location" button) with typed free text as a fully-supported fallback (`WhatsAppProvider.sendLocationRequest`, added 2026-07-20). A native location share always has a tappable `https://www.google.com/maps?q=lat,lng` link appended to `job.location` (added 2026-07-21) — previously a name/address-only pin rendered as unclickable plain text in the technician's job offer message; typed free-text locations are unaffected since there are no coordinates to link.~~ *(paused 2026-08-19, see MVP note above)*
 - ✅ Scheduled time capture — interactive list message (tap to select a slot), auto-regenerates on an invalid/stale reply
 - ✅ Job creation with `JOB-YYYYMMDD-NNNN` number format
 - ✅ TRACK, CANCEL, HELP commands
-- ✅ Amount confirmation flow (AWAITING_AMOUNT_CONFIRMATION) — interactive buttons (Yes Correct / No Incorrect)
-- ✅ Rating flow (AWAITING_RATING) — interactive list message (5 star-rating options)
+- ~~Amount confirmation flow (AWAITING_AMOUNT_CONFIRMATION) — interactive buttons (Yes Correct / No Incorrect)~~ *(paused 2026-08-19, see MVP note above)*
+- ~~Invoice-sharing step — `CustomerBotService.generateInvoiceAndPayment()` (PDF invoice + cash/UPI payment recording), previously fired after amount confirmation~~ *(paused 2026-08-19, along with amount confirmation above since it was the only trigger — code commented out, not deleted)*
+- ✅ Rating flow (AWAITING_RATING) — interactive list message (5 star-rating options); now reached directly from the technician's simplified completion step (see Phase 5 note) instead of via amount confirmation
 - ✅ Idle nudge (added 2026-07-20): `CustomerIdleNudgeService` polls Redis every 60s (`conv:*` SCAN) for customers parked mid-request (AWAITING_LANGUAGE/SERVICE/LOCATION/TIME only — not post-job states, where "sorry we couldn't service you" would be confusing). Sends `customer.idle_reminder` once after 15 min of no reply, `customer.idle_dropoff` once after 30 min and resets the session to IDLE. Idle time is measured from a dedicated `lastCustomerMessageAt` field (not `updatedAt`, which the nudge's own save would otherwise reset) and clears on the customer's next real message so nudges can fire again for a future idle period.
 
 All customer/technician numbered-selection flows (service, time slot, amount
@@ -190,14 +192,15 @@ display).
 
 #### 5.1 Session Management
 - ✅ `TechnicianSessionService` (Redis, `tech_session:{phone}`)
-- ✅ States: IDLE → JOB_OFFER_PENDING → JOB_ACCEPTED → JOB_IN_PROGRESS → AWAITING_COMPLETION
+- ✅ States: IDLE → JOB_OFFER_PENDING → JOB_ACCEPTED → JOB_IN_PROGRESS → AWAITING_COMPLETION. **As of 2026-08-19, AWAITING_PAYMENT_AMOUNT and AWAITING_COMPLETION are skipped** (paused, see 5.2) — the live path goes JOB_IN_PROGRESS → IDLE directly on a single Complete reply; both states and their handlers remain defined for a clean revival.
 
 #### 5.2 Bot Flows
 - ✅ Job offer notification — interactive buttons: Accept / Reject
 - ✅ Accept: acceptedAt set, Job.status = ACCEPTED, Technician.status = BUSY, customer notified; reply sends interactive buttons (Start / Decline) for the next step; technician's `job_accepted` message now also includes the customer's phone number (`customerPhone`, added 2026-07-20) so they can call ahead
 - ✅ Reject/Decline: assignment deleted, Job.status = NEW, session cleared, reassignment triggered
-- ✅ Start (interactive button): IN_PROGRESS, customer notified; reply sends interactive buttons (Complete Cash / Complete UPI) for the next step
-- ✅ Complete Cash/UPI (interactive buttons) → amount entered as free text → amount + mode set, customer prompted for confirmation via interactive buttons (Yes Correct / No Incorrect)
+- 🔄 **MVP (2026-08-19): "enter the amount" step paused**, along with the Cash/UPI payment-mode buttons that fed into it — see the matching Phase 4 note (4.2) for the customer-side amount-confirmation/invoice steps this cascades into. `handleAcceptedState()`'s Start reply now sends a single `technician.complete_button` ("✅ Complete") instead of Cash/UPI buttons; tapping it (or replying "1"/"complete") calls the simplified `handleCompleteCommand(session, technician)`, which marks the job `COMPLETED` with no `jobAmount`/`paymentMode` (via `jobsService.updateStatus`, not `setCompletion`), frees the technician immediately (no more waiting on customer confirmation — `AWAITING_COMPLETION` is unreachable), and sends the customer straight into the rating flow. The old amount-based `handleCompleteCommand`, `handleAwaitingPaymentAmountState`, and `handleAwaitingCompletionState` are commented out, not deleted (search "MVP:" comments dated 2026-08-19 in `technician-bot.service.ts` to revive).
+- ~~Start (interactive button): IN_PROGRESS, customer notified; reply sends interactive buttons (Complete Cash / Complete UPI) for the next step~~ *(Complete Cash/UPI replaced by a single Complete button, paused 2026-08-19)*
+- ~~Complete Cash/UPI (interactive buttons) → amount entered as free text → amount + mode set, customer prompted for confirmation via interactive buttons (Yes Correct / No Incorrect)~~ *(paused 2026-08-19, see MVP note above)*
 - ✅ Photo upload: downloaded from Meta, stored in MinIO, URL appended to job
 - ✅ STATUS, JOBS, HELP commands
 - ✅ All button titles routed through `TranslationService` (`technician.accept_button`, `reject_button`, `start_button`, `decline_button`, `complete_cash_button`, `complete_upi_button`) — previously hardcoded English-only "Accept"/"Reject" strings (fixed 2026-07-19)
@@ -568,3 +571,11 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 - ✅ Unit tests: regression test asserting the DTMF action URL contains `&amp;lang=TA` (not a bare `&`), plus a blanket test that no unescaped `&` appears anywhere in the generated answer XML
 - ✅ Full backend suite green (73 suites / 623 tests), `tsc --noEmit` clean, coverage 96.83%/88%/92.07%/97.21%, `voice-webhook.controller.ts` at 100% across all four metrics
 - ❌ Unconfirmed on a real call — this is the third fix attempt for the same underlying symptom (14.6 logging → 14.8 GET→POST + Event routing → 14.9 XML escaping); watching the next live escalation call before declaring this closed
+
+#### 14.10 Accept Confirmation: Live-Spoken "Thank You" (EN) ✅ COMPLETE
+**Goal:** on pressing "1" (accept), the call should say "Thank you for choosing Sevagan Services" rather than the existing pre-recorded `job_accepted_call_en.mp3`.
+- ✅ English: `VoiceWebhookController.dtmf()` now returns `<Speak>Thank you for choosing Sevagan Services</Speak>` for digit `1` when `lang !== TA`, replacing the `acceptedEn` audio `<Play>` — Plivo's `<Speak>` supports English natively, so no new audio asset was needed
+- ✅ Tamil: left unchanged, still plays the existing pre-recorded `acceptedTa` audio — Plivo's `<Speak>` has no Tamil support (same constraint that forced the original job-offer prompts to be pre-recorded MP3s, see 14.2); confirmed with the user rather than guessing on live-heard technician content
+- ✅ Reject confirmation (digit `2`) unchanged for both languages — not part of this request
+- ✅ Unit tests updated: EN accept asserts the `<Speak>` text and that it no longer references `job_accepted_call_en.mp3`; TA accept asserts the pre-recorded audio still plays and no `<Speak>` appears
+- ✅ Full backend suite green (73 suites / 613 tests), `tsc --noEmit` clean, coverage 97.21%/88%/92.98%/97.62%, `voice-webhook.controller.ts` at 100% across all four metrics

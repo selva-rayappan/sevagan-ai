@@ -156,15 +156,17 @@ describe('VoiceWebhookController', () => {
       expect(xml).toContain('<Hangup/>');
     });
 
-    it('plays the English "accepted" confirmation on digit 1', async () => {
+    it('speaks the "Thank you" acknowledgment live for the English accept confirmation on digit 1 (no audio asset needed)', async () => {
       const xml = await controller.dtmf({ To: '919626191907', Digits: '1' }, Language.EN);
-      expect(xml).toContain('job_accepted_call_en.mp3');
+      expect(xml).toContain('<Speak>Thank you for choosing Sevagan Services</Speak>');
+      expect(xml).not.toContain('job_accepted_call_en.mp3');
       expect(xml).not.toContain('rejected');
     });
 
-    it('plays the Tamil "accepted" confirmation on digit 1 when lang=TA', async () => {
+    it('still plays the pre-recorded Tamil "accepted" confirmation on digit 1 (Plivo <Speak> has no Tamil support)', async () => {
       const xml = await controller.dtmf({ To: '919626191907', Digits: '1' }, Language.TA);
       expect(xml).toContain('job_accepted_call_ta.mp3');
+      expect(xml).not.toContain('<Speak>');
     });
 
     it('plays the "rejected" confirmation on digit 2', async () => {
