@@ -113,6 +113,7 @@ model Technician {
 model ServiceCategory {
   id          String   @id @default(uuid())
   name        String   @unique
+  nameTa      String?  @map("name_ta")
   description String?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")

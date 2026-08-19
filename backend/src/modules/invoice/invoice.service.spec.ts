@@ -148,6 +148,40 @@ describe('InvoiceService', () => {
       );
     });
 
+    it('uses the Tamil service category name on the PDF for a Tamil-language customer', async () => {
+      mockFindUniqueJob.mockResolvedValue(
+        makeJob({
+          customer: { name: 'Rajesh', phone: '919876543210', language: 'TA' },
+          serviceCategory: { name: 'Electrical', nameTa: 'மின்சாரம்' },
+        }),
+      );
+      mockFindByJobId.mockResolvedValue(null);
+      mockCreate.mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-20260630-0001' });
+
+      await service.generateInvoice('job-1');
+
+      expect(mockGenerateInvoicePdf).toHaveBeenCalledWith(
+        expect.objectContaining({ serviceCategory: 'மின்சாரம்', language: Language.TA }),
+      );
+    });
+
+    it('falls back to the English service category name for TA when no Tamil name is set', async () => {
+      mockFindUniqueJob.mockResolvedValue(
+        makeJob({
+          customer: { name: 'Rajesh', phone: '919876543210', language: 'TA' },
+          serviceCategory: { name: 'Acting Driver' },
+        }),
+      );
+      mockFindByJobId.mockResolvedValue(null);
+      mockCreate.mockResolvedValue({ id: 'inv-1', invoiceNumber: 'INV-20260630-0001' });
+
+      await service.generateInvoice('job-1');
+
+      expect(mockGenerateInvoicePdf).toHaveBeenCalledWith(
+        expect.objectContaining({ serviceCategory: 'Acting Driver' }),
+      );
+    });
+
     // MVP: was 'falls back to job amount and N/A technician when commission or
     // assignment is missing' — the commission-fallback half is inactive while
     // commission is not displayed (see invoice.service.ts); restore

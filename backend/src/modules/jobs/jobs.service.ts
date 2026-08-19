@@ -12,7 +12,7 @@ export class JobsService {
     private readonly redis: RedisService,
   ) {}
 
-  async createJob(input: CreateJobInput): Promise<Job> {
+  async createJob(input: CreateJobInput): Promise<JobWithCategory> {
     const jobNumber = await this.generateJobNumber();
     return this.jobsRepository.create({
       jobNumber,

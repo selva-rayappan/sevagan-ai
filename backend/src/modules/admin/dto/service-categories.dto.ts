@@ -7,6 +7,11 @@ export class CreateServiceCategoryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(120)
+  nameTa?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   description?: string;
 }
@@ -16,6 +21,11 @@ export class UpdateServiceCategoryDto {
   @IsString()
   @MaxLength(120)
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  nameTa?: string;
 
   @IsOptional()
   @IsString()

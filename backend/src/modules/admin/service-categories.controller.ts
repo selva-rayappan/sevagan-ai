@@ -39,7 +39,7 @@ export class ServiceCategoriesAdminController {
   @Version('1')
   async create(@Body() body: CreateServiceCategoryDto, @CurrentUser() user: CurrentUserPayload) {
     const category = await this.prisma.serviceCategory.create({
-      data: { name: body.name, description: body.description },
+      data: { name: body.name, nameTa: body.nameTa, description: body.description },
     });
 
     await this.auditService.log({

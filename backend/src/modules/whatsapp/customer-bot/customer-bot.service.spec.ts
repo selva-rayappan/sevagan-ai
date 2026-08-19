@@ -590,7 +590,11 @@ describe('CustomerBotService', () => {
           pendingTimeSlots: ['Today, 2 PM - 4 PM', 'Today, 4 PM - 6 PM', 'Tomorrow, 9 AM - 11 AM', 'Tomorrow, 11 AM - 1 PM'],
         }),
       );
-      mockCreateJob.mockResolvedValue({ id: 'job-1', jobNumber: 'JOB-20260614-0001' });
+      mockCreateJob.mockResolvedValue({
+        id: 'job-1',
+        jobNumber: 'JOB-20260614-0001',
+        serviceCategory: { name: 'AC Service', nameTa: 'AC சேவை' },
+      });
 
       await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 
@@ -642,7 +646,11 @@ describe('CustomerBotService', () => {
           pendingTimeSlots: ['Today, 2 PM - 4 PM', 'Today, 4 PM - 6 PM', 'Tomorrow, 9 AM - 11 AM', 'Tomorrow, 11 AM - 1 PM'],
         }),
       );
-      mockCreateJob.mockResolvedValue({ id: 'job-2', jobNumber: 'JOB-20260614-0002' });
+      mockCreateJob.mockResolvedValue({
+        id: 'job-2',
+        jobNumber: 'JOB-20260614-0002',
+        serviceCategory: { name: 'Plumbing', nameTa: 'குழாய் பணி' },
+      });
 
       await service.handleMessage(makeTextMessage('2'), 'Rajesh');
 

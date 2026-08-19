@@ -41,6 +41,7 @@ describe('JobsRepository', () => {
           jobNumber: 'JOB-20260614-0001',
           customerId: 'cust-1',
         }),
+        include: { serviceCategory: true },
       });
     });
   });

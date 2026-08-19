@@ -12,6 +12,7 @@ import { Language } from '../../domain/enums';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { InvoiceRepository } from './invoice.repository';
 import { PdfGeneratorService, InvoicePdfData } from './pdf-generator.service';
+import { getServiceCategoryLabel } from '../../common/utils/service-category.utils';
 
 @Injectable()
 export class InvoiceService {
@@ -76,7 +77,7 @@ export class InvoiceService {
       customerName: job.customer.name ?? '',
       customerPhone: job.customer.phone,
       jobNumber: job.jobNumber,
-      serviceCategory: job.serviceCategory.name,
+      serviceCategory: getServiceCategoryLabel(job.serviceCategory, customerLang),
       location: job.location,
       technicianName: job.assignment?.technician?.name ?? 'N/A',
       jobAmount: amount,

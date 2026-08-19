@@ -20,6 +20,7 @@ import { TechnicianSessionService } from './technician-session.service';
 import { TechnicianSession, TechnicianConversationState } from './technician-session.types';
 import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
 import { PaymentModeSettingsRepository } from '../../payment-mode-settings/payment-mode-settings.repository';
+import { getServiceCategoryLabel } from '../../../common/utils/service-category.utils';
 
 const OFFER_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -155,10 +156,7 @@ export class TechnicianBotService {
     session.customerPhone = customer.phone;
     session.offerExpiresAt = new Date(Date.now() + OFFER_TTL_MS).toISOString();
 
-    const serviceKey = this.categoryNameToKey(
-      (job as any).serviceCategory?.name ?? '',
-    );
-    const serviceLabel = this.translation.translate(`service.${serviceKey}`, session.language);
+    const serviceLabel = getServiceCategoryLabel((job as any).serviceCategory ?? { name: '' }, session.language);
     const scheduledTimeText = this.extractScheduledTime(job.description);
 
     await this.techSessionService.saveSession(session);
@@ -247,9 +245,6 @@ export class TechnicianBotService {
     session.state = TechnicianConversationState.JOB_ACCEPTED;
     session.customerPhone = job.customer.phone;
 
-    const serviceKey = this.categoryNameToKey(job.serviceCategory.name);
-    const serviceLabel = this.translation.translate(`service.${serviceKey}`, session.language);
-
     await this.whatsapp.sendInteractiveButtons({
       to: technician.phone,
       body: this.translation.translate('technician.job_accepted', session.language, {
@@ -283,8 +278,6 @@ export class TechnicianBotService {
       customerSession.state = ConversationState.IDLE;
       await this.customerSessionService.saveSession(customerSession);
     }
-
-    const _ = serviceLabel; // suppress unused var
   }
 
   private async rejectJob(session: TechnicianSession, technician: Technician): Promise<void> {
@@ -616,8 +609,7 @@ export class TechnicianBotService {
       return;
     }
 
-    const serviceKey = this.categoryNameToKey(job.serviceCategory.name);
-    const serviceLabel = this.translation.translate(`service.${serviceKey}`, session.language);
+    const serviceLabel = getServiceCategoryLabel(job.serviceCategory, session.language);
     const statusLabel = this.translation.translate(`job_status.${job.status}`, session.language);
 
     await this.whatsapp.sendText({
@@ -646,7 +638,8 @@ export class TechnicianBotService {
     const jobList = jobs
       .map((j, i) => {
         const statusLabel = this.translation.translate(`job_status.${j.status}`, session.language);
-        return `${i + 1}. ${j.jobNumber} — ${j.serviceCategory.name} — ${statusLabel}`;
+        const serviceLabel = getServiceCategoryLabel(j.serviceCategory, session.language);
+        return `${i + 1}. ${j.jobNumber} — ${serviceLabel} — ${statusLabel}`;
       })
       .join('\n');
 
@@ -663,10 +656,6 @@ export class TechnicianBotService {
       if (message.interactive.list_reply) return message.interactive.list_reply.id;
     }
     return '';
-  }
-
-  private categoryNameToKey(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_');
   }
 
   private extractScheduledTime(description?: string | null): string {

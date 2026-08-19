@@ -23,7 +23,7 @@ export interface CreateJobData {
 export class JobsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateJobData): Promise<Job> {
+  async create(data: CreateJobData): Promise<JobWithCategory> {
     return this.prisma.job.create({
       data: {
         jobNumber: data.jobNumber,
@@ -32,6 +32,7 @@ export class JobsRepository {
         location: data.location,
         description: data.description,
       },
+      include: { serviceCategory: true },
     });
   }
 

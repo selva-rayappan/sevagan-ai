@@ -25,6 +25,7 @@ import { IntentClassifierService, Intent } from '../../ai-dispatcher/intent-clas
 import { CategoryMapperService } from '../../ai-dispatcher/category-mapper.service';
 import { LanguageDetectorService } from '../../ai-dispatcher/language-detector.service';
 import { generateTimeSlots } from './time-slot.util';
+import { getServiceCategoryLabel } from '../../../common/utils/service-category.utils';
 
 @Injectable()
 export class CustomerBotService {
@@ -297,7 +298,7 @@ export class CustomerBotService {
       this.translation.translate('customer.select_service', session.language),
       categories.map((c, i) => ({
         id: String(i + 1),
-        title: this.translateServiceName(c.name, session.language),
+        title: getServiceCategoryLabel(c, session.language),
       })),
     );
   }
@@ -391,8 +392,7 @@ export class CustomerBotService {
       scheduledTimeText,
     });
 
-    const serviceKey = this.categoryNameToKey(session.selectedCategoryName!);
-    const serviceLabel = this.translation.translate(`service.${serviceKey}`, session.language);
+    const serviceLabel = getServiceCategoryLabel(job.serviceCategory, session.language);
 
     await this.whatsapp.sendText({
       to: session.phone,
@@ -431,8 +431,7 @@ export class CustomerBotService {
       return;
     }
 
-    const serviceKey = this.categoryNameToKey(job.serviceCategory.name);
-    const serviceLabel = this.translation.translate(`service.${serviceKey}`, language);
+    const serviceLabel = getServiceCategoryLabel(job.serviceCategory, language);
     const statusLabel = this.translation.translate(`job_status.${job.status}`, language);
 
     await this.whatsapp.sendText({
@@ -670,18 +669,6 @@ export class CustomerBotService {
     } catch (err) {
       this.logger.error(`Failed to notify technician ${ctx.technicianId} of dispute: ${(err as Error).message}`);
     }
-  }
-
-  private categoryNameToKey(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_');
-  }
-
-  private translateServiceName(name: string, language: Language): string {
-    const key = `service.${this.categoryNameToKey(name)}`;
-    const translated = this.translation.translate(key, language);
-    // Categories added via the admin UI have no matching i18n key — fall back
-    // to the raw name rather than showing the untranslated key to customers.
-    return translated === key ? name : translated;
   }
 
   private async generateInvoiceAndPayment(

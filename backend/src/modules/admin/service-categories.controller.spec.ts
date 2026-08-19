@@ -62,6 +62,16 @@ describe('ServiceCategoriesAdminController', () => {
         expect.objectContaining({ actorId: 'admin-1', action: 'CREATE_SERVICE_CATEGORY', entityId: 'cat-1' }),
       );
     });
+
+    it('passes the Tamil name through when provided', async () => {
+      mockCreate.mockResolvedValue({ id: 'cat-2', name: 'Pest Control', nameTa: 'பூச்சி கட்டுப்பாடு' });
+
+      await controller.create({ name: 'Pest Control', nameTa: 'பூச்சி கட்டுப்பாடு' }, mockUser);
+
+      expect(mockCreate).toHaveBeenCalledWith({
+        data: { name: 'Pest Control', nameTa: 'பூச்சி கட்டுப்பாடு', description: undefined },
+      });
+    });
   });
 
   describe('update()', () => {
@@ -76,6 +86,14 @@ describe('ServiceCategoriesAdminController', () => {
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'UPDATE_SERVICE_CATEGORY', entityId: 'cat-1' }),
       );
+    });
+
+    it('updates the Tamil name', async () => {
+      mockUpdate.mockResolvedValue({ id: 'cat-1', nameTa: 'மின்சாரம்' });
+
+      await controller.update('cat-1', { nameTa: 'மின்சாரம்' }, mockUser);
+
+      expect(mockUpdate).toHaveBeenCalledWith({ where: { id: 'cat-1' }, data: { nameTa: 'மின்சாரம்' } });
     });
   });
 

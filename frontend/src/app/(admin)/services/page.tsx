@@ -7,6 +7,7 @@ import { Plus, X, Pencil, PauseCircle, PlayCircle, Trash2 } from 'lucide-react';
 interface ServiceCategory {
   id: string;
   name: string;
+  nameTa: string | null;
   description: string | null;
   active: boolean;
 }
@@ -20,7 +21,11 @@ function FormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({ name: category?.name ?? '', description: category?.description ?? '' });
+  const [form, setForm] = useState({
+    name: category?.name ?? '',
+    nameTa: category?.nameTa ?? '',
+    description: category?.description ?? '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -52,7 +57,7 @@ function FormModal({
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Name (English)</label>
             <input
               required
               value={form.name}
@@ -60,6 +65,19 @@ function FormModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="e.g. Pest Control"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Name (Tamil)</label>
+            <input
+              value={form.nameTa}
+              onChange={(e) => setForm((f) => ({ ...f, nameTa: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="e.g. பூச்சி கட்டுப்பாடு"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Shown to Tamil-speaking customers and technicians in WhatsApp messages, calls, and invoices. Falls back to
+              the English name if left blank.
+            </p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Description (optional)</label>
@@ -148,6 +166,7 @@ export default function ServicesPage() {
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Tamil Name</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Description</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600"></th>
@@ -157,19 +176,28 @@ export default function ServicesPage() {
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i} className="border-b border-gray-100">
-                  {Array.from({ length: 4 }).map((_, j) => (
+                  {Array.from({ length: 5 }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                   ))}
                 </tr>
               ))
             ) : categories.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-gray-400">No services yet</td>
+                <td colSpan={5} className="px-4 py-10 text-center text-gray-400">No services yet</td>
               </tr>
             ) : (
               categories.map((c) => (
                 <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
+                  <td className="px-4 py-3 text-gray-700">
+                    {c.nameTa ? (
+                      c.nameTa
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700">
+                        Missing
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-gray-500 text-xs max-w-sm truncate">{c.description ?? '—'}</td>
                   <td className="px-4 py-3">
                     <span

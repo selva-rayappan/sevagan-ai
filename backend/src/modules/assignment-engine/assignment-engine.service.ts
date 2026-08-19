@@ -13,6 +13,7 @@ import { TechniciansRepository } from '../technicians/technicians.repository';
 import { CustomersRepository } from '../customers/customers.repository';
 import { TechnicianSessionService } from '../whatsapp/technician-bot/technician-session.service';
 import { TechnicianConversationState } from '../whatsapp/technician-bot/technician-session.types';
+import { getServiceCategoryLabel } from '../../common/utils/service-category.utils';
 
 const MAX_REJECTIONS = 3;
 const REJECTION_KEY_PREFIX = 'job_rejections:';
@@ -127,8 +128,7 @@ export class AssignmentEngineService {
     await this.technicianSessionService.saveSession(session);
 
     const lang = technician.language as Language;
-    const serviceKey = job.serviceCategory.name.toLowerCase().replace(/\s+/g, '_');
-    const serviceLabel = this.translation.translate(`service.${serviceKey}`, lang);
+    const serviceLabel = getServiceCategoryLabel(job.serviceCategory, lang);
     const scheduledTime = this.extractScheduledTime(job.description);
 
     await this.whatsapp.sendInteractiveButtons({
