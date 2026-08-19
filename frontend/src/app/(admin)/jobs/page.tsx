@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import apiClient from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { X, MessageSquare, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { X, MessageSquare, ArrowDownLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -311,14 +311,24 @@ export default function JobsPage() {
           <h1 className="text-xl font-bold text-gray-900">Jobs</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} total jobs</p>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">All Statuses</option>
-          {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">All Statuses</option>
+            {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <button
+            onClick={load}
+            disabled={loading}
+            title="Refresh"
+            className="p-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

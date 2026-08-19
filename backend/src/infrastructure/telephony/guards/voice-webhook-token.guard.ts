@@ -33,11 +33,17 @@ export class VoiceWebhookTokenGuard implements CanActivate {
 
     const provided = request.query.token as string | undefined;
     if (!provided || provided.length !== expected.length) {
+      // HttpExceptionFilter only logs 500s, so an UnauthorizedException here
+      // would otherwise leave zero trace — logged explicitly so a bad/missing
+      // token from Plivo (which reports the resulting JSON body as "Invalid
+      // Answer XML") is diagnosable instead of silently invisible.
+      this.logger.warn(`Voice webhook token missing or wrong length on ${request.path}`);
       throw new UnauthorizedException('Invalid or missing voice webhook token');
     }
 
     const isValid = crypto.timingSafeEqual(Buffer.from(provided, 'utf8'), Buffer.from(expected, 'utf8'));
     if (!isValid) {
+      this.logger.warn(`Voice webhook token mismatch on ${request.path}`);
       throw new UnauthorizedException('Invalid or missing voice webhook token');
     }
 

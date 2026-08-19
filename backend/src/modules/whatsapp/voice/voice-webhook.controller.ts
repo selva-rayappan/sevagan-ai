@@ -30,6 +30,13 @@ export class VoiceWebhookController {
   @UseGuards(VoiceWebhookTokenGuard)
   @Header('Content-Type', XML_HEADER)
   answer(@Query('lang') lang: string): string {
+    // 2026-08-19: a real call hung up 1s after answering with Plivo-reported
+    // "Invalid Answer XML" and zero trace in our logs — no way to tell
+    // whether the request never arrived (network/nginx) or arrived and got
+    // rejected by the guard (401s go unlogged, see HttpExceptionFilter). This
+    // log line at least confirms Plivo's request reached the app.
+    this.logger.log(`GET /voice/answer — lang=${lang}`);
+
     const audioUrl =
       lang === Language.TA
         ? this.configService.get<string>('voice.audioUrls.jobOfferTa', '')

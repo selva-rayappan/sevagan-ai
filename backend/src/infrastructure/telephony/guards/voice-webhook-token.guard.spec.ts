@@ -13,7 +13,7 @@ const buildContext = (overrides: { token?: string; expectedToken?: string; nodeE
     },
   } as unknown as ConfigService;
 
-  const mockRequest = { query: { token } };
+  const mockRequest = { query: { token }, path: '/api/v1/voice/answer' };
   const mockExecutionContext = {
     switchToHttp: () => ({ getRequest: () => mockRequest }),
   } as any;
@@ -35,6 +35,25 @@ describe('VoiceWebhookTokenGuard', () => {
   it('throws UnauthorizedException when token is missing', () => {
     const { guard, context } = buildContext({});
     expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+  });
+
+  // A 401 here otherwise leaves zero trace (HttpExceptionFilter only logs
+  // 500s) — see 2026-08-19 incident where a rejected voice callback was
+  // undiagnosable after the fact.
+  it('logs a warning with the request path on a length/missing mismatch', () => {
+    const { guard, context } = buildContext({});
+    const warnSpy = jest.spyOn((guard as any).logger, 'warn').mockImplementation();
+
+    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('/api/v1/voice/answer'));
+  });
+
+  it('logs a warning on a same-length but wrong token', () => {
+    const { guard, context } = buildContext({ token: 'wrong-token' }); // same length (11) as 'test-secret'
+    const warnSpy = jest.spyOn((guard as any).logger, 'warn').mockImplementation();
+
+    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('mismatch'));
   });
 
   it('returns true in development mode when no token is configured', () => {

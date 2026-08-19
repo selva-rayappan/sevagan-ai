@@ -68,6 +68,15 @@ describe('VoiceWebhookController', () => {
       const xml = controller.answer(Language.TA);
       expect(xml).toContain('/voice/dtmf?token=test-token&lang=TA');
     });
+
+    // Confirms Plivo's request actually reached the app — the only trace we
+    // had of the 2026-08-19 "Invalid Answer XML" incident until this was
+    // added was a hangup callback 16s later with no idea what happened.
+    it('logs that the request was received, with the language', () => {
+      const logSpy = jest.spyOn((controller as any).logger, 'log').mockImplementation();
+      controller.answer(Language.TA);
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('TA'));
+    });
   });
 
   describe('answerPostCallback()', () => {
