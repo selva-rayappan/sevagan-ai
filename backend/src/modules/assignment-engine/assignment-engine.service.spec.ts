@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AssignmentEngineService } from './assignment-engine.service';
 import { WHATSAPP_PROVIDER } from '../../infrastructure/messaging/whatsapp.provider.interface';
 import { TranslationService } from '../../infrastructure/i18n/translation.service';
@@ -46,7 +47,7 @@ describe('AssignmentEngineService', () => {
   beforeEach(async () => {
     mockWhatsapp = {
       sendText: jest.fn().mockResolvedValue(undefined),
-      sendInteractiveButtons: jest.fn().mockResolvedValue(undefined),
+      sendTemplate: jest.fn().mockResolvedValue(undefined),
     };
     mockTranslation = { translate: jest.fn((key: string) => key) };
     mockRedis = {
@@ -88,6 +89,7 @@ describe('AssignmentEngineService', () => {
         { provide: TechniciansRepository, useValue: mockTechniciansRepo },
         { provide: CustomersRepository, useValue: mockCustomersRepo },
         { provide: TechnicianSessionService, useValue: mockTechSessionService },
+        { provide: ConfigService, useValue: { get: (_key: string, fallback?: string) => fallback } },
       ],
     }).compile();
 
@@ -105,8 +107,38 @@ describe('AssignmentEngineService', () => {
       expect(mockJobsService.updateStatus).toHaveBeenCalledWith('job-1', JobStatus.ASSIGNED);
       expect(mockTechniciansRepo.updateStatus).toHaveBeenCalledWith('tech-1', TechnicianStatus.BUSY);
       expect(mockTechSessionService.saveSession).toHaveBeenCalled();
-      expect(mockWhatsapp.sendInteractiveButtons).toHaveBeenCalledWith(
-        expect.objectContaining({ to: '919876543211' }),
+      expect(mockWhatsapp.sendTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '919876543211',
+          templateName: 'technician_job_offer_v2',
+          languageCode: 'en',
+          quickReplyPayloads: ['accept_job', 'reject_job'],
+        }),
+      );
+    });
+
+    it('sends the job-offer template with named body params matching the offer content', async () => {
+      await service.tryAssignJob('job-1', '919876543210');
+
+      expect(mockWhatsapp.sendTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bodyParams: [
+            { name: 'customer_name', value: 'Ravi' },
+            { name: 'location', value: 'Main Street, Allampatti' },
+            { name: 'service', value: 'AC Service' },
+            { name: 'scheduled_time', value: 'Tomorrow 10 AM' },
+          ],
+        }),
+      );
+    });
+
+    it('uses the Tamil template language code for a Tamil-speaking technician', async () => {
+      mockTechniciansRepo.findBestAvailable.mockResolvedValue({ ...mockTechnician, language: Language.TA });
+
+      await service.tryAssignJob('job-1', '919876543210');
+
+      expect(mockWhatsapp.sendTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ languageCode: 'ta' }),
       );
     });
 
@@ -168,7 +200,7 @@ describe('AssignmentEngineService', () => {
       });
       expect(mockJobsService.updateStatus).toHaveBeenCalledWith('job-1', JobStatus.ASSIGNED);
       expect(mockTechniciansRepo.updateStatus).toHaveBeenCalledWith('tech-1', TechnicianStatus.BUSY);
-      expect(mockWhatsapp.sendInteractiveButtons).toHaveBeenCalledWith(
+      expect(mockWhatsapp.sendTemplate).toHaveBeenCalledWith(
         expect.objectContaining({ to: '919876543211' }),
       );
     });

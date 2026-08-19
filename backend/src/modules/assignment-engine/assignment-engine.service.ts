@@ -1,9 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Language, JobStatus, TechnicianStatus } from '../../domain/enums';
 import {
   WHATSAPP_PROVIDER,
   WhatsAppProvider,
 } from '../../infrastructure/messaging/whatsapp.provider.interface';
+import { toMetaTemplateLanguageCode } from '../../infrastructure/messaging/whatsapp-language.util';
 import { TranslationService } from '../../infrastructure/i18n/translation.service';
 import { RedisService } from '../../infrastructure/cache/redis.service';
 import { AssignmentsRepository } from '../assignments/assignments.repository';
@@ -33,6 +35,7 @@ export class AssignmentEngineService {
     private readonly techniciansRepository: TechniciansRepository,
     private readonly customersRepository: CustomersRepository,
     private readonly technicianSessionService: TechnicianSessionService,
+    private readonly configService: ConfigService,
   ) {}
 
   async tryAssignJob(jobId: string, customerPhone: string): Promise<void> {
@@ -131,18 +134,25 @@ export class AssignmentEngineService {
     const serviceLabel = getServiceCategoryLabel(job.serviceCategory, lang);
     const scheduledTime = this.extractScheduledTime(job.description);
 
-    await this.whatsapp.sendInteractiveButtons({
+    // Free-form sendInteractiveButtons only reaches a technician with a live
+    // 24h WhatsApp session — most idle technicians waiting for offers don't
+    // have one, so this silently failed (131047) on essentially every offer
+    // to a technician who hadn't just messaged the bot. technician_job_offer
+    // is an approved template (see docs/EXECUTION_PLAN.md Phase 14.7) so it
+    // delivers regardless of session state; its quick-reply payloads
+    // (accept_job/reject_job) match the interactive-button ids exactly, so
+    // handleOfferResponse() needed no changes.
+    await this.whatsapp.sendTemplate({
       to: technician.phone,
-      body: this.translation.translate('technician.job_offer', lang, {
-        customerName: job.customer.name ?? 'Customer',
-        location: job.location,
-        service: serviceLabel,
-        scheduledTime,
-      }),
-      buttons: [
-        { id: 'accept_job', title: this.translation.translate('technician.accept_button', lang) },
-        { id: 'reject_job', title: this.translation.translate('technician.reject_button', lang) },
+      templateName: this.configService.get<string>('whatsapp.templates.jobOffer', 'technician_job_offer_v2'),
+      languageCode: toMetaTemplateLanguageCode(lang),
+      bodyParams: [
+        { name: 'customer_name', value: job.customer.name ?? 'Customer' },
+        { name: 'location', value: job.location },
+        { name: 'service', value: serviceLabel },
+        { name: 'scheduled_time', value: scheduledTime },
       ],
+      quickReplyPayloads: ['accept_job', 'reject_job'],
     });
 
     this.logger.log(`Job ${job.jobNumber} → tech ${technician.name} (${technician.id})`);
