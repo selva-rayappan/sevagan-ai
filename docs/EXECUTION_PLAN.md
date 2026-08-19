@@ -26,7 +26,7 @@
 | Phase 11 | Reports | ✅ COMPLETE |
 | Phase 12 | Security | ✅ COMPLETE |
 | Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
-| Phase 14 | Technician Job-Offer Voice Escalation | ✅ COMPLETE — voice escalation confirmed end-to-end; job offers now deliver outside the 24h WhatsApp session via approved templates (`technician_job_offer_en_v3`/`technician_job_offer_v2`), validated live 2026-08-19. Documented non-blocking gaps: Plivo HMAC-V3 signature, carrier-level DND/NCPR rejection on one technician's number |
+| Phase 14 | Technician Job-Offer Voice Escalation | ✅ COMPLETE — voice escalation confirmed end-to-end; job offers now deliver outside the 24h WhatsApp session via approved templates (`technician_job_offer_en_v3`/`technician_job_offer_v2`), validated live 2026-08-19. Documented non-blocking gaps: Plivo HMAC-V3 signature, carrier-level DND/NCPR rejection on one technician's number, escalation-call `answer_method` switched GET→POST after intermittent "Invalid Answer XML" hangups — fix unconfirmed, watching the next live call |
 
 ---
 
@@ -153,7 +153,7 @@
 - ✅ Language selection (first interaction) — interactive buttons (EN/தமிழ்)
 - ✅ Service category selection — interactive list message (tap to select), generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu
 - ✅ Location capture — sent as an interactive `location_request_message` (native "Send Location" button) with typed free text as a fully-supported fallback (`WhatsAppProvider.sendLocationRequest`, added 2026-07-20). A native location share always has a tappable `https://www.google.com/maps?q=lat,lng` link appended to `job.location` (added 2026-07-21) — previously a name/address-only pin rendered as unclickable plain text in the technician's job offer message; typed free-text locations are unaffected since there are no coordinates to link.
-- ✅ Scheduled time capture — interactive list message (tap to select a slot), auto-regenerates on an invalid/stale reply
+- ✅ Scheduled time capture — interactive list message (tap to select a slot), auto-regenerates on an invalid/stale reply. Simplified to 3 fixed windows (updated 2026-08-19): "ASAP" / "T+3 Hrs" / "T+9 Hrs (Tomorrow)" (Tamil equivalents in `ta.json`), replacing the earlier rolling 2-hour business-hours grid — `time-slot.util.ts` `generateTimeSlots(language)` now returns a static 3-item menu instead of computing slots off business hours/day-of-week.
 - ✅ Job creation with `JOB-YYYYMMDD-NNNN` number format
 - ✅ TRACK, CANCEL, HELP commands
 - ✅ Amount confirmation flow (AWAITING_AMOUNT_CONFIRMATION) — interactive buttons (Yes Correct / No Incorrect)
@@ -549,3 +549,11 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 - ✅ Unit tests: `meta-whatsapp.provider.spec.ts` (quick-reply button components, in order, after body; omitted when empty), `technician-bot.service.spec.ts` (accepts on a `type: button` quick-reply tap), `webhook.controller.spec.ts` (trail summary for `type: button`), `assignment-engine.service.spec.ts` (correct template name + language code per technician language)
 - ✅ Full backend suite green (73 suites / 618 tests), `tsc --noEmit` clean, coverage 96.83%/87.98%/92.03%/97.21%
 - ❌ Still open: the carrier-level DND/NCPR rejection on `919626191907` (Maha, formerly "Vetri") — both WhatsApp and voice calls are unreliable for this specific number; needs a conversation with the technician, not a code fix
+
+#### 14.8 Escalation Call `answer_method`: GET → POST
+**Bug:** two of four real escalation calls (both to Selva, `919585909045` — JOB-20260819-0002's initial call and JOB-20260819-0004's) hung up ~1s after answering with Plivo-reported `Invalid Answer XML`, `HangupSource: Error`. The 2026-08-19 logging fix (14.6-adjacent) confirmed on the second occurrence that Plivo's request genuinely reached `GET /voice/answer` (`GET /voice/answer — lang=EN` logged) and that our response was independently verified valid — correct XML, `Content-Type: text/xml; charset=utf-8`, correct `Content-Length`, no BOM/chunking issues (checked via `curl -v` against the identical live URL). Plivo's own Call Detail Record API (`GET /Account/{id}/Call/{call_uuid}/`) offered no further detail than the webhook callback already gave. With the failure genuinely narrowed to somewhere in Plivo's GET fetch/parse of an already-verified-valid response, switched to `POST` as Plivo's documented alternative.
+- ✅ `PlivoVoiceCallProvider.placeCall()`: `answer_method: 'GET'` → `'POST'`
+- ✅ `VoiceWebhookController`: XML-building logic extracted into `buildAnswerXml(lang)`, shared by both the (now-unused-by-Plivo, kept for manual testing) `GET /voice/answer` and the POST handler. Plivo POSTs to the *same* `/voice/answer` URL for two different purposes — the initial answer fetch and, separately, its default post-hangup status callback (no distinct `hangup_url` configured, see 2026-08-12 note) — distinguished by the `Event` field, which only the hangup callback carries; the initial-answer POST now returns the real `<GetDigits>`/`<Play>` XML instead of always acking with an empty `<Response/>`.
+- ✅ Unit tests: `plivo-voice-call.provider.spec.ts` (posts `answer_method: 'POST'`), `voice-webhook.controller.spec.ts` (hangup callback with `Event` acks empty; initial POST with no `Event` serves the real XML per language; logs the request)
+- ✅ Full backend suite green (73 suites / 621 tests), `tsc --noEmit` clean, coverage 96.83%/88%/92.05%/97.21%, `voice-webhook.controller.ts` at 100% across all four metrics
+- ❌ **Unconfirmed** — needs a real call to verify POST actually resolves the intermittent failure; watching the next live escalation call

@@ -24,7 +24,13 @@ export class PlivoVoiceCallProvider implements VoiceCallProvider {
           from: normalizePhone(fromNumber),
           to: normalizePhone(to),
           answer_url: answerUrl,
-          answer_method: 'GET',
+          // Switched from GET 2026-08-19 after two of four real escalation
+          // calls hung up 1s after answering with Plivo-reported "Invalid
+          // Answer XML" — our own response was verified valid both times
+          // (correct XML, headers, content-length), so the failure was
+          // somewhere in Plivo's GET fetch/parse path we can't see into.
+          // Trying POST as the documented alternative.
+          answer_method: 'POST',
         },
         {
           auth: { username: authId, password: authToken },

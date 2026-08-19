@@ -44,7 +44,10 @@ describe('PlivoVoiceCallProvider', () => {
         from: '918031151236',
         to: '919626191907',
         answer_url: 'https://api.sevagan.co.in/api/v1/voice/answer?token=abc&lang=EN',
-        answer_method: 'GET',
+        // GET intermittently hung up real calls 1s after answering with
+        // Plivo-reported "Invalid Answer XML" (2026-08-19) despite our
+        // response verifying as valid every time — switched to POST.
+        answer_method: 'POST',
       },
       expect.objectContaining({ auth: { username: 'auth-id-1', password: 'auth-token-1' } }),
     );

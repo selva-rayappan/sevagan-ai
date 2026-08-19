@@ -79,10 +79,32 @@ describe('VoiceWebhookController', () => {
     });
   });
 
-  describe('answerPostCallback()', () => {
-    it('acknowledges Plivo\'s post-hangup callback on the same path instead of 404ing', () => {
-      const xml = controller.answerPostCallback({ CallUUID: 'call-1', CallStatus: 'completed' });
-      expect(xml).toContain('<Response>');
+  describe('answerPost()', () => {
+    // Real hangup callback bodies carry an Event field (confirmed live,
+    // e.g. {"Event":"Hangup", "CallStatus":"completed", ...}) — that's what
+    // distinguishes it from the initial answer POST on this same route.
+    it("acknowledges Plivo's post-hangup callback (has an Event field) instead of 404ing", () => {
+      const xml = controller.answerPost({ CallUUID: 'call-1', CallStatus: 'completed', Event: 'Hangup' }, 'EN');
+      expect(xml).toBe('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+    });
+
+    // PlivoVoiceCallProvider now requests answer_method: 'POST' (switched
+    // 2026-08-19), so this is the real path a live call takes.
+    it('serves the real GetDigits/Play answer XML for the initial POST (no Event field)', () => {
+      const xml = controller.answerPost({ CallUUID: 'call-1', To: '919876543210', From: '918031151236' }, 'EN');
+      expect(xml).toContain('<GetDigits');
+      expect(xml).toContain('job_offer_call_en.mp3');
+    });
+
+    it('plays the Tamil prompt for the initial POST when lang=TA', () => {
+      const xml = controller.answerPost({ CallUUID: 'call-1' }, 'TA');
+      expect(xml).toContain('job_offer_call_ta.mp3');
+    });
+
+    it('logs that the initial POST answer request was received, with the language', () => {
+      const logSpy = jest.spyOn((controller as any).logger, 'log').mockImplementation();
+      controller.answerPost({ CallUUID: 'call-1' }, 'TA');
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('TA'));
     });
   });
 

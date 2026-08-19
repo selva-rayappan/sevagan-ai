@@ -25,18 +25,46 @@ export class VoiceWebhookController {
     private readonly technicianBotService: TechnicianBotService,
   ) {}
 
+  /**
+   * Kept for manual testing/curl convenience — PlivoVoiceCallProvider now
+   * requests POST (see below), so Plivo itself no longer hits this GET path
+   * for a real call.
+   */
   @Get('answer')
   @Version('1')
   @UseGuards(VoiceWebhookTokenGuard)
   @Header('Content-Type', XML_HEADER)
   answer(@Query('lang') lang: string): string {
-    // 2026-08-19: a real call hung up 1s after answering with Plivo-reported
-    // "Invalid Answer XML" and zero trace in our logs — no way to tell
-    // whether the request never arrived (network/nginx) or arrived and got
-    // rejected by the guard (401s go unlogged, see HttpExceptionFilter). This
-    // log line at least confirms Plivo's request reached the app.
     this.logger.log(`GET /voice/answer — lang=${lang}`);
+    return this.buildAnswerXml(lang);
+  }
 
+  /**
+   * Plivo POSTs here twice per call, both to the exact same URL: once to
+   * fetch the initial answer XML (answer_method: 'POST' — switched from GET
+   * 2026-08-19 after two of four real calls hung up 1s after answering with
+   * "Invalid Answer XML", despite our GET response verifying as valid every
+   * time we checked it ourselves), and again afterwards with a default
+   * post-hangup status callback when no distinct hangup_url is configured
+   * (observed live 2026-08-12). Only the second carries an `Event` field —
+   * that's what distinguishes them, since both land on this same route.
+   */
+  @Post('answer')
+  @Version('1')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(VoiceWebhookTokenGuard)
+  @Header('Content-Type', XML_HEADER)
+  answerPost(@Body() body: Record<string, string>, @Query('lang') lang: string): string {
+    if (body.Event) {
+      this.logger.debug(`Post-call callback on answer path: ${JSON.stringify(body)}`);
+      return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+    }
+
+    this.logger.log(`POST /voice/answer — lang=${lang}`);
+    return this.buildAnswerXml(lang);
+  }
+
+  private buildAnswerXml(lang: string): string {
     const audioUrl =
       lang === Language.TA
         ? this.configService.get<string>('voice.audioUrls.jobOfferTa', '')
@@ -60,23 +88,6 @@ export class VoiceWebhookController {
       '  <Hangup/>',
       '</Response>',
     ].join('\n');
-  }
-
-  /**
-   * Observed live (2026-08-12): Plivo also POSTs to this same answer path
-   * after the call ends — looks like a default post-hangup status callback
-   * when no distinct hangup_url is configured. Harmless (arrives after the
-   * call is already over) but was 404ing since only GET was handled; this
-   * just acknowledges it cleanly instead.
-   */
-  @Post('answer')
-  @Version('1')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(VoiceWebhookTokenGuard)
-  @Header('Content-Type', XML_HEADER)
-  answerPostCallback(@Body() body: Record<string, string>): string {
-    this.logger.debug(`Post-call callback on answer path: ${JSON.stringify(body)}`);
-    return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
   }
 
   @Post('dtmf')
