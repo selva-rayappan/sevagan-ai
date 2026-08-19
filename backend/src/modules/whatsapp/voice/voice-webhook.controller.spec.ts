@@ -64,9 +64,20 @@ describe('VoiceWebhookController', () => {
       expect(xml).toContain('timeout="35"');
     });
 
-    it('carries the language through to the DTMF action URL', () => {
+    it('carries the language through to the DTMF action URL, with & escaped for XML', () => {
       const xml = controller.answer(Language.TA);
-      expect(xml).toContain('/voice/dtmf?token=test-token&lang=TA');
+      expect(xml).toContain('/voice/dtmf?token=test-token&amp;lang=TA');
+      expect(xml).not.toMatch(/dtmf\?token=test-token&lang=TA/);
+    });
+
+    // Root cause of every real "Invalid Answer XML" hangup (2026-08-19): a
+    // bare & in an XML attribute is invalid per the XML spec, even though it
+    // looks fine to curl/eyeballing and even though nginx reports the exact
+    // intended byte count — "byte-correct" isn't the same claim as
+    // "well-formed XML".
+    it('never emits a literal unescaped & anywhere in the answer XML', () => {
+      const xml = controller.answer(Language.EN);
+      expect(xml).not.toMatch(/&(?!amp;|lt;|gt;|quot;|apos;)/);
     });
 
     // Confirms Plivo's request actually reached the app — the only trace we

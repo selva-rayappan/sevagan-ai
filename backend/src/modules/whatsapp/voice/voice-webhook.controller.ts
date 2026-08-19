@@ -92,12 +92,29 @@ export class VoiceWebhookController {
       // the 18s EN / 22s TA prompt off mid-sentence, well before the "press 1"
       // instruction. Set well above the longer (TA) prompt plus a real
       // response window.
-      `  <GetDigits action="${actionUrl}" method="POST" timeout="35" numDigits="1" retries="1">`,
-      `    <Play>${audioUrl}</Play>`,
+      `  <GetDigits action="${this.escapeXml(actionUrl)}" method="POST" timeout="35" numDigits="1" retries="1">`,
+      `    <Play>${this.escapeXml(audioUrl)}</Play>`,
       '  </GetDigits>',
       '  <Hangup/>',
       '</Response>',
     ].join('\n');
+  }
+
+  // Root cause of every "Invalid Answer XML" hangup this whole investigation
+  // (2026-08-19): actionUrl's own `?token=...&lang=...` query string was
+  // interpolated straight into the action="..." attribute — a bare & is not
+  // valid inside XML (must be &amp;). curl and eyeballing the string both
+  // looked fine (a bare & displays identically to a human and to non-XML
+  // tooling), and nginx correctly reported the exact intended byte count, so
+  // "content is byte-correct" was never the same claim as "content is
+  // well-formed XML" — that distinction is what got missed for two days.
+  private escapeXml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 
   @Post('dtmf')
@@ -136,7 +153,7 @@ export class VoiceWebhookController {
     return [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<Response>',
-      ...(confirmationUrl ? [`  <Play>${confirmationUrl}</Play>`] : []),
+      ...(confirmationUrl ? [`  <Play>${this.escapeXml(confirmationUrl)}</Play>`] : []),
       '  <Hangup/>',
       '</Response>',
     ].join('\n');
