@@ -96,12 +96,16 @@ export class TechnicianBotService {
         case TechnicianConversationState.JOB_IN_PROGRESS:
           await this.handleInProgressState(session, message, text, technician);
           break;
-        case TechnicianConversationState.AWAITING_PAYMENT_AMOUNT:
-          await this.handleAwaitingPaymentAmountState(session, text, technician);
-          break;
-        case TechnicianConversationState.AWAITING_COMPLETION:
-          await this.handleAwaitingCompletionState(session, technician.phone);
-          break;
+        // MVP: both states below are currently unreachable — the "enter the
+        // amount" step that used to transition into them is paused; see
+        // handleCompleteCommand() for the revival note. Left wired here
+        // (rather than deleted) so re-enabling that step is a pure uncomment.
+        // case TechnicianConversationState.AWAITING_PAYMENT_AMOUNT:
+        //   await this.handleAwaitingPaymentAmountState(session, text, technician);
+        //   break;
+        // case TechnicianConversationState.AWAITING_COMPLETION:
+        //   await this.handleAwaitingCompletionState(session, technician.phone);
+        //   break;
         default:
           await this.handleIdleState(session, technician.phone);
       }
@@ -322,20 +326,25 @@ export class TechnicianBotService {
       await this.jobsService.updateStatus(session.activeJobId!, JobStatus.IN_PROGRESS);
       session.state = TechnicianConversationState.JOB_IN_PROGRESS;
 
-      const enabledModes = await this.paymentModeSettingsRepo.listEnabled();
-      const buttons = [
-        enabledModes.includes(PaymentMode.CASH) &&
-          { id: '1', title: this.translation.translate('technician.complete_cash_button', session.language) },
-        enabledModes.includes(PaymentMode.UPI) &&
-          { id: '2', title: this.translation.translate('technician.complete_upi_button', session.language) },
-      ].filter((b): b is { id: string; title: string } => Boolean(b));
+      // MVP: Cash/UPI payment-mode selection paused along with the "enter
+      // the amount" step it fed into — see handleCompleteCommand() below for
+      // the revival note. A single Complete button replaces it for now.
+      // const enabledModes = await this.paymentModeSettingsRepo.listEnabled();
+      // const buttons = [
+      //   enabledModes.includes(PaymentMode.CASH) &&
+      //     { id: '1', title: this.translation.translate('technician.complete_cash_button', session.language) },
+      //   enabledModes.includes(PaymentMode.UPI) &&
+      //     { id: '2', title: this.translation.translate('technician.complete_upi_button', session.language) },
+      // ].filter((b): b is { id: string; title: string } => Boolean(b));
 
       await this.whatsapp.sendInteractiveButtons({
         to: technician.phone,
         body: this.translation.translate('technician.job_started', session.language, {
           jobNumber: session.activeJobNumber ?? '',
         }),
-        buttons,
+        buttons: [
+          { id: '1', title: this.translation.translate('technician.complete_button', session.language) },
+        ],
       });
 
       // Notify customer
@@ -407,42 +416,54 @@ export class TechnicianBotService {
     }
 
     const normalized = text.trim().toLowerCase();
-    const isCompleteCash = normalized === '1' || normalized === 'complete cash' || normalized === 'complete_cash';
-    const isCompleteUpi = normalized === '2' || normalized === 'complete upi' || normalized === 'complete_upi';
+    const isComplete = normalized === '1' || normalized === 'complete' || normalized === 'complete_job';
 
-    if (isCompleteCash || isCompleteUpi) {
-      const chosenMode = isCompleteCash ? PaymentMode.CASH : PaymentMode.UPI;
-      if (!(await this.paymentModeSettingsRepo.isEnabled(chosenMode))) {
-        await this.whatsapp.sendText({
-          to: technician.phone,
-          text: this.translation.translate('technician.payment_mode_disabled', session.language),
-        });
-        return;
-      }
-      session.pendingPaymentMode = isCompleteCash ? 'CASH' : 'UPI';
-      session.state = TechnicianConversationState.AWAITING_PAYMENT_AMOUNT;
-      await this.whatsapp.sendText({
-        to: technician.phone,
-        text: this.translation.translate('technician.ask_completion_amount', session.language),
-      });
+    if (isComplete) {
+      await this.handleCompleteCommand(session, technician);
       return;
     }
 
-    // Power-user fallback: COMPLETE <amount> <CASH|UPI> in one message
-    const completeMatch = text.toUpperCase().trim().match(/^COMPLETE\s+(\d+(?:\.\d{1,2})?)\s+(CASH|UPI)$/);
-    if (completeMatch) {
-      const amount = parseFloat(completeMatch[1]);
-      const paymentMode = completeMatch[2] as keyof typeof PaymentMode;
-      if (!(await this.paymentModeSettingsRepo.isEnabled(PaymentMode[paymentMode]))) {
-        await this.whatsapp.sendText({
-          to: technician.phone,
-          text: this.translation.translate('technician.payment_mode_disabled', session.language),
-        });
-        return;
-      }
-      await this.handleCompleteCommand(session, amount, PaymentMode[paymentMode], technician);
-      return;
-    }
+    // MVP: Cash/UPI + "enter the amount" completion path paused until the
+    // commission-based model returns — kept here, commented, for a clean
+    // revival alongside the matching notes in handleAcceptedState() above,
+    // handleCompleteCommand()/handleAwaitingPaymentAmountState()/
+    // handleAwaitingCompletionState() below, and the customer-side
+    // amount-confirmation/invoice notes in CustomerBotService.
+    // const isCompleteCash = normalized === '1' || normalized === 'complete cash' || normalized === 'complete_cash';
+    // const isCompleteUpi = normalized === '2' || normalized === 'complete upi' || normalized === 'complete_upi';
+    // if (isCompleteCash || isCompleteUpi) {
+    //   const chosenMode = isCompleteCash ? PaymentMode.CASH : PaymentMode.UPI;
+    //   if (!(await this.paymentModeSettingsRepo.isEnabled(chosenMode))) {
+    //     await this.whatsapp.sendText({
+    //       to: technician.phone,
+    //       text: this.translation.translate('technician.payment_mode_disabled', session.language),
+    //     });
+    //     return;
+    //   }
+    //   session.pendingPaymentMode = isCompleteCash ? 'CASH' : 'UPI';
+    //   session.state = TechnicianConversationState.AWAITING_PAYMENT_AMOUNT;
+    //   await this.whatsapp.sendText({
+    //     to: technician.phone,
+    //     text: this.translation.translate('technician.ask_completion_amount', session.language),
+    //   });
+    //   return;
+    // }
+    //
+    // // Power-user fallback: COMPLETE <amount> <CASH|UPI> in one message
+    // const completeMatch = text.toUpperCase().trim().match(/^COMPLETE\s+(\d+(?:\.\d{1,2})?)\s+(CASH|UPI)$/);
+    // if (completeMatch) {
+    //   const amount = parseFloat(completeMatch[1]);
+    //   const paymentMode = completeMatch[2] as keyof typeof PaymentMode;
+    //   if (!(await this.paymentModeSettingsRepo.isEnabled(PaymentMode[paymentMode]))) {
+    //     await this.whatsapp.sendText({
+    //       to: technician.phone,
+    //       text: this.translation.translate('technician.payment_mode_disabled', session.language),
+    //     });
+    //     return;
+    //   }
+    //   await this.handleCompleteCommand(session, amount, PaymentMode[paymentMode], technician);
+    //   return;
+    // }
 
     await this.whatsapp.sendText({
       to: technician.phone,
@@ -479,7 +500,88 @@ export class TechnicianBotService {
     }
   }
 
-  private async handleCompleteCommand(
+  /**
+   * Simplified completion: marks the job done and frees the technician
+   * immediately, with no amount/payment-mode capture and no customer
+   * amount-confirmation round trip — see the MVP note below for the full
+   * (paused) version and how to revive it.
+   */
+  private async handleCompleteCommand(session: TechnicianSession, technician: Technician): Promise<void> {
+    const job = await this.jobsService.updateStatus(session.activeJobId!, JobStatus.COMPLETED);
+    const jobWithDetails = await this.jobsService.findWithDetails(job.id);
+    if (!jobWithDetails) return;
+
+    await this.techniciansRepository.updateStatus(technician.id, TechnicianStatus.AVAILABLE);
+
+    await this.whatsapp.sendText({
+      to: technician.phone,
+      text: this.translation.translate('technician.job_completed_simple', session.language, {
+        jobNumber: session.activeJobNumber ?? '',
+      }),
+    });
+
+    session.state = TechnicianConversationState.IDLE;
+    session.activeJobId = undefined;
+    session.activeJobNumber = undefined;
+    session.activeAssignmentId = undefined;
+    session.customerPhone = undefined;
+    session.offerExpiresAt = undefined;
+
+    // Notify the customer directly and move them straight into the rating
+    // flow — no amount-confirmation step in between (see MVP note below).
+    const customer = jobWithDetails.customer;
+    const customerLang = customer.language as Language;
+
+    await this.whatsapp.sendText({
+      to: customer.phone,
+      text: this.translation.translate('customer.job_completed_simple', customerLang, {
+        technicianName: technician.name,
+      }),
+    });
+
+    await this.whatsapp.sendInteractiveList({
+      to: customer.phone,
+      headerText: this.translation.translate('customer.list_header', customerLang),
+      body: this.translation.translate('customer.rate_technician', customerLang, { technicianName: technician.name }),
+      buttonText: this.translation.translate('customer.select_button', customerLang),
+      sections: [
+        {
+          title: this.translation.translate('customer.list_header', customerLang),
+          rows: [5, 4, 3, 2, 1].map((n) => ({
+            id: String(n),
+            title: this.translation.translate(`customer.rating_${n}`, customerLang),
+          })),
+        },
+      ],
+    });
+
+    let customerSession = await this.customerSessionService.getSession(customer.phone);
+    if (!customerSession) {
+      customerSession = this.customerSessionService.createNewSession(customer.phone, customerLang);
+    }
+    customerSession.state = ConversationState.AWAITING_RATING;
+    customerSession.activeJobContext = {
+      jobId: job.id,
+      jobNumber: jobWithDetails.jobNumber,
+      customerId: customer.id,
+      technicianId: technician.id,
+      technicianName: technician.name,
+      technicianPhone: technician.phone,
+    };
+    await this.customerSessionService.saveSession(customerSession);
+  }
+
+  // MVP: amount/payment-mode capture and the customer amount-confirmation
+  // round trip are paused until the commission-based model returns — kept
+  // here, commented, for a clean revival: restore the amount param and the
+  // setCompletion()/confirm_amount/AWAITING_AMOUNT_CONFIRMATION block below
+  // into handleCompleteCommand() above, then uncomment
+  // handleAwaitingPaymentAmountState()/handleAwaitingCompletionState() and
+  // their switch cases in handleMessage(), the Cash/UPI branch in
+  // handleInProgressState(), and the Cash/UPI buttons in handleAcceptedState().
+  // See the matching notes in CustomerBotService for the customer side.
+  /*
+  private async handleCompleteCommand_withAmount(
     session: TechnicianSession,
     amount: number,
     paymentMode: PaymentMode,
@@ -571,7 +673,7 @@ export class TechnicianBotService {
 
     const paymentMode = session.pendingPaymentMode;
     session.pendingPaymentMode = undefined;
-    await this.handleCompleteCommand(session, amount, PaymentMode[paymentMode], technician);
+    await this.handleCompleteCommand_withAmount(session, amount, PaymentMode[paymentMode], technician);
   }
 
   private async handleAwaitingCompletionState(
@@ -587,6 +689,7 @@ export class TechnicianBotService {
       }),
     });
   }
+  */
 
   private async handleStatusCommand(session: TechnicianSession, phone: string): Promise<void> {
     if (

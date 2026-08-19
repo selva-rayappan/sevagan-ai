@@ -184,12 +184,17 @@ export class CustomerBotService {
 
     session.selectedCategoryId = match.categoryId;
     session.selectedCategoryName = match.categoryName;
-    session.state = ConversationState.AWAITING_LOCATION;
 
-    await this.whatsapp.sendLocationRequest({
-      to: session.phone,
-      body: this.translation.translate('customer.ask_location', session.language),
-    });
+    // MVP: location-request step paused until the commission-based model
+    // returns — see handleServiceSelection() below for the full note.
+    // session.state = ConversationState.AWAITING_LOCATION;
+    // await this.whatsapp.sendLocationRequest({
+    //   to: session.phone,
+    //   body: this.translation.translate('customer.ask_location', session.language),
+    // });
+    session.location = this.translation.translate('customer.location_deferred', session.language);
+    session.state = ConversationState.AWAITING_TIME;
+    await this.showTimeSlotMenu(session);
     return true;
   }
 
@@ -209,15 +214,20 @@ export class CustomerBotService {
       case ConversationState.AWAITING_SERVICE:
         await this.handleServiceSelection(session, text);
         break;
-      case ConversationState.AWAITING_LOCATION:
-        await this.handleLocation(session, message, text);
-        break;
+      // MVP: both states below are currently unreachable — the steps that used
+      // to transition into them (location request, amount confirmation) are
+      // paused; see handleServiceSelection()/handleLocation() and
+      // handleAmountConfirmation() for the revival notes. Left wired here
+      // (rather than deleted) so re-enabling those steps is a pure uncomment.
+      // case ConversationState.AWAITING_LOCATION:
+      //   await this.handleLocation(session, message, text);
+      //   break;
       case ConversationState.AWAITING_TIME:
         await this.handleTime(session, text, customer);
         break;
-      case ConversationState.AWAITING_AMOUNT_CONFIRMATION:
-        await this.handleAmountConfirmation(session, text);
-        break;
+      // case ConversationState.AWAITING_AMOUNT_CONFIRMATION:
+      //   await this.handleAmountConfirmation(session, text);
+      //   break;
       case ConversationState.AWAITING_RATING:
         await this.handleRating(session, text);
         break;
@@ -323,14 +333,27 @@ export class CustomerBotService {
 
     session.selectedCategoryId = category.id;
     session.selectedCategoryName = category.name;
-    session.state = ConversationState.AWAITING_LOCATION;
 
-    await this.whatsapp.sendLocationRequest({
-      to: session.phone,
-      body: this.translation.translate('customer.ask_location', session.language),
-    });
+    // MVP: location-request step commented out to shorten the customer flow
+    // (reverting to commission-based pricing later will need precise location
+    // for technician routing/fare estimation — revive by uncommenting this
+    // block and removing the location_deferred placeholder below, and see
+    // the matching note in tryAiServiceMatch() above).
+    // session.state = ConversationState.AWAITING_LOCATION;
+    // await this.whatsapp.sendLocationRequest({
+    //   to: session.phone,
+    //   body: this.translation.translate('customer.ask_location', session.language),
+    // });
+    session.location = this.translation.translate('customer.location_deferred', session.language);
+    session.state = ConversationState.AWAITING_TIME;
+    await this.showTimeSlotMenu(session);
   }
 
+  // MVP: location-request step paused (see handleServiceSelection()/
+  // tryAiServiceMatch() above) — kept here, commented, for a clean revival
+  // when the commission-based model returns and precise location is needed
+  // again for technician routing/fare estimation.
+  /*
   private async handleLocation(
     session: ConversationSession,
     message: InboundWhatsAppMessage,
@@ -354,6 +377,7 @@ export class CustomerBotService {
 
     await this.showTimeSlotMenu(session);
   }
+  */
 
   private async showTimeSlotMenu(session: ConversationSession): Promise<void> {
     const slots = generateTimeSlots(new Date(), session.language);
@@ -492,6 +516,15 @@ export class CustomerBotService {
     return '';
   }
 
+  // MVP: amount-confirmation step paused (see TechnicianBotService.
+  // handleCompleteCommand, which used to move the customer into this state)
+  // until the commission-based model returns — kept here, commented, for a
+  // clean revival: uncomment this, sendAmountConfirmationPrompt() below,
+  // notifyTechnicianConfirmed()/notifyTechnicianDisputed(), and
+  // generateInvoiceAndPayment() further down, then restore the
+  // AWAITING_AMOUNT_CONFIRMATION case in routeByState() and the trigger in
+  // TechnicianBotService.handleCompleteCommand().
+  /*
   private async handleAmountConfirmation(
     session: ConversationSession,
     text: string,
@@ -574,6 +607,7 @@ export class CustomerBotService {
       ],
     });
   }
+  */
 
   private async sendRatingPrompt(session: ConversationSession, technicianName: string): Promise<void> {
     await this.sendSelectionList(
@@ -631,6 +665,11 @@ export class CustomerBotService {
     }
   }
 
+  // MVP: paused along with handleAmountConfirmation() above — technician
+  // freeing now happens inline in TechnicianBotService.handleCompleteCommand
+  // instead of waiting on the customer's confirmation reply. Revive alongside
+  // handleAmountConfirmation() (see the note there).
+  /*
   private async notifyTechnicianConfirmed(ctx: NonNullable<ConversationSession['activeJobContext']>): Promise<void> {
     try {
       const techSession = await this.technicianSessionService.getSession(ctx.technicianPhone);
@@ -670,7 +709,12 @@ export class CustomerBotService {
       this.logger.error(`Failed to notify technician ${ctx.technicianId} of dispute: ${(err as Error).message}`);
     }
   }
+  */
 
+  // MVP: invoice-sharing step paused until the commission-based model
+  // returns — kept here, commented, for a clean revival: uncomment this and
+  // restore its call inside handleAmountConfirmation() above.
+  /*
   private async generateInvoiceAndPayment(
     ctx: NonNullable<ConversationSession['activeJobContext']>,
     customerPhone: string,
@@ -704,4 +748,5 @@ export class CustomerBotService {
       this.logger.error(`generateInvoiceAndPayment failed: ${(err as Error).message}`);
     }
   }
+  */
 }

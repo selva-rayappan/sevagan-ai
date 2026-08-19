@@ -17,8 +17,12 @@ export interface ActiveJobContext {
   technicianId: string;
   technicianName: string;
   technicianPhone: string;
-  amount: string;
-  paymentMode: string;
+  // Optional: the amount-confirmation step that populated these is paused
+  // (see CustomerBotService.handleAmountConfirmation) until the commission-based
+  // model returns — the simplified completion flow moves straight to rating
+  // without an amount, so these are unset there.
+  amount?: string;
+  paymentMode?: string;
 }
 
 export interface ConversationSession {

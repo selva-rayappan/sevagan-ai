@@ -326,7 +326,10 @@ describe('CustomerBotService', () => {
   // ─── Service selection ───────────────────────────────────────────────────────
 
   describe('AWAITING_SERVICE state', () => {
-    it('asks for location when customer selects a valid service number', async () => {
+    // MVP: the location-request step is paused (see CustomerBotService.
+    // handleServiceSelection) — selecting a service now skips straight to
+    // the time-slot menu with a placeholder location.
+    it('skips the location request and moves straight to the time-slot menu when customer selects a valid service number', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(
         makeSession({ state: ConversationState.AWAITING_SERVICE, pendingServiceCategoryIds: ['cat-1'] }),
@@ -336,11 +339,13 @@ describe('CustomerBotService', () => {
       await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 
       expect(mockFindById).toHaveBeenCalledWith('cat-1');
+      expect(mockSendInteractiveList).toHaveBeenCalled();
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          state: ConversationState.AWAITING_LOCATION,
+          state: ConversationState.AWAITING_TIME,
           selectedCategoryId: 'cat-1',
           selectedCategoryName: 'Electrical',
+          location: expect.any(String),
         }),
       );
     });
@@ -376,7 +381,7 @@ describe('CustomerBotService', () => {
       );
     });
 
-    it('matches a free-text service description via the AI category mapper', async () => {
+    it('matches a free-text service description via the AI category mapper and skips straight to the time-slot menu', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
       mockClassifyIntent.mockResolvedValueOnce({ intent: Intent.REQUEST_SERVICE, confidence: 0.9, detectedLanguage: Language.EN });
@@ -387,9 +392,10 @@ describe('CustomerBotService', () => {
       expect(mockMapToCategory).toHaveBeenCalledWith('my fan is not working');
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          state: ConversationState.AWAITING_LOCATION,
+          state: ConversationState.AWAITING_TIME,
           selectedCategoryId: 'cat-1',
           selectedCategoryName: 'Electrical',
+          location: expect.any(String),
         }),
       );
     });
@@ -508,6 +514,10 @@ describe('CustomerBotService', () => {
 
   // ─── Location ───────────────────────────────────────────────────────────────
 
+  // MVP: AWAITING_LOCATION is currently unreachable — handleLocation() is
+  // commented out in CustomerBotService (see the note there). Kept here,
+  // commented, for a clean revival alongside the source.
+  /*
   describe('AWAITING_LOCATION state', () => {
     it('stores text location and asks for scheduled time', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
@@ -575,6 +585,7 @@ describe('CustomerBotService', () => {
       );
     });
   });
+  */
 
   // ─── Time + job creation ─────────────────────────────────────────────────────
 
@@ -801,7 +812,11 @@ describe('CustomerBotService', () => {
   });
 
   // ─── AWAITING_AMOUNT_CONFIRMATION state ─────────────────────────────────────
-
+  // MVP: this state is currently unreachable — handleAmountConfirmation() is
+  // commented out in CustomerBotService and TechnicianBotService no longer
+  // transitions the customer into it (see the notes there). Kept here,
+  // commented, for a clean revival alongside the source.
+  /*
   describe('AWAITING_AMOUNT_CONFIRMATION state', () => {
     const makeSessionWithCtx = (): ConversationSession =>
       makeSession({
@@ -858,6 +873,7 @@ describe('CustomerBotService', () => {
       );
     });
   });
+  */
 
   // ─── AWAITING_RATING state ───────────────────────────────────────────────────
 

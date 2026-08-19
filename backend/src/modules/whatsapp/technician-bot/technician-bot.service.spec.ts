@@ -16,17 +16,20 @@ import { Language, JobStatus, TechnicianStatus, PaymentMode } from '../../../dom
 import { InboundWhatsAppMessage } from '../../../infrastructure/messaging/types/inbound-message.types';
 import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
 import { PaymentModeSettingsRepository } from '../../payment-mode-settings/payment-mode-settings.repository';
+import { ConversationState } from '../conversation/conversation-state.types';
 
 // ─── Mock factories ───────────────────────────────────────────────────────────
 
 const mockSendText = jest.fn().mockResolvedValue(undefined);
 const mockSendInteractiveButtons = jest.fn().mockResolvedValue(undefined);
+const mockSendInteractiveList = jest.fn().mockResolvedValue(undefined);
 const mockMarkAsRead = jest.fn().mockResolvedValue(undefined);
 const mockDownloadMedia = jest.fn();
 
 const mockWhatsApp = {
   sendText: mockSendText,
   sendInteractiveButtons: mockSendInteractiveButtons,
+  sendInteractiveList: mockSendInteractiveList,
   markAsRead: mockMarkAsRead,
   downloadMedia: mockDownloadMedia,
 };
@@ -559,6 +562,10 @@ describe('TechnicianBotService', () => {
       );
     });
 
+    // MVP: Cash/UPI payment-mode buttons paused (see TechnicianBotService.
+    // handleAcceptedState) — a single Complete button replaces them, so
+    // there's no mode-dependent button set to test until this is revived.
+    /*
     it('only shows the Cash button when UPI is disabled', async () => {
       mockGetSession.mockResolvedValue(acceptedSession());
       mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.IN_PROGRESS });
@@ -571,6 +578,7 @@ describe('TechnicianBotService', () => {
         expect.objectContaining({ buttons: [expect.objectContaining({ id: '1' })] }),
       );
     });
+    */
 
     it('declines on "2" reply: frees the technician, resets the job, and reassigns', async () => {
       mockGetSession.mockResolvedValue(acceptedSession());
@@ -651,52 +659,60 @@ describe('TechnicianBotService', () => {
       );
     });
 
-    it('executes COMPLETE command and notifies both parties', async () => {
+    it('completes the job on a single "1" reply, frees the technician, and moves the customer to rating', async () => {
       mockGetSession.mockResolvedValue(inProgressSession());
       const completedJob = { id: 'job-1', jobNumber: 'JOB-20260614-0001', status: JobStatus.COMPLETED };
-      mockSetCompletion.mockResolvedValue(completedJob);
+      mockUpdateStatus.mockResolvedValue(completedJob);
       mockFindWithDetails.mockResolvedValue(makeJobWithDetails({ status: JobStatus.COMPLETED }));
       mockGetCustomerSession.mockResolvedValue(null);
       mockCreateCustomerSession.mockReturnValue({
         state: 'IDLE', phone: '919876543210', language: Language.EN, updatedAt: new Date().toISOString(),
       });
 
-      await service.handleMessage(makeTextMessage('COMPLETE 500 CASH'), 'Kumar', makeTechnician());
+      await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
 
-      expect(mockSetCompletion).toHaveBeenCalledWith('job-1', 500, PaymentMode.CASH);
-      // one text to technician (job_completed), one interactive buttons to customer (confirm_amount)
-      expect(mockSendText).toHaveBeenCalledTimes(1);
-      expect(mockSendInteractiveButtons).toHaveBeenCalledWith(
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.COMPLETED);
+      expect(mockUpdateTechStatus).toHaveBeenCalledWith('tech-1', TechnicianStatus.AVAILABLE);
+      // one text to technician (job_completed_simple), one text + one interactive list to customer
+      expect(mockSendText).toHaveBeenCalledTimes(2);
+      expect(mockSendInteractiveList).toHaveBeenCalledWith(
         expect.objectContaining({ to: '919876543210' }),
       );
       expect(mockSaveSession).toHaveBeenCalledWith(
-        expect.objectContaining({ state: TechnicianConversationState.AWAITING_COMPLETION }),
+        expect.objectContaining({ state: TechnicianConversationState.IDLE, activeJobId: undefined }),
+      );
+      expect(mockSaveCustomerSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: ConversationState.AWAITING_RATING }),
       );
     });
 
-    it('executes COMPLETE with decimal amount', async () => {
+    it('also completes on the "complete" text fallback', async () => {
       mockGetSession.mockResolvedValue(inProgressSession());
-      mockSetCompletion.mockResolvedValue({ id: 'job-1' });
-      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', jobNumber: 'JOB-20260614-0001', status: JobStatus.COMPLETED });
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails({ status: JobStatus.COMPLETED }));
       mockGetCustomerSession.mockResolvedValue(null);
       mockCreateCustomerSession.mockReturnValue({
         state: 'IDLE', phone: '919876543210', language: Language.EN, updatedAt: new Date().toISOString(),
       });
 
-      await service.handleMessage(makeTextMessage('COMPLETE 750.50 UPI'), 'Kumar', makeTechnician());
+      await service.handleMessage(makeTextMessage('complete'), 'Kumar', makeTechnician());
 
-      expect(mockSetCompletion).toHaveBeenCalledWith('job-1', 750.5, PaymentMode.UPI);
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.COMPLETED);
     });
 
-    it('sends unknown_command for text that is not COMPLETE and not image', async () => {
+    it('sends unknown_command for text that is not a completion reply and not image', async () => {
       mockGetSession.mockResolvedValue(inProgressSession());
 
       await service.handleMessage(makeTextMessage('DONE'), 'Kumar', makeTechnician());
 
-      expect(mockSetCompletion).not.toHaveBeenCalled();
+      expect(mockUpdateStatus).not.toHaveBeenCalled();
       expect(mockSendText).toHaveBeenCalled();
     });
 
+    // MVP: Cash/UPI selection + "enter the amount" completion path paused
+    // (see TechnicianBotService.handleInProgressState) — kept here,
+    // commented, for a clean revival alongside the source.
+    /*
     it('"1" reply asks for the amount and records CASH as the pending mode', async () => {
       mockGetSession.mockResolvedValue(inProgressSession());
 
@@ -751,10 +767,15 @@ describe('TechnicianBotService', () => {
         expect.objectContaining({ to: '919100000000' }),
       );
     });
+    */
   });
 
   // ─── AWAITING_PAYMENT_AMOUNT state ────────────────────────────────────────
-
+  // MVP: both states below are currently unreachable — the "enter the
+  // amount" step that used to transition into them is paused (see
+  // TechnicianBotService.handleCompleteCommand). Kept here, commented, for a
+  // clean revival alongside the source.
+  /*
   describe('AWAITING_PAYMENT_AMOUNT state', () => {
     const awaitingAmountSession = (pendingPaymentMode: 'CASH' | 'UPI' = 'CASH') =>
       makeSession({
@@ -835,6 +856,7 @@ describe('TechnicianBotService', () => {
       );
     });
   });
+  */
 
   // ─── sendJobOffer ─────────────────────────────────────────────────────────
 
