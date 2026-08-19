@@ -110,7 +110,7 @@ describe('AssignmentEngineService', () => {
       expect(mockWhatsapp.sendTemplate).toHaveBeenCalledWith(
         expect.objectContaining({
           to: '919876543211',
-          templateName: 'technician_job_offer_v2',
+          templateName: 'technician_job_offer_en_v3',
           languageCode: 'en',
           quickReplyPayloads: ['accept_job', 'reject_job'],
         }),
@@ -132,13 +132,13 @@ describe('AssignmentEngineService', () => {
       );
     });
 
-    it('uses the Tamil template language code for a Tamil-speaking technician', async () => {
+    it('uses the Tamil template name and language code for a Tamil-speaking technician', async () => {
       mockTechniciansRepo.findBestAvailable.mockResolvedValue({ ...mockTechnician, language: Language.TA });
 
       await service.tryAssignJob('job-1', '919876543210');
 
       expect(mockWhatsapp.sendTemplate).toHaveBeenCalledWith(
-        expect.objectContaining({ languageCode: 'ta' }),
+        expect.objectContaining({ templateName: 'technician_job_offer_v2', languageCode: 'ta' }),
       );
     });
 

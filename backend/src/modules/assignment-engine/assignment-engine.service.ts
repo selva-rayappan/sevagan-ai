@@ -137,14 +137,21 @@ export class AssignmentEngineService {
     // Free-form sendInteractiveButtons only reaches a technician with a live
     // 24h WhatsApp session — most idle technicians waiting for offers don't
     // have one, so this silently failed (131047) on essentially every offer
-    // to a technician who hadn't just messaged the bot. technician_job_offer
-    // is an approved template (see docs/EXECUTION_PLAN.md Phase 14.7) so it
-    // delivers regardless of session state; its quick-reply payloads
-    // (accept_job/reject_job) match the interactive-button ids exactly, so
-    // handleOfferResponse() needed no changes.
+    // to a technician who hadn't just messaged the bot. The approved
+    // template (see docs/EXECUTION_PLAN.md Phase 14.7) delivers regardless
+    // of session state; its quick-reply payloads (accept_job/reject_job)
+    // match the interactive-button ids exactly, so handleOfferResponse()
+    // needed no changes. EN and TA are separate template names — Meta
+    // classified the EN variant as MARKETING (a per-recipient 131049 risk)
+    // and refuses both an in-place category fix and same-name resubmission
+    // for 4 weeks, so EN had to move to a new name entirely.
+    const isEnglish = lang !== Language.TA;
     await this.whatsapp.sendTemplate({
       to: technician.phone,
-      templateName: this.configService.get<string>('whatsapp.templates.jobOffer', 'technician_job_offer_v2'),
+      templateName: this.configService.get<string>(
+        isEnglish ? 'whatsapp.templates.jobOfferEn' : 'whatsapp.templates.jobOfferTa',
+        isEnglish ? 'technician_job_offer_en_v3' : 'technician_job_offer_v2',
+      ),
       languageCode: toMetaTemplateLanguageCode(lang),
       bodyParams: [
         { name: 'customer_name', value: job.customer.name ?? 'Customer' },

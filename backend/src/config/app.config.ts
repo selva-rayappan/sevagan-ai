@@ -39,13 +39,18 @@ export const appConfig = () => ({
         process.env.WA_TEMPLATE_TECHNICIAN_WELCOME_HEADER_IMAGE ?? 'https://sevagan.co.in/index_files/logo-new.png',
       // Job offers need to reach a technician regardless of whether they've
       // messaged the bot in the last 24h (see docs/EXECUTION_PLAN.md Phase
-      // 14.6/14.7) — unlike technicianWelcome*, this one template name has
-      // both EN and TA submitted as proper language variants of each other,
-      // so a single config key covers both. NOT wired into
-      // AssignmentEngineService until Meta approves it (submitted 2026-08-19,
-      // status PENDING) — flipping the send call before approval would break
-      // every job offer, not just the outside-24h-window ones.
-      jobOffer: process.env.WA_TEMPLATE_JOB_OFFER ?? 'technician_job_offer_v2',
+      // 14.7). Originally submitted as ONE name with EN/TA as language
+      // variants of each other — Meta auto-reclassified the EN variant as
+      // MARKETING (TA stayed UTILITY), which triggers a per-recipient 131049
+      // throttle some technicians hit. Meta refuses to change an approved
+      // template's category via the API ("Cannot update an approved template
+      // category") and blocks resubmitting the same (name, language) pair
+      // for 4 weeks after a category history exists ("Try again in 4 weeks
+      // or use MARKETING") — so the EN variant had to move to a genuinely
+      // new template name rather than being fixed in place, same split as
+      // technicianWelcome* ended up with, just for a different reason.
+      jobOfferEn: process.env.WA_TEMPLATE_JOB_OFFER_EN ?? 'technician_job_offer_en_v3',
+      jobOfferTa: process.env.WA_TEMPLATE_JOB_OFFER_TA ?? 'technician_job_offer_v2',
     },
   },
 
