@@ -46,8 +46,18 @@ export class VoiceWebhookController {
    * "Invalid Answer XML", despite our GET response verifying as valid every
    * time we checked it ourselves), and again afterwards with a default
    * post-hangup status callback when no distinct hangup_url is configured
-   * (observed live 2026-08-12). Only the second carries an `Event` field —
-   * that's what distinguishes them, since both land on this same route.
+   * (observed live 2026-08-12).
+   *
+   * BUG (found 2026-08-19, same day as the GET→POST switch): the initial
+   * fetch is *not* Event-less as assumed — Plivo tags it `Event: StartApp`.
+   * Checking `if (body.Event)` therefore caught both requests, so the real
+   * call always got the empty ack instead of the GetDigits/Play XML —
+   * confirmed via nginx access logs showing both POSTs got a 59-byte
+   * response (the empty ack) instead of the real ~354-byte answer XML, and
+   * Plivo's own hangup reason changing from "Invalid Answer XML" to "End Of
+   * XML Instructions" (it successfully ran the *empty* response to
+   * completion in ~1s — not a fetch/parse failure at all, just the wrong
+   * content). Fixed to key off `Event === 'Hangup'` specifically.
    */
   @Post('answer')
   @Version('1')
@@ -55,7 +65,7 @@ export class VoiceWebhookController {
   @UseGuards(VoiceWebhookTokenGuard)
   @Header('Content-Type', XML_HEADER)
   answerPost(@Body() body: Record<string, string>, @Query('lang') lang: string): string {
-    if (body.Event) {
+    if (body.Event === 'Hangup') {
       this.logger.debug(`Post-call callback on answer path: ${JSON.stringify(body)}`);
       return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     }

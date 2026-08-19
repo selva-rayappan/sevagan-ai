@@ -80,17 +80,31 @@ describe('VoiceWebhookController', () => {
   });
 
   describe('answerPost()', () => {
-    // Real hangup callback bodies carry an Event field (confirmed live,
-    // e.g. {"Event":"Hangup", "CallStatus":"completed", ...}) — that's what
-    // distinguishes it from the initial answer POST on this same route.
-    it("acknowledges Plivo's post-hangup callback (has an Event field) instead of 404ing", () => {
+    // Real hangup callback bodies carry Event: 'Hangup' (confirmed live) —
+    // that's what distinguishes it from the initial answer POST on this
+    // same route.
+    it("acknowledges Plivo's post-hangup callback (Event: 'Hangup') instead of 404ing", () => {
       const xml = controller.answerPost({ CallUUID: 'call-1', CallStatus: 'completed', Event: 'Hangup' }, 'EN');
       expect(xml).toBe('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
     });
 
-    // PlivoVoiceCallProvider now requests answer_method: 'POST' (switched
-    // 2026-08-19), so this is the real path a live call takes.
-    it('serves the real GetDigits/Play answer XML for the initial POST (no Event field)', () => {
+    // Regression test for the bug found 2026-08-19: Plivo's *initial* fetch
+    // is tagged Event: 'StartApp', not Event-less as first assumed —
+    // `if (body.Event)` caught this too, so real calls got the empty ack and
+    // hung up silently after ~1s (Plivo's hangup reason changed from
+    // "Invalid Answer XML" to "End Of XML Instructions" — it successfully
+    // ran the *empty* response to completion, confirmed via nginx access
+    // logs showing a 59-byte response instead of the real ~354 bytes).
+    it("serves the real GetDigits/Play answer XML for Plivo's Event: 'StartApp' initial fetch", () => {
+      const xml = controller.answerPost(
+        { CallUUID: 'call-1', To: '919876543210', From: '918031151236', Event: 'StartApp', CallStatus: 'in-progress' },
+        'EN',
+      );
+      expect(xml).toContain('<GetDigits');
+      expect(xml).toContain('job_offer_call_en.mp3');
+    });
+
+    it('also serves the real answer XML when there is no Event field at all', () => {
       const xml = controller.answerPost({ CallUUID: 'call-1', To: '919876543210', From: '918031151236' }, 'EN');
       expect(xml).toContain('<GetDigits');
       expect(xml).toContain('job_offer_call_en.mp3');
