@@ -655,6 +655,10 @@ export class TechnicianBotService {
       if (message.interactive.button_reply) return message.interactive.button_reply.id;
       if (message.interactive.list_reply) return message.interactive.list_reply.id;
     }
+    // A quick-reply tap on an approved template (e.g. technician_job_offer)
+    // arrives as type: 'button', not type: 'interactive' — the payload is
+    // whatever we bound to that button index at send time.
+    if (message.type === 'button' && message.button) return message.button.payload;
     return '';
   }
 

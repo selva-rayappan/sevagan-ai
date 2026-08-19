@@ -138,6 +138,16 @@ const makeButtonReply = (id: string, from = '919100000000'): InboundWhatsAppMess
   interactive: { type: 'button_reply', button_reply: { id, title: id } },
 });
 
+// A quick-reply tap on an approved template (e.g. technician_job_offer) —
+// distinct payload/shape from a free-form interactive button reply.
+const makeTemplateButtonReply = (payload: string, from = '919100000000'): InboundWhatsAppMessage => ({
+  from,
+  id: 'msg-003',
+  timestamp: '1718000002',
+  type: 'button',
+  button: { payload, text: payload },
+});
+
 const makeImageMessage = (mediaId = 'media-1', from = '919100000000'): InboundWhatsAppMessage => ({
   from,
   id: 'msg-003',
@@ -335,6 +345,31 @@ describe('TechnicianBotService', () => {
       expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.ACCEPTED);
       expect(mockUpdateTechStatus).toHaveBeenCalledWith('tech-1', TechnicianStatus.BUSY);
       expect(mockSendText).toHaveBeenCalled();
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.JOB_ACCEPTED }),
+      );
+    });
+
+    it('accepts job on a template quick-reply button tap (type: button, not interactive)', async () => {
+      const session = pendingSession();
+      mockGetSession.mockResolvedValue(session);
+      const assignment = { id: 'assign-1', jobId: 'job-1' };
+      mockFindByJobId.mockResolvedValue(assignment);
+      mockAcceptAssignment.mockResolvedValue({ ...assignment, acceptedAt: new Date() });
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.ACCEPTED });
+      mockUpdateTechStatus.mockResolvedValue(undefined);
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE',
+        phone: '919876543210',
+        language: Language.EN,
+        updatedAt: new Date().toISOString(),
+      });
+
+      await service.handleMessage(makeTemplateButtonReply('accept_job'), 'Kumar', makeTechnician());
+
+      expect(mockAcceptAssignment).toHaveBeenCalledWith('assign-1');
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: TechnicianConversationState.JOB_ACCEPTED }),
       );

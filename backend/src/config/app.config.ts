@@ -37,6 +37,15 @@ export const appConfig = () => ({
       // preview-only, never reused for real sends).
       technicianWelcomeHeaderImage:
         process.env.WA_TEMPLATE_TECHNICIAN_WELCOME_HEADER_IMAGE ?? 'https://sevagan.co.in/index_files/logo-new.png',
+      // Job offers need to reach a technician regardless of whether they've
+      // messaged the bot in the last 24h (see docs/EXECUTION_PLAN.md Phase
+      // 14.6/14.7) — unlike technicianWelcome*, this one template name has
+      // both EN and TA submitted as proper language variants of each other,
+      // so a single config key covers both. NOT wired into
+      // AssignmentEngineService until Meta approves it (submitted 2026-08-19,
+      // status PENDING) — flipping the send call before approval would break
+      // every job offer, not just the outside-24h-window ones.
+      jobOffer: process.env.WA_TEMPLATE_JOB_OFFER ?? 'technician_job_offer_v2',
     },
   },
 

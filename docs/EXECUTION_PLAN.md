@@ -26,7 +26,7 @@
 | Phase 11 | Reports | ✅ COMPLETE |
 | Phase 12 | Security | ✅ COMPLETE |
 | Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
-| Phase 14 | Technician Job-Offer Voice Escalation | ✅ COMPLETE — live in production; end-to-end accept-by-keypress confirmed (2026-08-19); documented non-blocking gaps: Plivo HMAC-V3 signature, one carrier-level DND/NCPR hangup |
+| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — voice escalation itself is live and confirmed end-to-end (2026-08-19); durable fix for the underlying 24h-session-window gap (`technician_job_offer_v2` Meta template) submitted same day, PENDING approval — code plumbing ready but not activated |
 
 ---
 
@@ -489,7 +489,7 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 
 ---
 
-## Phase 14 — Technician Job-Offer Voice Escalation ✅ COMPLETE
+## Phase 14 — Technician Job-Offer Voice Escalation 🔄 IN PROGRESS
 
 **Goal:** If a technician hasn't responded to a job offer within 1 minute, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress — same outcome as a WhatsApp button reply.
 
@@ -531,6 +531,17 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 **Bug (reported 2026-08-19, JOB-20260819-0001 → Selva):** the technician's job-offer WhatsApp message never arrived — Meta accepts an interactive-buttons send synchronously (returns a wamid) but delivery to a technician outside the 24h session window fails *asynchronously*, minutes later, via the webhook `statuses[]` callback (error 131047). Nothing reacted to that failure status, so `TechnicianOfferEscalationService`'s 60s poller — working exactly as designed — waited out the full timer for a message that was already confirmed dead, then called, making it look like "no WhatsApp was sent, straight to a call." Root-caused via the new S3 message trail (14.x/3.2) plus production logs: offer submitted 05:20:11 → Meta status `failed` #131047 at 05:20:13 → escalation call placed 05:21:17 (~60s later, as designed) → technician accepted by keypress 05:21:56 → the WhatsApp "Job Accepted" confirmation *also* failed 131047 for the same reason.
 - ✅ `TechnicianOfferEscalationService.escalateOnDeliveryFailure(phone)` — same call-placing logic as the 60s poller, minus the elapsed-time gate, since a confirmed failure status means waiting serves no purpose
 - ✅ `WebhookController`'s `statuses[]` handling now calls it the moment a `failed` status with `errors` arrives for a phone with a `JOB_OFFER_PENDING` session and no escalation call yet sent
-- ✅ Durable fix (converting job-offer messages to an approved Meta template with quick-reply buttons, so delivery doesn't depend on the technician having messaged the bot within 24h — same class of fix as `technician_welcome`, see 3.1) intentionally deferred — needs real Meta template review; this is the interim mitigation
+- ✅ Durable fix (converting job-offer messages to an approved Meta template with quick-reply buttons, so delivery doesn't depend on the technician having messaged the bot within 24h — same class of fix as `technician_welcome`, see 3.1) started same day — see 14.7
 - ✅ Unit tests: `technician-offer-escalation.service.spec.ts` (`escalateOnDeliveryFailure`), `webhook.controller.spec.ts` (escalates on failed status, does not on read/no-errors, survives the escalation check itself throwing)
 - ✅ Full backend suite green (73 suites / 615 tests) after the change
+
+#### 14.7 Durable Fix: `technician_job_offer_v2` Meta Template (🔄 IN PROGRESS — pending Meta approval)
+**Goal:** job offers reach a technician over WhatsApp regardless of whether they've messaged the bot in the last 24h, by using a pre-approved template instead of free-form interactive buttons — same reasoning as `technician_welcome` (3.1), but this time submitted correctly the first time: ONE template name with EN and TA as proper language variants of each other (not two separate names/structures, which is what happened — likely by accident, via manual Business Manager submission — for `technician_welcome`).
+- ✅ Submitted 2026-08-19 via `POST /{waba-id}/message_templates` directly against the Graph API (WABA `2518354635331400`, the one that owns the production number, confirmed via `GET /{waba}/phone_numbers` first) — UTILITY category, BODY with 4 named params (`customer_name`/`location`/`service`/`scheduled_time`, mirroring the live `technician.job_offer` translation text 1:1) + 2 QUICK_REPLY buttons ("Accept"/"Reject", "ஏற்கிறேன்"/"மறுக்கிறேன்"). Both languages: `id` returned, `status: PENDING` — awaiting Meta review.
+- ✅ **First attempt REJECTED (`INVALID_FORMAT`)** — root cause: named parameters (`{{customer_name}}`, not positional `{{1}}`) require an explicit top-level `"parameter_format": "NAMED"` field on the create payload; Business Manager's UI sets this automatically (why `technician_welcome`'s named params worked without anyone noticing this requirement) but the raw API does not infer it. Fixed by adding the field and resubmitting under a fresh name (`technician_job_offer_v2` — the original name's async deletion hadn't finished propagating within Meta's own stated "under 1 minute", so a fresh name sidestepped the race rather than waiting further).
+- ✅ Config: `whatsapp.templates.jobOffer` (env `WA_TEMPLATE_JOB_OFFER`, default `technician_job_offer_v2`) added to `app.config.ts`
+- ✅ `SendTemplateOptions.quickReplyPayloads?: string[]` — one payload per QUICK_REPLY button, in declared index order; `MetaWhatsAppProvider.sendTemplate()` appends a `{ type: 'button', sub_type: 'quick_reply', index, parameters: [{ type: 'payload', payload }] }` component per entry; `MockWhatsAppProvider` logs them
+- ✅ Inbound: a template quick-reply tap arrives as `type: 'button'` (payload `{ text, payload }`) — a **different shape** from a free-form interactive button reply (`type: 'interactive'`, `interactive.button_reply.id`). Added `'button'` to `WhatsAppMessageType`, `WhatsAppButtonReply`/`InboundWhatsAppMessage.button`; `TechnicianBotService.extractText()` and `WebhookController.summarizeInbound()` both handle it. Chose payloads `accept_job`/`reject_job` (identical to the existing interactive-button ids) specifically so `handleOfferResponse()`'s existing `isAccept`/`isReject` matching needed **zero changes** — the plumbing is a drop-in once the template is live.
+- ❌ **`AssignmentEngineService.assignJobToTechnician` intentionally NOT switched to `sendTemplate` yet** — it still calls `sendInteractiveButtons`. Flipping it before Meta approves the template would break every job offer (not just the outside-24h-window ones), since Meta rejects sends of an unapproved/PENDING template outright. Waiting for explicit confirmation the template is APPROVED (same pattern as `technician_welcome`'s rollout) before making that one-line change and redeploying.
+- ✅ Unit tests: `meta-whatsapp.provider.spec.ts` (quick-reply button components, in order, after body; omitted when empty), `technician-bot.service.spec.ts` (accepts on a `type: button` quick-reply tap), `webhook.controller.spec.ts` (trail summary for `type: button`)
+- ✅ Full backend suite green (73 suites / 619 tests), `tsc --noEmit` clean, coverage 96.8%/87.82%/92.15%/97.17%

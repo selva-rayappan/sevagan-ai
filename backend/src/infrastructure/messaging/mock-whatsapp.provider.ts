@@ -24,10 +24,18 @@ export class MockWhatsAppProvider implements WhatsAppProvider {
     this.logger.log(`[MOCK] sendText -> ${to}: ${text}`);
   }
 
-  async sendTemplate({ to, templateName, languageCode, bodyParams, headerImageUrl }: SendTemplateOptions): Promise<void> {
+  async sendTemplate({
+    to,
+    templateName,
+    languageCode,
+    bodyParams,
+    headerImageUrl,
+    quickReplyPayloads,
+  }: SendTemplateOptions): Promise<void> {
     const params = (bodyParams ?? []).map(({ name, value }) => `${name}=${value}`).join(', ');
+    const buttons = quickReplyPayloads?.length ? ` buttons=[${quickReplyPayloads.join(', ')}]` : '';
     this.logger.log(
-      `[MOCK] sendTemplate -> ${to}: ${templateName} (${languageCode}) [${params}]${headerImageUrl ? ` header=${headerImageUrl}` : ''}`,
+      `[MOCK] sendTemplate -> ${to}: ${templateName} (${languageCode}) [${params}]${headerImageUrl ? ` header=${headerImageUrl}` : ''}${buttons}`,
     );
   }
 

@@ -146,6 +146,41 @@ describe('MetaWhatsAppProvider', () => {
         provider.sendTemplate({ to: '919876543210', templateName: 'technician_welcome', languageCode: 'en_US' }),
       ).rejects.toThrow('Template not approved');
     });
+
+    it('posts a quick-reply button component per payload, in order, after the body', async () => {
+      await provider.sendTemplate({
+        to: '919876543210',
+        templateName: 'technician_job_offer_v2',
+        languageCode: 'en',
+        bodyParams: [{ name: 'customer_name', value: 'Yarl Enterprises' }],
+        quickReplyPayloads: ['accept_job', 'reject_job'],
+      });
+
+      const [, payload] = mockPost.mock.calls[0];
+      expect(payload.template.components).toEqual([
+        {
+          type: 'body',
+          parameters: [{ type: 'text', parameter_name: 'customer_name', text: 'Yarl Enterprises' }],
+        },
+        { type: 'button', sub_type: 'quick_reply', index: '0', parameters: [{ type: 'payload', payload: 'accept_job' }] },
+        { type: 'button', sub_type: 'quick_reply', index: '1', parameters: [{ type: 'payload', payload: 'reject_job' }] },
+      ]);
+    });
+
+    it('omits components when quickReplyPayloads is empty', async () => {
+      await provider.sendTemplate({
+        to: '919876543210',
+        templateName: 'technician_job_offer_v2',
+        languageCode: 'en',
+        quickReplyPayloads: [],
+      });
+
+      const [, payload] = mockPost.mock.calls[0];
+      expect(payload.template).toEqual({
+        name: 'technician_job_offer_v2',
+        language: { code: 'en' },
+      });
+    });
   });
 
   describe('sendInteractiveButtons()', () => {

@@ -1,6 +1,7 @@
 export type WhatsAppMessageType =
   | 'text'
   | 'interactive'
+  | 'button'
   | 'location'
   | 'image'
   | 'audio'
@@ -36,6 +37,16 @@ export interface WhatsAppInteractive {
   list_reply?: WhatsAppInteractiveListReply;
 }
 
+// A quick-reply button tap on an approved template message — distinct from
+// WhatsAppInteractive (free-form interactive messages), which Meta reports
+// under type: 'interactive' instead. Carries the payload we bound to that
+// button index at send time (SendTemplateOptions.quickReplyPayloads), not
+// the button's id/title.
+export interface WhatsAppButtonReply {
+  text: string;
+  payload: string;
+}
+
 export interface WhatsAppLocation {
   latitude: number;
   longitude: number;
@@ -57,6 +68,7 @@ export interface InboundWhatsAppMessage {
   type: WhatsAppMessageType;
   text?: WhatsAppTextMessage;
   interactive?: WhatsAppInteractive;
+  button?: WhatsAppButtonReply;
   location?: WhatsAppLocation;
   image?: WhatsAppMedia;
   audio?: WhatsAppMedia;

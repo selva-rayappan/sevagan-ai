@@ -45,7 +45,14 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
     });
   }
 
-  async sendTemplate({ to, templateName, languageCode, bodyParams, headerImageUrl }: SendTemplateOptions): Promise<void> {
+  async sendTemplate({
+    to,
+    templateName,
+    languageCode,
+    bodyParams,
+    headerImageUrl,
+    quickReplyPayloads,
+  }: SendTemplateOptions): Promise<void> {
     const components = [
       ...(headerImageUrl
         ? [{ type: 'header', parameters: [{ type: 'image', image: { link: headerImageUrl } }] }]
@@ -62,6 +69,12 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
             },
           ]
         : []),
+      ...(quickReplyPayloads?.map((payload, index) => ({
+        type: 'button',
+        sub_type: 'quick_reply',
+        index: String(index),
+        parameters: [{ type: 'payload', payload }],
+      })) ?? []),
     ];
 
     await this.post('/messages', {

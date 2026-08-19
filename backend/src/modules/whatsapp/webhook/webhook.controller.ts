@@ -149,6 +149,8 @@ export class WebhookController {
           message.interactive?.list_reply?.title ??
           '(interactive reply)'
         );
+      case 'button':
+        return message.button?.text ?? '(button reply)';
       case 'location':
         return message.location
           ? `${message.location.name ?? ''} ${message.location.latitude},${message.location.longitude}`.trim()

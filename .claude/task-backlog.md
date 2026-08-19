@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-08-19 (Phase 14 ✅ COMPLETE — end-to-end voice escalation confirmed (technician answered, heard the prompt, accepted by keypress), and the WhatsApp-131047-then-premature-call bug fixed: `escalateOnDeliveryFailure()` now reacts to Meta's async delivery-failure status immediately instead of the poller blindly waiting out a message that already failed to deliver — see 14.6. Prior same day: a second real Plivo call surfaced silent WAV-mislabeled-as-`.mp3` audio, re-encoded to genuine MP3. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5.)
+**Last Updated:** 2026-08-19 (Phase 14: submitted the durable fix for the 24h-session-window gap — `technician_job_offer_v2`, ONE Meta template name with EN/TA as proper language variants, UTILITY category, 4 named body params + 2 QUICK_REPLY buttons — PENDING Meta approval; first attempt was REJECTED for a missing top-level `parameter_format: "NAMED"` field, fixed and resubmitted under a fresh name. Code plumbing (quick-reply send/receive support end to end) is built and tested but `AssignmentEngineService` intentionally still uses `sendInteractiveButtons` until approval is confirmed — see 14.7. Prior same day: end-to-end voice escalation confirmed (technician answered, heard the prompt, accepted by keypress), and the WhatsApp-131047-then-premature-call bug fixed via `escalateOnDeliveryFailure()` — see 14.6. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5.)
 
 ---
 
@@ -25,7 +25,7 @@
 | [Phase 11](#phase-11--reports) | Reports | ✅ COMPLETE | 13/13 |
 | [Phase 12](#phase-12--security) | Security | ✅ COMPLETE | 18/18 |
 | [Phase 13](#phase-13--production-deployment) | Production Deployment | 🔄 IN PROGRESS | 12/22 (artifacts ready; EC2 provisioning/DNS/SSL execution pending) |
-| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | ✅ COMPLETE | 24/25 (live in production; end-to-end accept-by-keypress confirmed 2026-08-19; only Plivo HMAC-V3 signature validation remains as a documented non-blocking gap) |
+| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS | 24/34 (voice escalation itself is live and confirmed end-to-end 2026-08-19; durable fix — `technician_job_offer_v2` Meta template — submitted same day, PENDING approval; code plumbing ready but not activated) |
 
 ---
 
@@ -1036,20 +1036,33 @@
 | 14.4.1 | `TechnicianSession.offerSentAt`/`escalationCallSentAt` added; `offerSentAt` set in `AssignmentEngineService.assignJobToTechnician` | ✅ |
 | 14.4.2 | `TechnicianOfferEscalationService` — 60s Redis-scan poller, same shape as `CustomerIdleNudgeService` | ✅ |
 
+### 14.5 Config
+| # | Task | Status |
+|---|------|--------|
+| 14.5.1 | `PLIVO_AUTH_ID`/`PLIVO_AUTH_TOKEN`/`PLIVO_NUMBER`/`VOICE_WEBHOOK_TOKEN`/`VOICE_JOB_OFFER_AUDIO_{EN,TA}` in `app.config.ts`/`env.validation.ts`/`.env.example`; local `backend/.env` populated | ✅ |
+
 ### 14.6 Escalate Immediately on Confirmed WhatsApp Delivery Failure
 | # | Task | Status |
 |---|------|--------|
 | 14.6.1 | Bug (reported 2026-08-19, JOB-20260819-0001 → Selva): technician's job-offer WhatsApp never arrived, but a call fired anyway. Meta accepts an interactive-buttons send synchronously (returns a wamid) but a technician outside the 24h session window gets an *async* delivery failure (131047) minutes later via the webhook `statuses[]` callback — nothing reacted to it, so the 60s escalation poller (working as designed) waited out its timer for a message already confirmed dead. Root-caused via the new S3 message trail (3.3.6) + production logs: offer submitted 05:20:11 → Meta `failed` #131047 at 05:20:13 → escalation call placed 05:21:17 (~60s, as designed) → technician accepted by keypress 05:21:56 → the "Job Accepted" WhatsApp confirmation *also* failed 131047 | ✅ Diagnosed |
 | 14.6.2 | `TechnicianOfferEscalationService.escalateOnDeliveryFailure(phone)` — same call-placing logic as the 60s poller (`placeEscalationCall`, extracted as a shared private method), minus the elapsed-time gate, since a confirmed failure means waiting serves no purpose | ✅ |
 | 14.6.3 | `WebhookController`'s `statuses[]` handling calls `escalateOnDeliveryFailure` the moment a `failed` status with `errors` arrives, for whichever phone it names | ✅ |
-| 14.6.4 | Durable fix (approved Meta template with quick-reply buttons for job offers, so delivery doesn't depend on a live 24h session — same class of fix as `technician_welcome`, see 3.1) intentionally **not** done here — needs real Meta template review/approval; this is the interim mitigation, not a replacement | ❌ Deferred by explicit user choice |
+| 14.6.4 | Durable fix (approved Meta template with quick-reply buttons for job offers) — started same day, see 14.7 | 🔄 In progress |
 | 14.6.5 | Unit tests: `technician-offer-escalation.service.spec.ts` (`escalateOnDeliveryFailure` — immediate call, no session, wrong state, already-escalated), `webhook.controller.spec.ts` (escalates on failed+errors, not on read/no-errors, survives the escalation check itself throwing) | ✅ |
 | 14.6.6 | Full backend suite green (73 suites / 615 tests), `tsc --noEmit` clean, coverage gate passing (96.8%/87.86%/92.15%/97.16%) | ✅ |
 
-### 14.5 Config
+### 14.7 Durable Fix: `technician_job_offer_v2` Meta Template
 | # | Task | Status |
 |---|------|--------|
-| 14.5.1 | `PLIVO_AUTH_ID`/`PLIVO_AUTH_TOKEN`/`PLIVO_NUMBER`/`VOICE_WEBHOOK_TOKEN`/`VOICE_JOB_OFFER_AUDIO_{EN,TA}` in `app.config.ts`/`env.validation.ts`/`.env.example`; local `backend/.env` populated | ✅ |
+| 14.7.1 | Goal: job offers reach a technician over WhatsApp regardless of a live 24h session, via a pre-approved template instead of free-form interactive buttons — same reasoning as `technician_welcome` (3.2.4), but this time ONE template name with EN/TA as proper language variants of each other (the accidental two-separate-names/structures split on `technician_welcome` is not repeated) | ✅ Designed |
+| 14.7.2 | Submitted 2026-08-19 via `POST /{waba-id}/message_templates` against WABA `2518354635331400` (confirmed via `GET /{waba}/phone_numbers` that it owns the production number first) — UTILITY, BODY with 4 named params (`customer_name`/`location`/`service`/`scheduled_time`, mirroring the live `technician.job_offer` translation text verbatim) + 2 QUICK_REPLY buttons ("Accept"/"Reject", "ஏற்கிறேன்"/"மறுக்கிறேன்") | ✅ Both languages `PENDING` |
+| 14.7.3 | First attempt `REJECTED` (`INVALID_FORMAT`) — named parameters require a top-level `"parameter_format": "NAMED"` field on the create payload; Business Manager's UI sets this automatically (why nobody hit this on `technician_welcome`), the raw API does not infer it. Fixed by adding the field; resubmitted under a fresh name `technician_job_offer_v2` rather than waiting out the original name's async deletion (still hadn't propagated past Meta's own "under 1 minute" estimate after ~100s) | ✅ Root-caused and fixed |
+| 14.7.4 | `whatsapp.templates.jobOffer` config (env `WA_TEMPLATE_JOB_OFFER`, default `technician_job_offer_v2`) | ✅ |
+| 14.7.5 | `SendTemplateOptions.quickReplyPayloads?: string[]` — one payload per QUICK_REPLY button, index order; `MetaWhatsAppProvider.sendTemplate()` appends `{type: 'button', sub_type: 'quick_reply', index, parameters: [{type: 'payload', payload}]}` per entry; `MockWhatsAppProvider` logs them | ✅ |
+| 14.7.6 | Inbound: a template quick-reply tap is `type: 'button'` (`{text, payload}`) — different shape from a free-form interactive reply (`type: 'interactive'`). Added to `WhatsAppMessageType`/`InboundWhatsAppMessage`; `TechnicianBotService.extractText()` and `WebhookController.summarizeInbound()` handle it. Payloads chosen as `accept_job`/`reject_job` — identical to the existing interactive-button ids — so `handleOfferResponse()`'s matching needed zero changes | ✅ |
+| 14.7.7 | `AssignmentEngineService.assignJobToTechnician` intentionally **NOT** switched to `sendTemplate` yet — still calls `sendInteractiveButtons`. Flipping it before Meta approves would break every job offer, not just the outside-24h ones, since Meta rejects sends of a PENDING template outright | ❌ Waiting on Meta approval, same pattern as `technician_welcome`'s rollout |
+| 14.7.8 | Unit tests: `meta-whatsapp.provider.spec.ts` (quick-reply components in order after body, omitted when empty), `technician-bot.service.spec.ts` (accepts on a `type: button` tap), `webhook.controller.spec.ts` (trail summary for `type: button`) | ✅ |
+| 14.7.9 | Full backend suite green (73 suites / 619 tests), `tsc --noEmit` clean, coverage 96.8%/87.82%/92.15%/97.17% | ✅ |
 
 ### Acceptance Criteria
 | # | Criterion | Status |

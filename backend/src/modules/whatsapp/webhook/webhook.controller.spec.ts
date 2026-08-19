@@ -182,6 +182,23 @@ describe('WebhookController', () => {
       expect(mockRecordTrail).toHaveBeenCalledWith('919876543210', 'INBOUND', 'interactive', 'Accept');
     });
 
+    it('summarizes a template quick-reply button tap for the trail', async () => {
+      const payload = buildPayload([
+        {
+          from: '919876543210',
+          id: 'msg_005',
+          timestamp: '1718000003',
+          type: 'button',
+          button: { payload: 'accept_job', text: 'Accept' },
+        },
+      ]);
+
+      controller.handleWebhook(payload, rawBody);
+      await Promise.resolve();
+
+      expect(mockRecordTrail).toHaveBeenCalledWith('919876543210', 'INBOUND', 'button', 'Accept');
+    });
+
     it('routes to CustomerBotService when sender is not a technician (fire-and-forget)', async () => {
       mockFindByPhone.mockResolvedValue(null);
       const payload = buildPayload([

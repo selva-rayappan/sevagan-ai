@@ -21,6 +21,11 @@ export interface SendTemplateOptions {
   // image be supplied at send-time; the "example" image shown during template
   // review/approval is not reused automatically for real sends.
   headerImageUrl?: string;
+  // Only for templates with a QUICK_REPLY BUTTONS component — one payload per
+  // button, in the same order the buttons were declared at template-creation
+  // time. The tapped button comes back on the inbound webhook as a `button`
+  // type message carrying exactly this payload (not the button's index/id).
+  quickReplyPayloads?: string[];
 }
 
 export interface InteractiveButton {
