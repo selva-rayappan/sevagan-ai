@@ -7,6 +7,7 @@ import { TechnicianBotService } from '../technician-bot/technician-bot.service';
 import { TechniciansRepository } from '../../technicians/technicians.repository';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { MessageTrailService } from '../../../infrastructure/messaging/message-trail.service';
+import { TechnicianOfferEscalationService } from '../technician-bot/technician-offer-escalation.service';
 import {
   InboundWhatsAppMessage,
   WhatsAppStatusUpdate,
@@ -18,6 +19,7 @@ const mockTechHandleMessage = jest.fn().mockResolvedValue(undefined);
 const mockFindByPhone = jest.fn().mockResolvedValue(null); // default: not a technician
 const mockAuditLog = jest.fn().mockResolvedValue(undefined);
 const mockRecordTrail = jest.fn().mockResolvedValue(undefined);
+const mockEscalateOnDeliveryFailure = jest.fn().mockResolvedValue(undefined);
 
 describe('WebhookController', () => {
   let controller: WebhookController;
@@ -50,6 +52,10 @@ describe('WebhookController', () => {
           provide: MessageTrailService,
           useValue: { record: mockRecordTrail },
         },
+        {
+          provide: TechnicianOfferEscalationService,
+          useValue: { escalateOnDeliveryFailure: mockEscalateOnDeliveryFailure },
+        },
       ],
     }).compile();
 
@@ -66,6 +72,8 @@ describe('WebhookController', () => {
     mockFindByPhone.mockResolvedValue(null);
     mockRecordTrail.mockReset();
     mockRecordTrail.mockResolvedValue(undefined);
+    mockEscalateOnDeliveryFailure.mockReset();
+    mockEscalateOnDeliveryFailure.mockResolvedValue(undefined);
   });
 
   it('should be defined', () => {
@@ -359,6 +367,59 @@ describe('WebhookController', () => {
 
         expect(() => controller.handleWebhook(payload, rawBody)).not.toThrow();
         expect(errorSpy).not.toHaveBeenCalled();
+      });
+
+      it('escalates a pending job offer to a call the moment delivery is confirmed to have failed', async () => {
+        const payload = buildPayload([], [
+          {
+            id: 'wamid.abc',
+            status: 'failed',
+            timestamp: '1718000100',
+            recipient_id: '919442060644',
+            errors: [{ code: 131047, title: 'Re-engagement message' }],
+          },
+        ]);
+
+        controller.handleWebhook(payload, rawBody);
+        await Promise.resolve();
+
+        expect(mockEscalateOnDeliveryFailure).toHaveBeenCalledWith('919442060644');
+      });
+
+      it('does not escalate for a failed status with no errors array', () => {
+        const payload = buildPayload([], [
+          { id: 'wamid.no-errors', status: 'failed', timestamp: '1718000102', recipient_id: '919876543210' },
+        ]);
+
+        controller.handleWebhook(payload, rawBody);
+
+        expect(mockEscalateOnDeliveryFailure).not.toHaveBeenCalled();
+      });
+
+      it('does not escalate for a non-failed status', () => {
+        const payload = buildPayload([], [
+          { id: 'wamid.xyz', status: 'read', timestamp: '1718000101', recipient_id: '919876543210' },
+        ]);
+
+        controller.handleWebhook(payload, rawBody);
+
+        expect(mockEscalateOnDeliveryFailure).not.toHaveBeenCalled();
+      });
+
+      it('does not throw when the escalation check itself errors', async () => {
+        mockEscalateOnDeliveryFailure.mockRejectedValue(new Error('Redis down'));
+        const payload = buildPayload([], [
+          {
+            id: 'wamid.abc',
+            status: 'failed',
+            timestamp: '1718000100',
+            recipient_id: '919442060644',
+            errors: [{ code: 131047, title: 'Re-engagement message' }],
+          },
+        ]);
+
+        expect(() => controller.handleWebhook(payload, rawBody)).not.toThrow();
+        await Promise.resolve();
       });
     });
   });

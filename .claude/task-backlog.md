@@ -3,7 +3,7 @@
 > Single source of truth for task-level completion status.
 > Update this file alongside `docs/EXECUTION_PLAN.md Section 18` whenever a task is completed.
 
-**Last Updated:** 2026-08-12 (Phase 14: a second real Plivo call surfaced a second bug — audio files were raw WAV mislabeled as `.mp3`, so Plivo played silence for the full 38s call instead of erroring; re-encoded to genuine MP3 via ffmpeg/libmp3lame and redeployed, verified live. A call where a technician hears the full message and responds by keypress is still unconfirmed. Prior same day: first real call surfaced `GetDigits timeout="10"` cutting the prompt off after 13s, fixed to `timeout="35"`; also fixed a stray `POST /voice/answer` 404. Separately surfaced (not fixed): a carrier-rejected call likely due to DND on Vetri's number, and a pre-existing WhatsApp 131047 "outside 24h window" send failure — see Phase 14. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5. Prior: Technician welcome message confirmed working end-to-end in production 2026-08-11 — see 3.2.4/8.5.1.)
+**Last Updated:** 2026-08-19 (Phase 14 ✅ COMPLETE — end-to-end voice escalation confirmed (technician answered, heard the prompt, accepted by keypress), and the WhatsApp-131047-then-premature-call bug fixed: `escalateOnDeliveryFailure()` now reacts to Meta's async delivery-failure status immediately instead of the poller blindly waiting out a message that already failed to deliver — see 14.6. Prior same day: a second real Plivo call surfaced silent WAV-mislabeled-as-`.mp3` audio, re-encoded to genuine MP3. Prior: Message trail audit log added — every inbound/outbound WhatsApp message is written to AWS S3 `arn:aws:s3:::sevagan-ai` (us-east-1, IAM-role auth) and viewable per-job from the admin Jobs page; see 3.3.6/8.6.5.)
 
 ---
 
@@ -25,7 +25,7 @@
 | [Phase 11](#phase-11--reports) | Reports | ✅ COMPLETE | 13/13 |
 | [Phase 12](#phase-12--security) | Security | ✅ COMPLETE | 18/18 |
 | [Phase 13](#phase-13--production-deployment) | Production Deployment | 🔄 IN PROGRESS | 12/22 (artifacts ready; EC2 provisioning/DNS/SSL execution pending) |
-| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS | 17/19 (live in production; 2 real calls each surfaced/fixed a different bug — timeout, then silent WAV-as-MP3 audio; full success still unconfirmed) |
+| [Phase 14](#phase-14--technician-job-offer-voice-escalation) | Technician Job-Offer Voice Escalation | ✅ COMPLETE | 24/25 (live in production; end-to-end accept-by-keypress confirmed 2026-08-19; only Plivo HMAC-V3 signature validation remains as a documented non-blocking gap) |
 
 ---
 
@@ -1036,6 +1036,16 @@
 | 14.4.1 | `TechnicianSession.offerSentAt`/`escalationCallSentAt` added; `offerSentAt` set in `AssignmentEngineService.assignJobToTechnician` | ✅ |
 | 14.4.2 | `TechnicianOfferEscalationService` — 60s Redis-scan poller, same shape as `CustomerIdleNudgeService` | ✅ |
 
+### 14.6 Escalate Immediately on Confirmed WhatsApp Delivery Failure
+| # | Task | Status |
+|---|------|--------|
+| 14.6.1 | Bug (reported 2026-08-19, JOB-20260819-0001 → Selva): technician's job-offer WhatsApp never arrived, but a call fired anyway. Meta accepts an interactive-buttons send synchronously (returns a wamid) but a technician outside the 24h session window gets an *async* delivery failure (131047) minutes later via the webhook `statuses[]` callback — nothing reacted to it, so the 60s escalation poller (working as designed) waited out its timer for a message already confirmed dead. Root-caused via the new S3 message trail (3.3.6) + production logs: offer submitted 05:20:11 → Meta `failed` #131047 at 05:20:13 → escalation call placed 05:21:17 (~60s, as designed) → technician accepted by keypress 05:21:56 → the "Job Accepted" WhatsApp confirmation *also* failed 131047 | ✅ Diagnosed |
+| 14.6.2 | `TechnicianOfferEscalationService.escalateOnDeliveryFailure(phone)` — same call-placing logic as the 60s poller (`placeEscalationCall`, extracted as a shared private method), minus the elapsed-time gate, since a confirmed failure means waiting serves no purpose | ✅ |
+| 14.6.3 | `WebhookController`'s `statuses[]` handling calls `escalateOnDeliveryFailure` the moment a `failed` status with `errors` arrives, for whichever phone it names | ✅ |
+| 14.6.4 | Durable fix (approved Meta template with quick-reply buttons for job offers, so delivery doesn't depend on a live 24h session — same class of fix as `technician_welcome`, see 3.1) intentionally **not** done here — needs real Meta template review/approval; this is the interim mitigation, not a replacement | ❌ Deferred by explicit user choice |
+| 14.6.5 | Unit tests: `technician-offer-escalation.service.spec.ts` (`escalateOnDeliveryFailure` — immediate call, no session, wrong state, already-escalated), `webhook.controller.spec.ts` (escalates on failed+errors, not on read/no-errors, survives the escalation check itself throwing) | ✅ |
+| 14.6.6 | Full backend suite green (73 suites / 615 tests), `tsc --noEmit` clean, coverage gate passing (96.8%/87.86%/92.15%/97.16%) | ✅ |
+
 ### 14.5 Config
 | # | Task | Status |
 |---|------|--------|
@@ -1047,7 +1057,7 @@
 | AC-14.1 | Unit tests for provider, guard, controller, poller, `handlePhoneCallResponse()` — all passing | ✅ |
 | AC-14.2 | Full backend suite green after the change (72 suites / 590 tests) | ✅ |
 | AC-14.3 | Deployed to the production backend/EC2 (`PLIVO_*`/`VOICE_WEBHOOK_TOKEN` on the live host) | ✅ Deployed 2026-08-12 via `scripts/deploy.sh`; verified live — `GET /api/v1/voice/answer` returns correct XML per language, bad/missing token 401s |
-| AC-14.4 | Real end-to-end call placed and verified | 🔄 Two real calls so far (JOB-20260812-0003 → Selva), each surfacing a different bug, both fixed: Call #1 (12:57 UTC) — `GetDigits timeout="10"` cut the message off after 13s, before "press 1"; fixed to `timeout="35"`. Call #2 (14:33 UTC) — ran the full 38s window but was completely silent; root cause was the audio files being raw WAV mislabeled as `.mp3`, re-encoded to real MP3. A call where the technician hears the full message and responds by keypress has not yet been observed. Separately (Vetri attempt): carrier `Rejected` hangup (likely DND) and a WhatsApp 131047 "outside 24h window" failure on the original offer — both noted, not fixed (pre-existing/out of scope) |
+| AC-14.4 | Real end-to-end call placed and verified | ✅ **Confirmed 2026-08-19** (JOB-20260819-0001 → Selva): technician answered, heard the full prompt, accepted by keypress — `handlePhoneCallResponse()` routed the DTMF through the same accept logic a WhatsApp reply uses, job went to ACCEPTED. Two earlier real calls (JOB-20260812-0003 → Selva) had each surfaced a different bug before reaching this point, both fixed: Call #1 (12:57 UTC) — `GetDigits timeout="10"` cut the message off after 13s; fixed to `timeout="35"`. Call #2 (14:33 UTC) — ran the full 38s window but was silent; root cause was WAV mislabeled as `.mp3`, re-encoded to real MP3. Separately (Vetri attempt): carrier `Rejected` hangup (likely DND, still unaddressed) and a WhatsApp 131047 failure on the original offer — **fixed 2026-08-19, see 14.6** |
 | AC-14.5 | Plivo HMAC-V3 webhook signature validation implemented | ❌ Shared-secret token only — documented gap |
 | AC-14.6 | Post-hangup callback on `/voice/answer` handled cleanly (was 404ing) | ✅ POST handler added, returns 200 |
 

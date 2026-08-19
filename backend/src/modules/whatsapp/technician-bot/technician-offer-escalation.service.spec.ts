@@ -13,7 +13,8 @@ const mockGetClient = jest.fn(() => ({ scan: mockScan, get: mockGet }));
 const mockRedisService = { getClient: mockGetClient };
 
 const mockSaveSession = jest.fn().mockResolvedValue(undefined);
-const mockTechSessionService = { saveSession: mockSaveSession };
+const mockGetSession = jest.fn();
+const mockTechSessionService = { saveSession: mockSaveSession, getSession: mockGetSession };
 
 const mockPlaceCall = jest.fn().mockResolvedValue(undefined);
 const mockVoiceCallProvider = { placeCall: mockPlaceCall };
@@ -169,5 +170,45 @@ describe('TechnicianOfferEscalationService', () => {
     await service.checkPendingOffers();
 
     expect(mockPlaceCall).not.toHaveBeenCalled();
+  });
+
+  describe('escalateOnDeliveryFailure()', () => {
+    it('places a call immediately, without waiting for the 1-minute threshold', async () => {
+      mockGetSession.mockResolvedValue(baseSession({ offerSentAt: secondsAgo(2) }));
+
+      await service.escalateOnDeliveryFailure('919626191907');
+
+      expect(mockPlaceCall).toHaveBeenCalledWith({
+        to: '919626191907',
+        answerUrl: 'https://api.sevagan.co.in/api/v1/voice/answer?token=test-token&lang=EN',
+      });
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ escalationCallSentAt: expect.any(String) }),
+      );
+    });
+
+    it('does nothing when there is no session for the phone', async () => {
+      mockGetSession.mockResolvedValue(null);
+
+      await service.escalateOnDeliveryFailure('919000000000');
+
+      expect(mockPlaceCall).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the session is not awaiting a job offer', async () => {
+      mockGetSession.mockResolvedValue(baseSession({ state: TechnicianConversationState.IDLE }));
+
+      await service.escalateOnDeliveryFailure('919626191907');
+
+      expect(mockPlaceCall).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when a call was already escalated for this offer', async () => {
+      mockGetSession.mockResolvedValue(baseSession({ escalationCallSentAt: secondsAgo(5) }));
+
+      await service.escalateOnDeliveryFailure('919626191907');
+
+      expect(mockPlaceCall).not.toHaveBeenCalled();
+    });
   });
 });

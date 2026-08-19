@@ -79,6 +79,28 @@ export class TechnicianOfferEscalationService implements OnModuleInit, OnModuleD
     const elapsedMs = now - new Date(session.offerSentAt).getTime();
     if (elapsedMs < ESCALATION_AFTER_MS) return;
 
+    await this.placeEscalationCall(session);
+  }
+
+  /**
+   * WhatsApp accepts the job-offer send synchronously (returns a wamid) but
+   * can still fail delivery asynchronously, minutes or seconds later, via the
+   * webhook's status callback (e.g. 131047 — technician outside the 24h
+   * session window). WebhookController calls this the moment that failure
+   * status arrives so the technician gets a call right away instead of
+   * waiting out the full 60s timer for a message that will never arrive —
+   * see docs/EXECUTION_PLAN.md Phase 3.2 for the incident this fixes.
+   */
+  async escalateOnDeliveryFailure(phone: string): Promise<void> {
+    const session = await this.techSessionService.getSession(phone);
+    if (!session) return;
+    if (session.state !== TechnicianConversationState.JOB_OFFER_PENDING) return;
+    if (!session.offerSentAt || session.escalationCallSentAt) return;
+
+    await this.placeEscalationCall(session);
+  }
+
+  private async placeEscalationCall(session: TechnicianSession): Promise<void> {
     const token = this.configService.get<string>('voice.webhookToken', '');
     const publicApiUrl = this.configService.get<string>('publicApiUrl', '');
     const answerUrl = `${publicApiUrl}/api/v1/voice/answer?token=${encodeURIComponent(token)}&lang=${session.language}`;

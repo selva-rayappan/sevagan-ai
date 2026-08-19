@@ -26,6 +26,7 @@ import { CustomerBotService } from '../customer-bot/customer-bot.service';
 import { TechnicianBotService } from '../technician-bot/technician-bot.service';
 import { TechniciansRepository } from '../../technicians/technicians.repository';
 import { MessageTrailService } from '../../../infrastructure/messaging/message-trail.service';
+import { TechnicianOfferEscalationService } from '../technician-bot/technician-offer-escalation.service';
 
 @Public()
 @ApiExcludeController()
@@ -39,6 +40,7 @@ export class WebhookController {
     private readonly technicianBotService: TechnicianBotService,
     private readonly techniciansRepository: TechniciansRepository,
     private readonly messageTrail: MessageTrailService,
+    private readonly technicianOfferEscalation: TechnicianOfferEscalationService,
   ) {}
 
   /**
@@ -100,6 +102,15 @@ export class WebhookController {
                 .map((e) => `(#${e.code}) ${e.title}${e.message ? ` — ${e.message}` : ''}`)
                 .join('; ')}`,
             );
+            // WhatsApp accepts a send synchronously (this status callback is the
+            // only place a later delivery failure — e.g. 131047, technician
+            // outside the 24h session window — actually surfaces). If this
+            // recipient has a pending job offer, escalate to a call right away
+            // instead of leaving the 60s timer to blindly wait out a message
+            // that's now confirmed to never arrive.
+            this.technicianOfferEscalation.escalateOnDeliveryFailure(status.recipient_id).catch((err: Error) => {
+              this.logger.error(`Escalation-on-failure check errored for ${status.recipient_id}: ${err.message}`);
+            });
           }
         }
       }
