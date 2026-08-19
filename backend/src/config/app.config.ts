@@ -80,6 +80,10 @@ export const appConfig = () => ({
     audioUrls: {
       jobOfferEn: process.env.VOICE_JOB_OFFER_AUDIO_EN ?? 'https://sevagan.co.in/audio/job_offer_call_en.mp3',
       jobOfferTa: process.env.VOICE_JOB_OFFER_AUDIO_TA ?? 'https://sevagan.co.in/audio/job_offer_call_ta.mp3',
+      acceptedEn: process.env.VOICE_ACCEPTED_AUDIO_EN ?? 'https://sevagan.co.in/audio/job_accepted_call_en.mp3',
+      acceptedTa: process.env.VOICE_ACCEPTED_AUDIO_TA ?? 'https://sevagan.co.in/audio/job_accepted_call_ta.mp3',
+      rejectedEn: process.env.VOICE_REJECTED_AUDIO_EN ?? 'https://sevagan.co.in/audio/job_rejected_call_en.mp3',
+      rejectedTa: process.env.VOICE_REJECTED_AUDIO_TA ?? 'https://sevagan.co.in/audio/job_rejected_call_ta.mp3',
     },
   },
 });

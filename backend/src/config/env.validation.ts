@@ -135,6 +135,22 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   VOICE_JOB_OFFER_AUDIO_TA: string;
+
+  @IsString()
+  @IsOptional()
+  VOICE_ACCEPTED_AUDIO_EN: string;
+
+  @IsString()
+  @IsOptional()
+  VOICE_ACCEPTED_AUDIO_TA: string;
+
+  @IsString()
+  @IsOptional()
+  VOICE_REJECTED_AUDIO_EN: string;
+
+  @IsString()
+  @IsOptional()
+  VOICE_REJECTED_AUDIO_TA: string;
 }
 
 export function validate(config: Record<string, unknown>) {

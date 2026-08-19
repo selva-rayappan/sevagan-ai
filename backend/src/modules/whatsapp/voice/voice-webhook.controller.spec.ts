@@ -10,6 +10,10 @@ const mockTechnicianBotService = { handlePhoneCallResponse: mockHandlePhoneCallR
 const configValues: Record<string, string> = {
   'voice.audioUrls.jobOfferEn': 'https://sevagan.co.in/audio/job_offer_call_en.mp3',
   'voice.audioUrls.jobOfferTa': 'https://sevagan.co.in/audio/job_offer_call_ta.mp3',
+  'voice.audioUrls.acceptedEn': 'https://sevagan.co.in/audio/job_accepted_call_en.mp3',
+  'voice.audioUrls.acceptedTa': 'https://sevagan.co.in/audio/job_accepted_call_ta.mp3',
+  'voice.audioUrls.rejectedEn': 'https://sevagan.co.in/audio/job_rejected_call_en.mp3',
+  'voice.audioUrls.rejectedTa': 'https://sevagan.co.in/audio/job_rejected_call_ta.mp3',
   'voice.webhookToken': 'test-token',
   publicApiUrl: 'https://api.sevagan.co.in',
 };
@@ -59,6 +63,11 @@ describe('VoiceWebhookController', () => {
       const xml = controller.answer(Language.EN);
       expect(xml).toContain('timeout="35"');
     });
+
+    it('carries the language through to the DTMF action URL', () => {
+      const xml = controller.answer(Language.TA);
+      expect(xml).toContain('/voice/dtmf?token=test-token&lang=TA');
+    });
   });
 
   describe('answerPostCallback()', () => {
@@ -88,6 +97,33 @@ describe('VoiceWebhookController', () => {
     it('still returns Hangup XML even if the bot service call fails', async () => {
       mockHandlePhoneCallResponse.mockRejectedValueOnce(new Error('boom'));
       const xml = await controller.dtmf({ To: '919626191907', Digits: '1' });
+      expect(xml).toContain('<Hangup/>');
+    });
+
+    it('plays the English "accepted" confirmation on digit 1', async () => {
+      const xml = await controller.dtmf({ To: '919626191907', Digits: '1' }, Language.EN);
+      expect(xml).toContain('job_accepted_call_en.mp3');
+      expect(xml).not.toContain('rejected');
+    });
+
+    it('plays the Tamil "accepted" confirmation on digit 1 when lang=TA', async () => {
+      const xml = await controller.dtmf({ To: '919626191907', Digits: '1' }, Language.TA);
+      expect(xml).toContain('job_accepted_call_ta.mp3');
+    });
+
+    it('plays the "rejected" confirmation on digit 2', async () => {
+      const xml = await controller.dtmf({ To: '919626191907', Digits: '2' }, Language.EN);
+      expect(xml).toContain('job_rejected_call_en.mp3');
+    });
+
+    it('plays the Tamil "rejected" confirmation on digit 2 when lang=TA', async () => {
+      const xml = await controller.dtmf({ To: '919626191907', Digits: '2' }, Language.TA);
+      expect(xml).toContain('job_rejected_call_ta.mp3');
+    });
+
+    it('plays no confirmation for a digit other than 1 or 2', async () => {
+      const xml = await controller.dtmf({ To: '919626191907', Digits: '5' }, Language.EN);
+      expect(xml).not.toContain('<Play>');
       expect(xml).toContain('<Hangup/>');
     });
   });

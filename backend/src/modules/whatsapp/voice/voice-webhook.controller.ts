@@ -37,7 +37,7 @@ export class VoiceWebhookController {
 
     const token = this.configService.get<string>('voice.webhookToken', '');
     const publicApiUrl = this.configService.get<string>('publicApiUrl', '');
-    const actionUrl = `${publicApiUrl}/api/v1/voice/dtmf?token=${encodeURIComponent(token)}`;
+    const actionUrl = `${publicApiUrl}/api/v1/voice/dtmf?token=${encodeURIComponent(token)}&lang=${lang === Language.TA ? Language.TA : Language.EN}`;
 
     return [
       '<?xml version="1.0" encoding="UTF-8"?>',
@@ -77,7 +77,7 @@ export class VoiceWebhookController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(VoiceWebhookTokenGuard)
   @Header('Content-Type', XML_HEADER)
-  async dtmf(@Body() body: Record<string, string>): Promise<string> {
+  async dtmf(@Body() body: Record<string, string>, @Query('lang') lang?: string): Promise<string> {
     const technicianPhone = body.To;
     const digits = body.Digits;
 
@@ -89,6 +89,28 @@ export class VoiceWebhookController {
       this.logger.warn(`DTMF callback missing To/Digits: ${JSON.stringify(body)}`);
     }
 
-    return '<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>';
+    // Spoken confirmation, matching the WhatsApp accept/reject tone. Same
+    // Tamil-TTS constraint as the main prompt — pre-recorded, not <Speak>.
+    const isTa = lang === Language.TA;
+    let confirmationUrl: string | undefined;
+    if (digits === '1') {
+      confirmationUrl = this.configService.get<string>(
+        isTa ? 'voice.audioUrls.acceptedTa' : 'voice.audioUrls.acceptedEn',
+        '',
+      );
+    } else if (digits === '2') {
+      confirmationUrl = this.configService.get<string>(
+        isTa ? 'voice.audioUrls.rejectedTa' : 'voice.audioUrls.rejectedEn',
+        '',
+      );
+    }
+
+    return [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<Response>',
+      ...(confirmationUrl ? [`  <Play>${confirmationUrl}</Play>`] : []),
+      '  <Hangup/>',
+      '</Response>',
+    ].join('\n');
   }
 }
