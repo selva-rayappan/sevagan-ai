@@ -326,27 +326,35 @@ describe('CustomerBotService', () => {
   // ─── Service selection ───────────────────────────────────────────────────────
 
   describe('AWAITING_SERVICE state', () => {
-    // MVP: the location-request step is paused (see CustomerBotService.
-    // handleServiceSelection) — selecting a service now skips straight to
-    // the time-slot menu with a placeholder location.
-    it('skips the location request and moves straight to the time-slot menu when customer selects a valid service number', async () => {
+    // MVP: the location-request and time-slot-selection steps are paused
+    // (see CustomerBotService.handleServiceSelection) — selecting a service
+    // now creates the job immediately with placeholder location/time.
+    it('skips location and time-slot requests and creates the job immediately when customer selects a valid service number', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(
         makeSession({ state: ConversationState.AWAITING_SERVICE, pendingServiceCategoryIds: ['cat-1'] }),
       );
       mockFindById.mockResolvedValue({ id: 'cat-1', name: 'Electrical' });
+      mockCreateJob.mockResolvedValue({
+        id: 'job-1',
+        jobNumber: 'JOB-20260614-0001',
+        serviceCategory: { name: 'Electrical', nameTa: 'மின்சாரம்' },
+      });
 
       await service.handleMessage(makeTextMessage('1'), 'Rajesh');
 
       expect(mockFindById).toHaveBeenCalledWith('cat-1');
-      expect(mockSendInteractiveList).toHaveBeenCalled();
-      expect(mockSaveSession).toHaveBeenCalledWith(
+      expect(mockSendInteractiveList).not.toHaveBeenCalled();
+      expect(mockCreateJob).toHaveBeenCalledWith(
         expect.objectContaining({
-          state: ConversationState.AWAITING_TIME,
-          selectedCategoryId: 'cat-1',
-          selectedCategoryName: 'Electrical',
+          customerId: 'cust-1',
+          serviceCategoryId: 'cat-1',
           location: expect.any(String),
+          scheduledTimeText: expect.any(String),
         }),
+      );
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: ConversationState.IDLE }),
       );
     });
 
@@ -381,22 +389,25 @@ describe('CustomerBotService', () => {
       );
     });
 
-    it('matches a free-text service description via the AI category mapper and skips straight to the time-slot menu', async () => {
+    it('matches a free-text service description via the AI category mapper and creates the job immediately', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
       mockGetSession.mockResolvedValue(makeSession({ state: ConversationState.AWAITING_SERVICE }));
       mockClassifyIntent.mockResolvedValueOnce({ intent: Intent.REQUEST_SERVICE, confidence: 0.9, detectedLanguage: Language.EN });
       mockMapToCategory.mockResolvedValueOnce({ categoryId: 'cat-1', categoryName: 'Electrical', confidence: 0.85 });
+      mockCreateJob.mockResolvedValue({
+        id: 'job-1',
+        jobNumber: 'JOB-20260614-0001',
+        serviceCategory: { name: 'Electrical', nameTa: 'மின்சாரம்' },
+      });
 
       await service.handleMessage(makeTextMessage('my fan is not working'), 'Rajesh');
 
       expect(mockMapToCategory).toHaveBeenCalledWith('my fan is not working');
+      expect(mockCreateJob).toHaveBeenCalledWith(
+        expect.objectContaining({ serviceCategoryId: 'cat-1' }),
+      );
       expect(mockSaveSession).toHaveBeenCalledWith(
-        expect.objectContaining({
-          state: ConversationState.AWAITING_TIME,
-          selectedCategoryId: 'cat-1',
-          selectedCategoryName: 'Electrical',
-          location: expect.any(String),
-        }),
+        expect.objectContaining({ state: ConversationState.IDLE }),
       );
     });
 
@@ -588,7 +599,12 @@ describe('CustomerBotService', () => {
   */
 
   // ─── Time + job creation ─────────────────────────────────────────────────────
-
+  // MVP: AWAITING_TIME is currently unreachable — showTimeSlotMenu()/
+  // handleTime() are commented out in CustomerBotService (see the note
+  // there); job creation now happens directly from AWAITING_SERVICE via
+  // createJobFromSession(), covered by the AWAITING_SERVICE state tests
+  // above. Kept here, commented, for a clean revival alongside the source.
+  /*
   describe('AWAITING_TIME state', () => {
     it('creates a job using the selected slot label and sends confirmation containing the job number', async () => {
       mockUpsert.mockResolvedValue(makeCustomer());
@@ -672,6 +688,7 @@ describe('CustomerBotService', () => {
       expect(saved.pendingTimeSlots).toBeUndefined();
     });
   });
+  */
 
   // ─── HELP command ────────────────────────────────────────────────────────────
 

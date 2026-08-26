@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-08-19)
+## Progress Overview (Last Updated: 2026-08-26)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -26,7 +26,7 @@
 | Phase 11 | Reports | ✅ COMPLETE |
 | Phase 12 | Security | ✅ COMPLETE |
 | Phase 13 | Production Deployment | 🔄 IN PROGRESS — artifacts ready, EC2 execution pending |
-| Phase 14 | Technician Job-Offer Voice Escalation | ✅ COMPLETE — job offers (the primary notification) now deliver reliably outside the 24h WhatsApp session via approved templates, validated live 2026-08-19. The voice-call *fallback*'s "Invalid Answer XML" hangups were finally root-caused (via Plivo support's own parse trace, not our own diagnostics) as a genuine bug: a bare `&` in the `<GetDigits action="...">` attribute, invalid per the XML spec — fixed with proper XML-entity escaping, unconfirmed on a real call yet. Documented non-blocking gaps: Plivo HMAC-V3 signature, carrier-level DND/NCPR rejection on one technician's number |
+| Phase 14 | Technician Job-Offer Voice Escalation | 🔄 IN PROGRESS — job offers (the primary notification) deliver reliably outside the 24h WhatsApp session via approved templates, validated live 2026-08-19. The voice-call fallback's "Invalid Answer XML" hangups were root-caused as a genuine bug (unescaped `&` in `<GetDigits action="...">`) and fixed, unconfirmed on a real call yet. **New (2026-08-26, §14.11):** the "Job Accepted" confirmation after a phone-call accept needs the same template treatment the job offer got — code + fallback in place, but blocked on submitting/approving a new `technician_job_accepted_{en,ta}` Meta template. Documented non-blocking gaps: Plivo HMAC-V3 signature, carrier-level DND/NCPR rejection on one technician's number |
 
 ---
 
@@ -146,7 +146,7 @@
 
 #### 4.1 State Machine
 - ✅ `ConversationStateService` (Redis, 24h TTL)
-- ✅ States: IDLE → AWAITING_LANGUAGE → AWAITING_SERVICE → AWAITING_LOCATION → AWAITING_TIME → (job created) → IDLE. **As of 2026-08-19, AWAITING_LOCATION is skipped** (paused, see 4.2) — the live path is AWAITING_SERVICE → AWAITING_TIME directly; the state and its handler remain defined for a clean revival.
+- ✅ States: IDLE → AWAITING_LANGUAGE → AWAITING_SERVICE → AWAITING_LOCATION → AWAITING_TIME → (job created) → IDLE. **As of 2026-08-19, AWAITING_LOCATION is skipped**, and **as of 2026-08-26, AWAITING_TIME is also skipped** (both paused, see 4.2) — the live path is AWAITING_SERVICE → (job created) directly, via the new `createJobFromSession()` helper; both states and their handlers remain defined for a clean revival.
 
 #### 4.2 Customer Bot Flows
 - ✅ Welcome message (added 2026-07-21): `handleIdle()` now sends `customer.welcome` (plain text) before the language-selection buttons, so first-time contacts (including those arriving via the website's `wa.me` links) get a greeting instead of jumping straight to language buttons. `customer.welcome` previously existed in `en.json`/`ta.json` but was unused/dead code.
@@ -154,7 +154,8 @@
 - ✅ Service category selection — interactive list message (tap to select), generated live from `ServiceCategoriesRepository.findActive()` — admin add/hold/remove in the Services tab immediately changes what customers see; menu order = `createdAt asc`, matching the original seeded 1-8 numbering; selection stored per-session as `pendingServiceCategoryIds` so a race with a mid-conversation admin change fails safely and re-shows the menu
 - 🔄 **MVP (2026-08-19): location-request and amount-confirmation steps paused** to shorten the customer flow, to be revived when the business moves to a commission-based pricing model. Location: `handleServiceSelection()`/`tryAiServiceMatch()` no longer send `sendLocationRequest` or wait in `AWAITING_LOCATION` — they set `job.location` straight to a translated placeholder (`customer.location_deferred`, EN "To be shared with the technician by phone") and go directly to the time-slot menu; `handleLocation()` is commented out, not deleted. Amount confirmation: `TechnicianBotService.handleCompleteCommand()` no longer sends `confirm_amount` buttons or waits for a Yes/No reply — the customer gets a plain `customer.job_completed_simple` notice and moves straight into the rating flow; `CustomerBotService.handleAmountConfirmation()`/`sendAmountConfirmationPrompt()` are commented out, not deleted. See the matching Phase 5 note (5.2) for the technician side, and 4.2's invoice-sharing line below for the third paused step. To revive any of these: search the affected files for "MVP:" comments referencing this date and uncomment the blocks named there.
 - ~~Location capture — sent as an interactive `location_request_message` (native "Send Location" button) with typed free text as a fully-supported fallback (`WhatsAppProvider.sendLocationRequest`, added 2026-07-20). A native location share always has a tappable `https://www.google.com/maps?q=lat,lng` link appended to `job.location` (added 2026-07-21) — previously a name/address-only pin rendered as unclickable plain text in the technician's job offer message; typed free-text locations are unaffected since there are no coordinates to link.~~ *(paused 2026-08-19, see MVP note above)*
-- ✅ Scheduled time capture — interactive list message (tap to select a slot), auto-regenerates on an invalid/stale reply
+- 🔄 **MVP (2026-08-26): time-slot-selection step paused** too, for the same reason (shorten the customer flow ahead of the commission-based model). `handleServiceSelection()`/`tryAiServiceMatch()` no longer send the time-slot list or wait in `AWAITING_TIME` — they set `scheduledTimeText` straight to a translated placeholder (`customer.time_deferred`, EN "ASAP") and call the job straight through. Job-creation/confirmation/session-reset/auto-assign logic was extracted from the old `handleTime()` into a new shared `createJobFromSession()` so both the live skip-ahead path and the paused `handleTime()` (kept, commented) can call it. `showTimeSlotMenu()`/`handleTime()` commented out, not deleted — `time-slot.util.ts`'s `generateTimeSlots()` itself is untouched and ready to reuse on revival.
+- ~~Scheduled time capture — interactive list message (tap to select a slot), auto-regenerates on an invalid/stale reply~~ *(paused 2026-08-26, see MVP note above)*
 - ✅ Job creation with `JOB-YYYYMMDD-NNNN` number format
 - ✅ TRACK, CANCEL, HELP commands
 - ~~Amount confirmation flow (AWAITING_AMOUNT_CONFIRMATION) — interactive buttons (Yes Correct / No Incorrect)~~ *(paused 2026-08-19, see MVP note above)*
@@ -339,8 +340,10 @@ display).
 #### 9.1 Invoice Generation
 - ✅ `PdfGeneratorService` — bilingual (EN/TA) PDF invoice via `pdfkit`
 - ✅ `InvoiceService.generateInvoice(jobId)` — idempotent (returns existing invoice if already generated), generates invoice number `INV-YYYYMMDD-NNNN` via Redis counter
-- ✅ PDF uploaded to MinIO (`invoices/{invoiceNumber}.pdf`), 7-day presigned URL sent to customer via `sendDocument`
-- ✅ Invoice status DRAFT → SENT on successful delivery; invoice record persists even if PDF generation fails (retryable via `getInvoicePdfUrl`)
+- ✅ PDF uploaded to MinIO (`invoices/{invoiceNumber}.pdf`) — still generated and stored on every completion (`Payment` rows still need a real `invoice.id`, and admin can view/download via `GET /invoices/:id/pdf`)
+- 🔄 **MVP (2026-08-26): invoice no longer pushed to the customer over WhatsApp** — `InvoiceService.generateInvoice()`'s `whatsapp.sendDocument()` call is commented out, not deleted (revive by uncommenting it and restoring the `SENT` status update below it). Invoice status stays `DRAFT` after generation instead of advancing to `SENT`, since `SENT` would now be inaccurate. The customer-side trigger for this (amount confirmation) was already paused earlier the same day (see Phase 4 4.2); this closes the one remaining live invoice-sending path, the admin "Complete Job" endpoint (`POST /admin/jobs/:id/complete`, added same day) which also calls `generateInvoice()`.
+- ~~PDF... 7-day presigned URL sent to customer via `sendDocument`~~ *(paused 2026-08-26, see MVP note above)*
+- ~~Invoice status DRAFT → SENT on successful delivery~~ *(paused 2026-08-26 — stays DRAFT now)*; invoice record persists even if PDF generation fails (retryable via `getInvoicePdfUrl`)
 
 #### 9.2 Payments
 - ✅ `PaymentService.recordCashPayment` (status COMPLETED) / `recordUpiPayment` (status PENDING)
@@ -351,7 +354,7 @@ display).
 - ✅ `GET /api/v1/admin/invoices`, `GET /:id`, `GET /:id/pdf` (redirect to presigned URL), `POST /:id/confirm-payment`
 
 #### Acceptance Criteria
-- ✅ Invoice generated and WhatsApp document sent on job completion confirmation
+- ~~Invoice generated and WhatsApp document sent on job completion confirmation~~ *(WhatsApp send paused 2026-08-26 — invoice still generated and stored, see 9.1)*
 - ✅ CASH payment recorded as COMPLETED; UPI payment recorded as PENDING with payment link sent
 - ✅ Admin can confirm a pending UPI payment, marking invoice PAID
 - ✅ **263 tests, 31 suites — all passing**; invoice/payment modules at 100% statement coverage
@@ -492,7 +495,7 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 
 ---
 
-## Phase 14 — Technician Job-Offer Voice Escalation ✅ COMPLETE
+## Phase 14 — Technician Job-Offer Voice Escalation 🔄 IN PROGRESS
 
 **Goal:** If a technician hasn't responded to a job offer within 1 minute, place an automated phone call (Plivo) that plays the offer in their language and lets them accept/reject by keypress — same outcome as a WhatsApp button reply.
 
@@ -579,3 +582,21 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
 - ✅ Reject confirmation (digit `2`) unchanged for both languages — not part of this request
 - ✅ Unit tests updated: EN accept asserts the `<Speak>` text and that it no longer references `job_accepted_call_en.mp3`; TA accept asserts the pre-recorded audio still plays and no `<Speak>` appears
 - ✅ Full backend suite green (73 suites / 613 tests), `tsc --noEmit` clean, coverage 97.21%/88%/92.98%/97.62%, `voice-webhook.controller.ts` at 100% across all four metrics
+
+#### 14.11 "Job Accepted" Confirmation Also Needs a Template, Not Just the Job Offer 🔄 IN PROGRESS
+**Requirement (2026-08-26):** after a technician accepts by pressing "1" on the escalation call, their WhatsApp should show "Job Accepted" and proceed exactly as if they'd tapped Accept in WhatsApp. The accept *logic* already does this — `handlePhoneCallResponse()` routes DTMF through the identical `handleOfferResponse()` → `acceptJob()` path a WhatsApp reply uses, no separate code path. But `acceptJob()`'s technician-facing confirmation was still `sendInteractiveButtons` — free-form, requiring an open 24h session window. A technician who only ever answers the phone call never sends WhatsApp anything themselves, so that window is very likely closed and the confirmation would silently fail to deliver (131047) — the same root cause already fixed twice in this project (`technician_welcome`, 3.1; the job offer itself, 14.7).
+- ✅ `acceptJob()` now tries `sendTemplate` first (quick-reply payloads `start_job`/`decline_job`; `handleAcceptedState()`'s `isStart`/`isDecline` checks extended to recognize them alongside the existing `1`/`start`/`2`/`decline`), and **falls back to the original free-form `sendInteractiveButtons`** if the template send throws — deliberately not unconditional-only like 14.7's job-offer switch, since the template names below aren't approved yet and an unconditional switch would regress the *already-working* WhatsApp-quick-reply-tap path (where tapping the button itself opens the window, so the old free-form send was fine) for as long as approval is pending. The fallback reproduces today's known gap for the phone-call-only path — no worse than before — and stops firing automatically the moment the template is approved, no further code change needed.
+- ✅ Config: `whatsapp.templates.jobAcceptedEn` / `jobAcceptedTa` (env `WA_TEMPLATE_JOB_ACCEPTED_{EN,TA}`) added to `app.config.ts`, defaulting to placeholder names `technician_job_accepted_en` / `technician_job_accepted_ta`.
+- ❌ **Not yet submitted to Meta** — needed before the phone-call-accept path is actually fixed (the fallback keeps the WhatsApp-tap path working in the meantime). Body (named params, mirroring the existing `technician.job_accepted` translation 1:1 so `bodyParams` line up):
+  ```
+  ✅ Job Accepted!
+
+  Job No: {{job_number}}
+  Customer: {{customer_name}}
+  📞 {{customer_phone}}
+  Location: {{location}}
+  Time: {{scheduled_time}}
+  ```
+  UTILITY category (this is a transactional status update, not marketing — submit as UTILITY from the start, unlike the job-offer EN template's accidental MARKETING reclassification in 14.7). Two QUICK_REPLY buttons: "▶️ Start" / "❌ Decline" (EN — payloads `start_job`/`decline_job`), "▶️ தொடங்கு" / "❌ மறு" (TA, same payloads). Submit EN and TA as separate template names (not language variants of one name) per the precedent in 14.7/3.1 — languages have needed separate names both times something like this has been submitted so far.
+- ✅ Unit tests: `technician-bot.service.spec.ts` — accept via phone DTMF asserts `sendTemplate` (not `sendInteractiveButtons`) with the right quick-reply payloads; accept via the customer-phone-number test updated to check `bodyParams` instead of interactive-button body text; new test for the `start_job` quick-reply payload advancing `JOB_ACCEPTED` → `JOB_IN_PROGRESS`; new test confirming the fallback to `sendInteractiveButtons` (with `start_job`/`decline_job` as the button ids, matching the quick-reply payloads) when `sendTemplate` rejects
+- ✅ Full backend suite green (73 suites / 612 tests), `tsc --noEmit` clean

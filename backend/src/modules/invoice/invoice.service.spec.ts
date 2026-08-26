@@ -110,7 +110,9 @@ describe('InvoiceService', () => {
       expect(mockGenerateInvoicePdf).not.toHaveBeenCalled();
     });
 
-    it('creates an invoice, generates a PDF, uploads it, and sends it via WhatsApp', async () => {
+    // MVP (2026-08-26): invoice is generated and stored, but no longer
+    // pushed to the customer over WhatsApp — see invoice.service.ts.
+    it('creates an invoice, generates a PDF, and uploads it, but does not send it to the customer', async () => {
       mockFindUniqueJob.mockResolvedValue(makeJob());
       mockFindByJobId.mockResolvedValue(null);
       const created = { id: 'inv-1', invoiceNumber: 'INV-20260630-0001' };
@@ -138,14 +140,8 @@ describe('InvoiceService', () => {
         'application/pdf',
       );
       expect(mockSetPdfUrl).toHaveBeenCalledWith('inv-1', 'invoices/INV-20260630-0001.pdf');
-      expect(mockUpdateStatus).toHaveBeenCalledWith('inv-1', 'SENT');
-      expect(mockSendDocument).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: '919876543210',
-          filename: 'INV-20260630-0001.pdf',
-          link: 'http://localhost:3001/api/v1/invoices/inv-1/pdf',
-        }),
-      );
+      expect(mockUpdateStatus).toHaveBeenCalledWith('inv-1', 'DRAFT');
+      expect(mockSendDocument).not.toHaveBeenCalled();
     });
 
     it('uses the Tamil service category name on the PDF for a Tamil-language customer', async () => {

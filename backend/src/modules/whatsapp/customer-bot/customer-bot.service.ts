@@ -166,7 +166,7 @@ export class CustomerBotService {
           return true;
         case Intent.REQUEST_SERVICE:
           if (session.state !== ConversationState.AWAITING_SERVICE) return false;
-          return this.tryAiServiceMatch(session, trimmed);
+          return this.tryAiServiceMatch(session, trimmed, customer);
         default:
           return false;
       }
@@ -176,7 +176,7 @@ export class CustomerBotService {
     }
   }
 
-  private async tryAiServiceMatch(session: ConversationSession, text: string): Promise<boolean> {
+  private async tryAiServiceMatch(session: ConversationSession, text: string, customer: Customer): Promise<boolean> {
     const match = await this.categoryMapper.mapToCategory(text);
     if (!match || match.confidence < 0.6) {
       return false;
@@ -193,8 +193,13 @@ export class CustomerBotService {
     //   body: this.translation.translate('customer.ask_location', session.language),
     // });
     session.location = this.translation.translate('customer.location_deferred', session.language);
-    session.state = ConversationState.AWAITING_TIME;
-    await this.showTimeSlotMenu(session);
+
+    // MVP: time-slot selection paused until the commission-based model
+    // returns — see handleServiceSelection() below for the full note.
+    // session.state = ConversationState.AWAITING_TIME;
+    // await this.showTimeSlotMenu(session);
+    const scheduledTimeText = this.translation.translate('customer.time_deferred', session.language);
+    await this.createJobFromSession(session, customer, scheduledTimeText);
     return true;
   }
 
@@ -212,19 +217,20 @@ export class CustomerBotService {
         await this.handleLanguageSelection(session, text, customer);
         break;
       case ConversationState.AWAITING_SERVICE:
-        await this.handleServiceSelection(session, text);
+        await this.handleServiceSelection(session, text, customer);
         break;
-      // MVP: both states below are currently unreachable — the steps that used
-      // to transition into them (location request, amount confirmation) are
-      // paused; see handleServiceSelection()/handleLocation() and
+      // MVP: all three states below are currently unreachable — the steps that
+      // used to transition into them (location request, time-slot selection,
+      // amount confirmation) are paused; see handleServiceSelection()/
+      // handleLocation(), showTimeSlotMenu()/handleTime(), and
       // handleAmountConfirmation() for the revival notes. Left wired here
       // (rather than deleted) so re-enabling those steps is a pure uncomment.
       // case ConversationState.AWAITING_LOCATION:
       //   await this.handleLocation(session, message, text);
       //   break;
-      case ConversationState.AWAITING_TIME:
-        await this.handleTime(session, text, customer);
-        break;
+      // case ConversationState.AWAITING_TIME:
+      //   await this.handleTime(session, text, customer);
+      //   break;
       // case ConversationState.AWAITING_AMOUNT_CONFIRMATION:
       //   await this.handleAmountConfirmation(session, text);
       //   break;
@@ -316,6 +322,7 @@ export class CustomerBotService {
   private async handleServiceSelection(
     session: ConversationSession,
     text: string,
+    customer: Customer,
   ): Promise<void> {
     const categoryIds = session.pendingServiceCategoryIds ?? [];
     const choice = parseInt(text.trim(), 10);
@@ -345,8 +352,14 @@ export class CustomerBotService {
     //   body: this.translation.translate('customer.ask_location', session.language),
     // });
     session.location = this.translation.translate('customer.location_deferred', session.language);
-    session.state = ConversationState.AWAITING_TIME;
-    await this.showTimeSlotMenu(session);
+
+    // MVP: time-slot selection step commented out to shorten the customer flow
+    // (revive by uncommenting this block and removing the time_deferred
+    // placeholder below, and see the matching note in tryAiServiceMatch() above).
+    // session.state = ConversationState.AWAITING_TIME;
+    // await this.showTimeSlotMenu(session);
+    const scheduledTimeText = this.translation.translate('customer.time_deferred', session.language);
+    await this.createJobFromSession(session, customer, scheduledTimeText);
   }
 
   // MVP: location-request step paused (see handleServiceSelection()/
@@ -379,6 +392,11 @@ export class CustomerBotService {
   }
   */
 
+  // MVP: time-slot selection step paused (see handleServiceSelection()/
+  // tryAiServiceMatch() above) — kept here, commented, for a clean revival
+  // when the commission-based model returns and scheduling windows are
+  // needed again for technician routing.
+  /*
   private async showTimeSlotMenu(session: ConversationSession): Promise<void> {
     const slots = generateTimeSlots(new Date(), session.language);
     session.pendingTimeSlots = slots.map((s) => s.label);
@@ -409,6 +427,20 @@ export class CustomerBotService {
       return;
     }
 
+    await this.createJobFromSession(session, customer, scheduledTimeText);
+  }
+  */
+
+  /**
+   * Creates the job, sends the confirmation, resets the session, and
+   * triggers auto-assignment — shared by the live skip-ahead path above and
+   * the paused handleTime() above once it's revived.
+   */
+  private async createJobFromSession(
+    session: ConversationSession,
+    customer: Customer,
+    scheduledTimeText: string,
+  ): Promise<void> {
     const job = await this.jobsService.createJob({
       customerId: customer.id,
       serviceCategoryId: session.selectedCategoryId!,

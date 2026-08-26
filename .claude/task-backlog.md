@@ -316,6 +316,7 @@
 |---|------|--------|
 | 4.6.1 | Free-text time input accepted ("Today 4 PM", "Tomorrow 10 AM", "ASAP") | ✅ |
 | 4.6.2 | Raw text stored in job `description` field as "Requested time: ..." | ✅ |
+| 4.6.3 | MVP: time-slot-selection step paused (customer no longer asked to pick a slot) — `scheduledTimeText` set to a translated "ASAP" placeholder and the job is created straight from AWAITING_SERVICE via the new shared `createJobFromSession()` helper; `showTimeSlotMenu()`/`handleTime()` commented out, not deleted, to be revived with the commission-based model — see `docs/EXECUTION_PLAN.md` §4.2 (2026-08-26) | ✅ |
 
 ### 4.7 Job Creation
 | # | Task | Status |
@@ -704,6 +705,7 @@
 | 9.1.1 | Create `InvoiceService` | ✅ |
 | 9.1.2 | `generateInvoice(jobId)` — generate `invoiceNumber` (INV-YYYYMMDD-NNNN), create `Invoice` record | ✅ |
 | 9.1.3 | Triggered automatically on `job.amount_confirmed` | ✅ |
+| 9.1.4 | MVP: invoice PDF no longer sent to the customer over WhatsApp after job completion — `generateInvoice()`'s `sendDocument()` call commented out, not deleted; invoice status stays `DRAFT` (was advancing to `SENT`). PDF is still generated/stored (Payment rows still need a real `invoice.id`; admin can still view/download via `GET /invoices/:id/pdf`) — see `docs/EXECUTION_PLAN.md` §9.1 (2026-08-26) | ✅ |
 
 ### 9.2 PDF Generation
 | # | Task | Status |
@@ -1098,6 +1100,16 @@
 | 14.10.3 | Reject confirmation (digit "2") unchanged for both languages — out of scope for this request | ✅ |
 | 14.10.4 | Unit tests: EN accept asserts the `<Speak>` text and no reference to `job_accepted_call_en.mp3`; TA accept asserts the pre-recorded audio still plays and no `<Speak>` appears | ✅ |
 | 14.10.5 | Full backend suite green (73 suites / 613 tests), `tsc --noEmit` clean, coverage 97.21%/88%/92.98%/97.62%, `voice-webhook.controller.ts` 100% all four metrics | ✅ |
+
+### 14.11 "Job Accepted" Confirmation Needs the Same Template Treatment as the Job Offer (2026-08-26)
+| # | Task | Status |
+|---|------|--------|
+| 14.11.1 | Requirement: after accepting via the escalation phone call (DTMF "1"), WhatsApp should show "Job Accepted" and proceed exactly as a WhatsApp-tap accept would. The accept *logic* already shares one path (`handlePhoneCallResponse` → `handleOfferResponse` → `acceptJob`) — but `acceptJob()`'s technician confirmation was free-form `sendInteractiveButtons`, which needs an open 24h session; a phone-only technician never opens one via WhatsApp, so it very likely silently failed (131047) — same class as `technician_welcome` (3.1) and the job offer itself (14.7) | ✅ Diagnosed |
+| 14.11.2 | `acceptJob()`: try `sendTemplate` (`whatsapp.templates.jobAcceptedEn`/`jobAcceptedTa`, quick-reply payloads `start_job`/`decline_job`) first, fall back to the original `sendInteractiveButtons` on failure — not unconditional like 14.7's job-offer switch, since the template isn't approved yet and an unconditional switch would regress the already-working WhatsApp-tap path in the meantime. `handleAcceptedState()`'s `isStart`/`isDecline` extended to recognize the new payloads | ✅ |
+| 14.11.3 | Config: `whatsapp.templates.jobAcceptedEn`/`jobAcceptedTa` (env `WA_TEMPLATE_JOB_ACCEPTED_{EN,TA}`) added to `app.config.ts`, defaulting to placeholder names `technician_job_accepted_en`/`_ta` | ✅ |
+| 14.11.4 | Template body drafted for Meta submission (named params `job_number`/`customer_name`/`customer_phone`/`location`/`scheduled_time`, mirroring `technician.job_accepted` 1:1; UTILITY category; QUICK_REPLY buttons Start/Decline in both languages) — see `docs/EXECUTION_PLAN.md` §14.11 for the exact text | ❌ Not yet submitted to Meta |
+| 14.11.5 | Unit tests: DTMF accept asserts `sendTemplate` with the right quick-reply payloads (not `sendInteractiveButtons`); customer-phone-number test updated to check `bodyParams`; new `start_job` quick-reply test; new fallback test (`sendTemplate` rejects → `sendInteractiveButtons` with `start_job`/`decline_job` ids) | ✅ |
+| 14.11.6 | Full backend suite green (73 suites / 612 tests), `tsc --noEmit` clean | ✅ |
 
 ### Acceptance Criteria
 | # | Criterion | Status |

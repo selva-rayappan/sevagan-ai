@@ -1,10 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Technician, Job, Customer } from '@prisma/client';
 import { TranslationService } from '../../../infrastructure/i18n/translation.service';
 import {
   WHATSAPP_PROVIDER,
   WhatsAppProvider,
 } from '../../../infrastructure/messaging/whatsapp.provider.interface';
+import { toMetaTemplateLanguageCode } from '../../../infrastructure/messaging/whatsapp-language.util';
 import { InboundWhatsAppMessage } from '../../../infrastructure/messaging/types/inbound-message.types';
 import { MinioService } from '../../../infrastructure/storage/minio.service';
 import { Language, JobStatus, TechnicianStatus, PaymentMode } from '../../../domain/enums';
@@ -42,6 +44,7 @@ export class TechnicianBotService {
     private readonly translation: TranslationService,
     private readonly assignmentEngine: AssignmentEngineService,
     private readonly paymentModeSettingsRepo: PaymentModeSettingsRepository,
+    private readonly configService: ConfigService,
   ) {}
 
   async handleMessage(message: InboundWhatsAppMessage, _senderName: string, technician: Technician): Promise<void> {
@@ -249,20 +252,57 @@ export class TechnicianBotService {
     session.state = TechnicianConversationState.JOB_ACCEPTED;
     session.customerPhone = job.customer.phone;
 
-    await this.whatsapp.sendInteractiveButtons({
-      to: technician.phone,
-      body: this.translation.translate('technician.job_accepted', session.language, {
-        jobNumber: job.jobNumber,
-        customerName: job.customer.name ?? 'Customer',
-        customerPhone: `+${job.customer.phone}`,
-        location: job.location,
-        scheduledTime: this.extractScheduledTime(job.description),
-      }),
-      buttons: [
-        { id: '1', title: this.translation.translate('technician.start_button', session.language) },
-        { id: '2', title: this.translation.translate('technician.decline_button', session.language) },
-      ],
-    });
+    // Tried via template first, not the free-form sendInteractiveButtons this
+    // used to be exclusively — a technician who accepted via the escalation
+    // phone call never sent WhatsApp anything themselves, so their 24h
+    // session window is very likely closed and a free-form send would
+    // silently fail to deliver (131047), the same root cause fixed for the
+    // job-offer message itself (see whatsapp.templates.jobAccepted* in
+    // app.config.ts). The template names default to placeholders pending
+    // Meta approval (see docs/EXECUTION_PLAN.md 14.11) — until then this
+    // throws and falls back to the interactive-buttons send below, which
+    // still works fine for the ordinary WhatsApp-quick-reply-tap path (tapping
+    // the button is itself the interaction that opens the window) and simply
+    // reproduces today's known gap for the phone-call-only path. Once the
+    // template is approved, the fallback stops firing and that gap closes
+    // automatically with no further code change.
+    const isEnglish = session.language !== Language.TA;
+    try {
+      await this.whatsapp.sendTemplate({
+        to: technician.phone,
+        templateName: this.configService.get<string>(
+          isEnglish ? 'whatsapp.templates.jobAcceptedEn' : 'whatsapp.templates.jobAcceptedTa',
+          isEnglish ? 'technician_job_accepted_en' : 'technician_job_accepted_ta',
+        ),
+        languageCode: toMetaTemplateLanguageCode(session.language),
+        bodyParams: [
+          { name: 'job_number', value: job.jobNumber },
+          { name: 'customer_name', value: job.customer.name ?? 'Customer' },
+          { name: 'customer_phone', value: `+${job.customer.phone}` },
+          { name: 'location', value: job.location },
+          { name: 'scheduled_time', value: this.extractScheduledTime(job.description) },
+        ],
+        quickReplyPayloads: ['start_job', 'decline_job'],
+      });
+    } catch (err) {
+      this.logger.warn(
+        `sendTemplate for job-accepted confirmation failed, falling back to interactive buttons (technician ${technician.id}): ${(err as Error).message}`,
+      );
+      await this.whatsapp.sendInteractiveButtons({
+        to: technician.phone,
+        body: this.translation.translate('technician.job_accepted', session.language, {
+          jobNumber: job.jobNumber,
+          customerName: job.customer.name ?? 'Customer',
+          customerPhone: `+${job.customer.phone}`,
+          location: job.location,
+          scheduledTime: this.extractScheduledTime(job.description),
+        }),
+        buttons: [
+          { id: 'start_job', title: this.translation.translate('technician.start_button', session.language) },
+          { id: 'decline_job', title: this.translation.translate('technician.decline_button', session.language) },
+        ],
+      });
+    }
 
     // Notify customer
     const customerLang = job.customer.language as Language;
@@ -319,8 +359,8 @@ export class TechnicianBotService {
     technician: Technician,
   ): Promise<void> {
     const normalized = text.trim().toLowerCase();
-    const isStart = normalized === '1' || normalized === 'start';
-    const isDecline = normalized === '2' || normalized === 'decline';
+    const isStart = normalized === '1' || normalized === 'start' || normalized === 'start_job';
+    const isDecline = normalized === '2' || normalized === 'decline' || normalized === 'decline_job';
 
     if (isStart) {
       await this.jobsService.updateStatus(session.activeJobId!, JobStatus.IN_PROGRESS);

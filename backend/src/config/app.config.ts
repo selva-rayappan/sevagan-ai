@@ -51,6 +51,18 @@ export const appConfig = () => ({
       // technicianWelcome* ended up with, just for a different reason.
       jobOfferEn: process.env.WA_TEMPLATE_JOB_OFFER_EN ?? 'technician_job_offer_en_v3',
       jobOfferTa: process.env.WA_TEMPLATE_JOB_OFFER_TA ?? 'technician_job_offer_v2',
+      // A technician who accepts via the escalation phone call (DTMF) never
+      // sends WhatsApp anything themselves, so their 24h session window is
+      // very likely closed — the free-form "Job Accepted" confirmation
+      // acceptJob() used to send would silently fail to deliver (131047),
+      // same root cause as jobOffer* above. Sent via template unconditionally
+      // now (not just for the phone-call path) for the same reason job offers
+      // moved wholesale to a template: one code path, no per-message window
+      // reasoning. NOT YET SUBMITTED to Meta as of 2026-08-26 — these names
+      // are placeholders until a real template matching this body/quick-reply
+      // shape is approved (see the body sent in TechnicianBotService.acceptJob).
+      jobAcceptedEn: process.env.WA_TEMPLATE_JOB_ACCEPTED_EN ?? 'technician_job_accepted_en',
+      jobAcceptedTa: process.env.WA_TEMPLATE_JOB_ACCEPTED_TA ?? 'technician_job_accepted_ta',
     },
   },
 

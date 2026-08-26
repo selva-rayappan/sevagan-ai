@@ -96,24 +96,27 @@ export class InvoiceService {
 
       // Update invoice with PDF URL
       await this.invoiceRepository.setPdfUrl(invoice.id, minioKey);
-      await this.invoiceRepository.updateStatus(invoice.id, 'SENT');
+      // MVP (2026-08-26): invoice no longer pushed to the customer over
+      // WhatsApp after job completion — the PDF is still generated and
+      // stored (admin can view/download it via GET /invoices/:id/pdf, and
+      // Payment records still need a real invoice.id), so status stays
+      // DRAFT rather than the previous SENT, which would now be misleading.
+      // Revive by uncommenting the whatsapp.sendDocument() call below and
+      // restoring the SENT status update.
+      await this.invoiceRepository.updateStatus(invoice.id, 'DRAFT');
 
-      // Publicly reachable link (proxied through our own API) rather than a
-      // presigned MinIO URL — MINIO_ENDPOINT is an internal Docker hostname
-      // Meta's servers can't resolve to fetch the document.
-      const publicApiUrl = this.configService.get<string>('publicApiUrl', 'http://localhost:3001');
-      const pdfUrl = `${publicApiUrl}/api/v1/invoices/${invoice.id}/pdf`;
+      // const publicApiUrl = this.configService.get<string>('publicApiUrl', 'http://localhost:3001');
+      // const pdfUrl = `${publicApiUrl}/api/v1/invoices/${invoice.id}/pdf`;
+      // await this.whatsapp.sendDocument({
+      //   to: job.customer.phone,
+      //   link: pdfUrl,
+      //   filename: `${invoiceNumber}.pdf`,
+      //   caption: this.translation.translate('customer.invoice_sent', customerLang, {
+      //     invoiceNumber,
+      //   }),
+      // });
 
-      await this.whatsapp.sendDocument({
-        to: job.customer.phone,
-        link: pdfUrl,
-        filename: `${invoiceNumber}.pdf`,
-        caption: this.translation.translate('customer.invoice_sent', customerLang, {
-          invoiceNumber,
-        }),
-      });
-
-      this.logger.log(`Invoice ${invoiceNumber} generated and sent for job ${job.jobNumber}`);
+      this.logger.log(`Invoice ${invoiceNumber} generated for job ${job.jobNumber} (not sent — see MVP note above)`);
     } catch (err) {
       this.logger.error(`PDF generation/delivery failed for invoice ${invoiceNumber}: ${(err as Error).message}`);
       // Invoice record still exists — PDF can be regenerated later

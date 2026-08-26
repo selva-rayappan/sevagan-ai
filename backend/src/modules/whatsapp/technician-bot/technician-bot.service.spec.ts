@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { TechnicianBotService } from './technician-bot.service';
 import { WHATSAPP_PROVIDER } from '../../../infrastructure/messaging/whatsapp.provider.interface';
 import { TranslationService } from '../../../infrastructure/i18n/translation.service';
@@ -23,6 +24,7 @@ import { ConversationState } from '../conversation/conversation-state.types';
 const mockSendText = jest.fn().mockResolvedValue(undefined);
 const mockSendInteractiveButtons = jest.fn().mockResolvedValue(undefined);
 const mockSendInteractiveList = jest.fn().mockResolvedValue(undefined);
+const mockSendTemplate = jest.fn().mockResolvedValue(undefined);
 const mockMarkAsRead = jest.fn().mockResolvedValue(undefined);
 const mockDownloadMedia = jest.fn();
 
@@ -30,6 +32,7 @@ const mockWhatsApp = {
   sendText: mockSendText,
   sendInteractiveButtons: mockSendInteractiveButtons,
   sendInteractiveList: mockSendInteractiveList,
+  sendTemplate: mockSendTemplate,
   markAsRead: mockMarkAsRead,
   downloadMedia: mockDownloadMedia,
 };
@@ -193,6 +196,7 @@ describe('TechnicianBotService', () => {
         { provide: MinioService, useValue: mockMinioService },
         { provide: AssignmentEngineService, useValue: mockAssignmentEngineService },
         { provide: PaymentModeSettingsRepository, useValue: mockPaymentModeSettingsRepo },
+        { provide: ConfigService, useValue: { get: (_key: string, fallback?: string) => fallback } },
       ],
     }).compile();
 
@@ -426,11 +430,45 @@ describe('TechnicianBotService', () => {
 
       await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
 
+      expect(mockSendTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '919100000000',
+          bodyParams: expect.arrayContaining([{ name: 'customer_phone', value: '+919876543210' }]),
+        }),
+      );
+    });
+
+    it('falls back to interactive buttons for the job-accepted confirmation when the template send fails (e.g. not yet approved)', async () => {
+      const session = pendingSession();
+      mockGetSession.mockResolvedValue(session);
+      const assignment = { id: 'assign-1', jobId: 'job-1' };
+      mockFindByJobId.mockResolvedValue(assignment);
+      mockAcceptAssignment.mockResolvedValue({ ...assignment, acceptedAt: new Date() });
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.ACCEPTED });
+      mockUpdateTechStatus.mockResolvedValue(undefined);
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+      mockGetCustomerSession.mockResolvedValue(null);
+      mockCreateCustomerSession.mockReturnValue({
+        state: 'IDLE',
+        phone: '919876543210',
+        language: Language.EN,
+        updatedAt: new Date().toISOString(),
+      });
+      mockSendTemplate.mockRejectedValueOnce(new Error('Template name does not exist'));
+
+      await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
+
       expect(mockSendInteractiveButtons).toHaveBeenCalledWith(
         expect.objectContaining({
           to: '919100000000',
-          body: expect.stringContaining('+919876543210'),
+          buttons: [
+            expect.objectContaining({ id: 'start_job' }),
+            expect.objectContaining({ id: 'decline_job' }),
+          ],
         }),
+      );
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.JOB_ACCEPTED }),
       );
     });
 
@@ -555,6 +593,19 @@ describe('TechnicianBotService', () => {
       mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
 
       await service.handleMessage(makeTextMessage('1'), 'Kumar', makeTechnician());
+
+      expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.IN_PROGRESS);
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ state: TechnicianConversationState.JOB_IN_PROGRESS }),
+      );
+    });
+
+    it('transitions to JOB_IN_PROGRESS on the "start_job" quick-reply payload (the template button tap)', async () => {
+      mockGetSession.mockResolvedValue(acceptedSession());
+      mockUpdateStatus.mockResolvedValue({ id: 'job-1', status: JobStatus.IN_PROGRESS });
+      mockFindWithDetails.mockResolvedValue(makeJobWithDetails());
+
+      await service.handleMessage(makeTextMessage('start_job'), 'Kumar', makeTechnician());
 
       expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.IN_PROGRESS);
       expect(mockSaveSession).toHaveBeenCalledWith(
@@ -968,6 +1019,16 @@ describe('TechnicianBotService', () => {
       expect(mockUpdateStatus).toHaveBeenCalledWith('job-1', JobStatus.ACCEPTED);
       expect(mockSaveSession).toHaveBeenCalledWith(
         expect.objectContaining({ state: TechnicianConversationState.JOB_ACCEPTED }),
+      );
+      // A phone-call acceptance never opens the technician's WhatsApp 24h
+      // session window (they never sent anything to WhatsApp themselves), so
+      // the "Job Accepted" confirmation must go out via an approved template
+      // — a free-form send here would silently fail to deliver (131047).
+      expect(mockSendTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919100000000', quickReplyPayloads: ['start_job', 'decline_job'] }),
+      );
+      expect(mockSendInteractiveButtons).not.toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919100000000' }),
       );
     });
 
