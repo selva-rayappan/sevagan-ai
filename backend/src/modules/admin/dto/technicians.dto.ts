@@ -82,6 +82,10 @@ export class UpdateTechnicianDto {
   status?: TechnicianStatus;
 
   @IsOptional()
+  @IsEnum(Language)
+  language?: Language;
+
+  @IsOptional()
   @IsBoolean()
   active?: boolean;
 

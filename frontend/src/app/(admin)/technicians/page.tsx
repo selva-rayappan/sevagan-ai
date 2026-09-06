@@ -190,6 +190,7 @@ function EditModal({
     aadharNumber: technician.aadharNumber ?? '',
     serviceArea: technician.serviceArea,
     status: technician.status,
+    language: technician.language,
     active: technician.active,
     priorityRank: technician.priorityRank,
   });
@@ -282,7 +283,7 @@ function EditModal({
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Service Area (comma-separated localities)</label>
               <input
@@ -302,6 +303,17 @@ function EditModal({
                 <option value="AVAILABLE">Available</option>
                 <option value="BUSY">Busy</option>
                 <option value="OFFLINE">Offline</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Language</label>
+              <select
+                value={form.language}
+                onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="EN">English</option>
+                <option value="TA">Tamil</option>
               </select>
             </div>
           </div>

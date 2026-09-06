@@ -1,6 +1,7 @@
 import { Body, ConflictException, Controller, Delete, Get, Logger, Param, Patch, Post, Query, UseInterceptors, Version } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { TechniciansRepository } from '../technicians/technicians.repository';
 import { Language, JobStatus, TechnicianStatus } from '../../domain/enums';
@@ -136,7 +137,15 @@ export class TechniciansAdminController {
   @Patch(':id')
   @Version('1')
   async update(@Param('id') id: string, @Body() body: UpdateTechnicianDto, @CurrentUser() user: CurrentUserPayload) {
-    const technician = await this.techniciansRepo.update(id, body);
+    let technician;
+    try {
+      technician = await this.techniciansRepo.update(id, body);
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('This phone number is already assigned to another technician.');
+      }
+      throw err;
+    }
 
     await this.auditService.log({
       actorId: user.id,

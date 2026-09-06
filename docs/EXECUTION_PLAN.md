@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-08-26)
+## Progress Overview (Last Updated: 2026-09-06)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -330,6 +330,7 @@ display).
 - ✅ `AssignmentEngineService.manualAssign(jobId, technicianId)` — admin picks a specific technician (not just re-running auto-match); frees the previously-assigned technician back to AVAILABLE first; exposed via the "Assign" button on NEW/ASSIGNED/ACCEPTED jobs (updated 2026-07-16 — the endpoint previously accepted but silently ignored `technicianId`)
 - ✅ **224 tests, 24 suites — all passing**
 - ✅ Unit tests backfilled 2026-06-30 for all 7 admin controllers, the auth module (controller/service/guard/strategy), and the dashboard module — these had zero coverage despite the original sign-off; see Phase 9 note (now resolved)
+- ✅ **Fixed 2026-09-06 (reported: editing a technician's phone to a number already in use crashed with a bare 500)**: `Technician.phone` is `@unique`, but `PATCH /admin/technicians/:id` never caught the resulting Prisma `P2002` — now caught and rethrown as a `ConflictException` ("This phone number is already assigned to another technician."), same pattern already used for service-category delete's `P2003`. Also fixed: `UpdateTechnicianDto` was missing `language` entirely (repository/DTO layer already supported it, only the DTO validator and the Edit modal's form/UI didn't) — the Edit Technician modal now has a Language selector alongside Status, matching the Create modal. Unit test added: `technicians.controller.spec.ts` asserts the P2002→409 mapping.
 
 ---
 

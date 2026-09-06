@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { TechniciansAdminController } from './technicians.controller';
 import { Language } from '../../domain/enums';
 
@@ -255,6 +256,20 @@ describe('TechniciansAdminController', () => {
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ actorId: 'admin-1', action: 'UPDATE_TECHNICIAN', entityId: 'tech-1' }),
       );
+    });
+
+    it('reports a clear conflict instead of a bare 500 when the new phone is already taken', async () => {
+      mockUpdate.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed on the fields: (`phone`)', {
+          code: 'P2002',
+          clientVersion: '6.19.3',
+        }),
+      );
+
+      await expect(controller.update('tech-1', { phone: '919626191907' }, mockUser)).rejects.toThrow(
+        'This phone number is already assigned to another technician.',
+      );
+      expect(mockAuditLog).not.toHaveBeenCalled();
     });
   });
 
