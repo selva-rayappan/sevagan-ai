@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ta">
 
 <head>
   <meta charset="UTF-8">
@@ -904,8 +904,8 @@
         <li><a href="https://wa.me/917708100871?text=Hi%20Sevagan" target="_blank" rel="noopener" class="nav-cta"><i class="fab fa-whatsapp"></i> <span class="i18n" data-en="Chat" data-ta="பேசுவோம்">Chat</span></a></li>
         <li>
           <div class="lang-toggle">
-            <button type="button" class="lang-btn active" data-lang="en">EN</button>
-            <button type="button" class="lang-btn" data-lang="ta">தமிழ்</button>
+            <button type="button" class="lang-btn" data-lang="en">EN</button>
+            <button type="button" class="lang-btn active" data-lang="ta">தமிழ்</button>
           </div>
         </li>
       </ul>
@@ -1183,7 +1183,7 @@
       btn.addEventListener('click', () => applyLang(btn.dataset.lang));
     });
 
-    applyLang(localStorage.getItem(LANG_KEY) || 'en');
+    applyLang(localStorage.getItem(LANG_KEY) || 'ta');
 
     const fadeElements = document.querySelectorAll('.fade-up');
     const observer = new IntersectionObserver((entries) => {
