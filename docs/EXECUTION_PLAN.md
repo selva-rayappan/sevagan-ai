@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-10-01)
+## Progress Overview (Last Updated: 2026-10-01, §14.12)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -614,3 +614,11 @@ See `docs/DEPLOYMENT.md` for full deployment guide.
   UTILITY category (this is a transactional status update, not marketing — submit as UTILITY from the start, unlike the job-offer EN template's accidental MARKETING reclassification in 14.7). Two QUICK_REPLY buttons: "▶️ Start" / "❌ Decline" (EN — payloads `start_job`/`decline_job`), "▶️ தொடங்கு" / "❌ மறு" (TA, same payloads). Submit EN and TA as separate template names (not language variants of one name) per the precedent in 14.7/3.1 — languages have needed separate names both times something like this has been submitted so far.
 - ✅ Unit tests: `technician-bot.service.spec.ts` — accept via phone DTMF asserts `sendTemplate` (not `sendInteractiveButtons`) with the right quick-reply payloads; accept via the customer-phone-number test updated to check `bodyParams` instead of interactive-button body text; new test for the `start_job` quick-reply payload advancing `JOB_ACCEPTED` → `JOB_IN_PROGRESS`; new test confirming the fallback to `sendInteractiveButtons` (with `start_job`/`decline_job` as the button ids, matching the quick-reply payloads) when `sendTemplate` rejects
 - ✅ Full backend suite green (73 suites / 612 tests), `tsc --noEmit` clean
+
+#### 14.12 Unbounded Escalation-Call Retry Loop ✅ COMPLETE
+**Bug (found live 2026-10-01):** a Plivo account funding gap (`[402] Insufficient balance`) caused `TechnicianOfferEscalationService` to retry the same escalation call **every single poll tick (60s), continuously for over an hour** instead of failing once and stopping. Root cause: `placeEscalationCall()` only wrote `session.escalationCallSentAt` (the flag that stops `processSession()`/`escalateOnDeliveryFailure()` from retrying) on the *success* path — a thrown error from `voiceCall.placeCall()` left the session exactly as it looked before the attempt, so the next poll tick 60s later saw "never tried" again and retried, forever, with no cap. A standing failure (not just a transient one) would have retried once a minute for the full 24h Redis session TTL.
+- ✅ Added `TechnicianSession.escalationCallAttempts` — incremented and persisted specifically on a *failed* `placeCall()`, independent of the existing success-only `escalationCallSentAt` flag
+- ✅ `processSession()` and `escalateOnDeliveryFailure()` both skip once `escalationCallAttempts >= MAX_ESCALATION_ATTEMPTS` (5) — a persistently failing provider now retries 5 times (5 poll ticks) then gives up with a clear `Giving up on escalation call to {phone} after {n} failed attempts — needs manual follow-up` log line, instead of retrying silently forever
+- ✅ A provider that recovers mid-retry (e.g. the Plivo account gets topped up, as happened live) still places the call normally on the next tick — the attempt counter only gates the *ceiling*, it doesn't block a later success
+- ✅ Unit tests: records an attempt on failure, keeps retrying under the cap, stops at the cap without calling the provider or saving again, logs the give-up message on the attempt that reaches the cap, and still succeeds normally once the provider recovers after prior failures — plus the same cap check on `escalateOnDeliveryFailure()`
+- ✅ Full backend suite green (73 suites / 619 tests), `tsc --noEmit` clean

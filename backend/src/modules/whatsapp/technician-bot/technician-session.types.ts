@@ -23,6 +23,11 @@ export interface TechnicianSession {
   // so the escalation window isn't coupled to the WhatsApp-side offer TTL.
   offerSentAt?: string;
   escalationCallSentAt?: string;
+  // Counts failed placeCall() attempts specifically — a failure must still be
+  // recorded (see TechnicianOfferEscalationService.placeEscalationCall), or a
+  // persistent provider-side failure (e.g. insufficient Plivo balance) retries
+  // every poll tick forever instead of giving up after MAX_ESCALATION_ATTEMPTS.
+  escalationCallAttempts?: number;
   pendingPaymentMode?: 'CASH' | 'UPI';
   updatedAt: string;
 }

@@ -163,6 +163,57 @@ describe('TechnicianOfferEscalationService', () => {
     expect(mockPlaceCall).toHaveBeenCalledTimes(2);
   });
 
+  describe('retry cap on a persistently failing provider', () => {
+    it('records a failed attempt instead of leaving the session retry-indistinguishable from untried', async () => {
+      mockSingleSession(baseSession());
+      mockPlaceCall.mockRejectedValueOnce(new Error('Plivo call error [402]: Insufficient balance'));
+
+      await service.checkPendingOffers();
+
+      expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({ escalationCallAttempts: 1 }));
+    });
+
+    it('keeps retrying on each poll tick while under the attempt cap', async () => {
+      mockSingleSession(baseSession({ escalationCallAttempts: 2 }));
+      mockPlaceCall.mockRejectedValueOnce(new Error('Plivo call error [402]: Insufficient balance'));
+
+      await service.checkPendingOffers();
+
+      expect(mockPlaceCall).toHaveBeenCalled();
+      expect(mockSaveSession).toHaveBeenCalledWith(expect.objectContaining({ escalationCallAttempts: 3 }));
+    });
+
+    it('stops retrying forever once MAX_ESCALATION_ATTEMPTS is reached — the actual bug: a standing Plivo failure used to retry every poll tick indefinitely', async () => {
+      mockSingleSession(baseSession({ escalationCallAttempts: 5 }));
+
+      await service.checkPendingOffers();
+
+      expect(mockPlaceCall).not.toHaveBeenCalled();
+      expect(mockSaveSession).not.toHaveBeenCalled();
+    });
+
+    it('logs a clear give-up message on the attempt that reaches the cap', async () => {
+      const logSpy = jest.spyOn((service as any).logger, 'error').mockImplementation();
+      mockSingleSession(baseSession({ escalationCallAttempts: 4 }));
+      mockPlaceCall.mockRejectedValueOnce(new Error('Plivo call error [402]: Insufficient balance'));
+
+      await service.checkPendingOffers();
+
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Giving up on escalation call'));
+    });
+
+    it('still places the call successfully once the provider recovers, after prior failed attempts', async () => {
+      mockSingleSession(baseSession({ escalationCallAttempts: 3 }));
+
+      await service.checkPendingOffers();
+
+      expect(mockPlaceCall).toHaveBeenCalled();
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({ escalationCallSentAt: expect.any(String) }),
+      );
+    });
+  });
+
   it('skips a key that resolves to no value (expired between SCAN and GET)', async () => {
     mockScan.mockResolvedValueOnce(['0', ['tech_session:gone']]);
     mockGet.mockResolvedValueOnce(null);
@@ -205,6 +256,14 @@ describe('TechnicianOfferEscalationService', () => {
 
     it('does nothing when a call was already escalated for this offer', async () => {
       mockGetSession.mockResolvedValue(baseSession({ escalationCallSentAt: secondsAgo(5) }));
+
+      await service.escalateOnDeliveryFailure('919626191907');
+
+      expect(mockPlaceCall).not.toHaveBeenCalled();
+    });
+
+    it('does nothing once escalation attempts are already exhausted', async () => {
+      mockGetSession.mockResolvedValue(baseSession({ escalationCallAttempts: 5 }));
 
       await service.escalateOnDeliveryFailure('919626191907');
 

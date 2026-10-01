@@ -12,6 +12,7 @@ const CHECK_INTERVAL_MS = 60_000;
 const ESCALATION_AFTER_MS = 60_000;
 const SESSION_KEY_PATTERN = 'tech_session:*';
 const SCAN_COUNT = 100;
+const MAX_ESCALATION_ATTEMPTS = 5;
 
 /**
  * Places an automated voice call to a technician who hasn't responded to a
@@ -75,6 +76,7 @@ export class TechnicianOfferEscalationService implements OnModuleInit, OnModuleD
   private async processSession(session: TechnicianSession, now: number): Promise<void> {
     if (session.state !== TechnicianConversationState.JOB_OFFER_PENDING) return;
     if (!session.offerSentAt || session.escalationCallSentAt) return;
+    if ((session.escalationCallAttempts ?? 0) >= MAX_ESCALATION_ATTEMPTS) return;
 
     const elapsedMs = now - new Date(session.offerSentAt).getTime();
     if (elapsedMs < ESCALATION_AFTER_MS) return;
@@ -96,16 +98,38 @@ export class TechnicianOfferEscalationService implements OnModuleInit, OnModuleD
     if (!session) return;
     if (session.state !== TechnicianConversationState.JOB_OFFER_PENDING) return;
     if (!session.offerSentAt || session.escalationCallSentAt) return;
+    if ((session.escalationCallAttempts ?? 0) >= MAX_ESCALATION_ATTEMPTS) return;
 
     await this.placeEscalationCall(session);
   }
 
+  /**
+   * A failed placeCall() must still be persisted as an attempt — otherwise a
+   * standing provider-side failure (e.g. insufficient Plivo balance) is
+   * indistinguishable, on the next poll tick, from "never tried", and
+   * checkPendingOffers() retries it every CHECK_INTERVAL_MS forever instead
+   * of giving up after MAX_ESCALATION_ATTEMPTS (found live 2026-10-01: a
+   * Plivo 402 retried once a minute for over an hour before the account was
+   * topped up).
+   */
   private async placeEscalationCall(session: TechnicianSession): Promise<void> {
     const token = this.configService.get<string>('voice.webhookToken', '');
     const publicApiUrl = this.configService.get<string>('publicApiUrl', '');
     const answerUrl = `${publicApiUrl}/api/v1/voice/answer?token=${encodeURIComponent(token)}&lang=${session.language}`;
 
-    await this.voiceCall.placeCall({ to: session.phone, answerUrl });
+    try {
+      await this.voiceCall.placeCall({ to: session.phone, answerUrl });
+    } catch (err) {
+      session.escalationCallAttempts = (session.escalationCallAttempts ?? 0) + 1;
+      await this.techSessionService.saveSession(session);
+      if (session.escalationCallAttempts >= MAX_ESCALATION_ATTEMPTS) {
+        this.logger.error(
+          `Giving up on escalation call to ${session.phone} after ${session.escalationCallAttempts} failed attempts — needs manual follow-up`,
+        );
+      }
+      throw err;
+    }
+
     session.escalationCallSentAt = new Date().toISOString();
     await this.techSessionService.saveSession(session);
   }
