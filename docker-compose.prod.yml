@@ -59,6 +59,14 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  # Paused 2026-10-01 (not removed): technician allocation is fully deterministic
+  # (assignment-engine scoring) and never touches AI. The only AI usage is a
+  # best-effort, try/catch-wrapped free-text convenience layer on the customer
+  # bot (ai-dispatcher module) that already falls back to the numbered menu on
+  # any failure — so this service is safe to leave stopped. `profiles: ['ai']`
+  # keeps it out of a bare `docker compose up -d` (incl. scripts/ec2-start.sh)
+  # without deleting the service definition or any application code; pass
+  # `--profile ai` to bring it back.
   ollama:
     image: ollama/ollama:0.6.5
     container_name: sevagan-ollama
@@ -70,6 +78,7 @@ services:
       options:
         max-size: '10m'
         max-file: '3'
+    profiles: ['ai']
 
   api:
     build:

@@ -8,7 +8,7 @@
 
 # 18. EXECUTION PLAN
 
-## Progress Overview (Last Updated: 2026-09-06)
+## Progress Overview (Last Updated: 2026-10-01)
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -491,6 +491,19 @@ All deployable artifacts are built and committed; execution against a real AWS a
 - ❌ Backups running on a live host (script + cron documented, not yet executing anywhere)
 - ❌ Monitoring: Uptime Robot on `/health`
 - ❌ Operations runbook
+- ✅ **Cost reduction, 2026-10-01 — Ollama paused, code kept.** Technician allocation
+  (assignment-engine scoring) is fully deterministic and never used Ollama; the only AI usage
+  is a best-effort, gracefully-degrading free-text layer on the customer bot
+  (`ai-dispatcher` module). Rather than delete that module, `ollama` was moved behind
+  `profiles: ['ai']` in `docker-compose.prod.yml` (same pattern as the existing `seed`/`ssl`
+  services) so a bare `docker compose up -d` (including `scripts/ec2-start.sh`) no longer
+  starts it — reversible with `--profile ai` if AI dispatch is ever wanted back, no code
+  changes either way.
+- ❌ **EC2 instance resize t3.medium → t3.small** (same reasoning — the only reason the box
+  was sized for `t3.medium` was Ollama's RAM headroom, per `docs/DEPLOYMENT.md`). Needs AWS
+  CLI credentials configured (`scripts/ec2-control.env` from the `.example`, plus
+  `aws ec2 modify-instance-attribute --instance-type t3.small` while stopped) — not available
+  in this working environment, so this step is pending manual execution.
 
 See `docs/DEPLOYMENT.md` for full deployment guide.
 
