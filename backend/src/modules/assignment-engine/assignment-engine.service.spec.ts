@@ -54,7 +54,7 @@ describe('AssignmentEngineService', () => {
       getJson: jest.fn().mockResolvedValue(null),
       setJson: jest.fn().mockResolvedValue(undefined),
     };
-    mockAssignmentsRepo = { create: jest.fn().mockResolvedValue({ id: 'asgn-1' }) };
+    mockAssignmentsRepo = { upsertForJob: jest.fn().mockResolvedValue({ id: 'asgn-1' }) };
     mockJobsService = {
       findWithDetails: jest.fn().mockResolvedValue(mockJob),
       updateStatus: jest.fn().mockResolvedValue(undefined),
@@ -100,7 +100,7 @@ describe('AssignmentEngineService', () => {
     it('assigns job to best available technician', async () => {
       await service.tryAssignJob('job-1', '919876543210');
 
-      expect(mockAssignmentsRepo.create).toHaveBeenCalledWith({
+      expect(mockAssignmentsRepo.upsertForJob).toHaveBeenCalledWith({
         jobId: 'job-1',
         technicianId: 'tech-1',
       });
@@ -185,7 +185,7 @@ describe('AssignmentEngineService', () => {
 
       await service.tryAssignJob('job-1', '919876543210');
 
-      expect(mockAssignmentsRepo.create).not.toHaveBeenCalled();
+      expect(mockAssignmentsRepo.upsertForJob).not.toHaveBeenCalled();
       expect(mockWhatsapp.sendText).toHaveBeenCalledWith(
         expect.objectContaining({ to: '919876543210' }),
       );
@@ -206,7 +206,7 @@ describe('AssignmentEngineService', () => {
 
       await service.tryAssignJob('job-1', '919876543210');
 
-      expect(mockAssignmentsRepo.create).not.toHaveBeenCalled();
+      expect(mockAssignmentsRepo.upsertForJob).not.toHaveBeenCalled();
     });
   });
 
@@ -215,7 +215,7 @@ describe('AssignmentEngineService', () => {
       await service.manualAssign('job-1', 'tech-1');
 
       expect(mockTechniciansRepo.findById).toHaveBeenCalledWith('tech-1');
-      expect(mockAssignmentsRepo.create).toHaveBeenCalledWith({
+      expect(mockAssignmentsRepo.upsertForJob).toHaveBeenCalledWith({
         jobId: 'job-1',
         technicianId: 'tech-1',
       });
@@ -246,7 +246,22 @@ describe('AssignmentEngineService', () => {
       await service.triggerReassignment('job-1', 'tech-1');
 
       expect(mockRedis.setJson).toHaveBeenCalled();
-      expect(mockAssignmentsRepo.create).toHaveBeenCalled();
+      expect(mockAssignmentsRepo.upsertForJob).toHaveBeenCalled();
+    });
+
+    // Regression test for a live production bug (2026-10-01): job-1 already
+    // has an Assignment row (its original, now-rejected/expired technician).
+    // Assignment.jobId is @unique, so re-offering the job to a different
+    // technician must go through upsertForJob (replace), not create
+    // (duplicate insert, which throws P2002 on job_id in real Postgres).
+    it('reassigns a job that already has an existing assignment, for the same jobId', async () => {
+      mockRedis.getJson.mockResolvedValue(['tech-1']);
+
+      await service.triggerReassignment('job-1', 'tech-1');
+
+      expect(mockAssignmentsRepo.upsertForJob).toHaveBeenCalledWith(
+        expect.objectContaining({ jobId: 'job-1' }),
+      );
     });
 
     it('notifies customer when max rejections reached', async () => {
@@ -254,10 +269,32 @@ describe('AssignmentEngineService', () => {
 
       await service.triggerReassignment('job-1', 'tech-c');
 
-      expect(mockAssignmentsRepo.create).not.toHaveBeenCalled();
+      expect(mockAssignmentsRepo.upsertForJob).not.toHaveBeenCalled();
       expect(mockWhatsapp.sendText).toHaveBeenCalledWith(
         expect.objectContaining({ to: mockJob.customer.phone }),
       );
+    });
+
+    // Neither caller of triggerReassignment (the explicit WhatsApp reject
+    // handler, and the offer-expiry poller) ever freed the outgoing
+    // technician themselves — found live 2026-10-01 while fixing the
+    // expiry-reassignment P2002 above. Without this, a technician who
+    // rejects or ignores one offer stays BUSY (invisible to
+    // findBestAvailable()) for every future job, forever.
+    it('frees the rejected/expired technician back to AVAILABLE', async () => {
+      mockRedis.getJson.mockResolvedValue([]);
+
+      await service.triggerReassignment('job-1', 'tech-rejected');
+
+      expect(mockTechniciansRepo.updateStatus).toHaveBeenCalledWith('tech-rejected', 'AVAILABLE');
+    });
+
+    it('still frees the technician even when max rejections is reached and no reassignment is attempted', async () => {
+      mockRedis.getJson.mockResolvedValue(['tech-a', 'tech-b']);
+
+      await service.triggerReassignment('job-1', 'tech-c');
+
+      expect(mockTechniciansRepo.updateStatus).toHaveBeenCalledWith('tech-c', 'AVAILABLE');
     });
 
     it('does not add duplicate technician ID to rejection list', async () => {

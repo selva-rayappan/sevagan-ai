@@ -1,6 +1,7 @@
 import { AssignmentsRepository } from './assignments.repository';
 
 const mockCreate = jest.fn();
+const mockUpsert = jest.fn();
 const mockFindUnique = jest.fn();
 const mockFindMany = jest.fn();
 const mockUpdate = jest.fn();
@@ -9,6 +10,7 @@ const mockDelete = jest.fn();
 const mockPrisma = {
   assignment: {
     create: mockCreate,
+    upsert: mockUpsert,
     findUnique: mockFindUnique,
     findMany: mockFindMany,
     update: mockUpdate,
@@ -33,6 +35,26 @@ describe('AssignmentsRepository', () => {
 
       expect(result).toBe(assignment);
       expect(mockCreate).toHaveBeenCalledWith({ data: { jobId: 'job-1', technicianId: 't-1' } });
+    });
+  });
+
+  describe('upsertForJob()', () => {
+    // Assignment.jobId is @unique, so reassigning a job that already has an
+    // assignment row (on rejection, offer-expiry, or a manual admin
+    // reassign) must replace it, not insert a second row for the same job —
+    // that was throwing a P2002 in production (found live 2026-10-01).
+    it('replaces the existing assignment for the job instead of inserting a duplicate', async () => {
+      const assignment = { id: 'a-1', jobId: 'job-1', technicianId: 't-2' };
+      mockUpsert.mockResolvedValue(assignment);
+
+      const result = await repo.upsertForJob({ jobId: 'job-1', technicianId: 't-2' });
+
+      expect(result).toBe(assignment);
+      expect(mockUpsert).toHaveBeenCalledWith({
+        where: { jobId: 'job-1' },
+        create: { jobId: 'job-1', technicianId: 't-2' },
+        update: { technicianId: 't-2', assignedAt: expect.any(Date), acceptedAt: null },
+      });
     });
   });
 

@@ -90,6 +90,16 @@ export class AssignmentEngineService {
     const count = await this.addRejection(jobId, rejectedTechnicianId);
     this.logger.log(`Job ${jobId}: rejection #${count} from tech ${rejectedTechnicianId}`);
 
+    // This technician is no longer tied to this job either way (rejected,
+    // or their offer expired with no response) — free them for other work.
+    // Neither of triggerReassignment's two callers (TechnicianBotService's
+    // explicit reject, TechnicianOfferEscalationService's offer-expiry
+    // reassignment) did this themselves, so a rejecting/silent technician
+    // stayed BUSY forever — invisible to findBestAvailable() for every future
+    // job — until an admin noticed and fixed it by hand. Centralized here
+    // since both callers already funnel through this one method.
+    await this.techniciansRepository.updateStatus(rejectedTechnicianId, TechnicianStatus.AVAILABLE);
+
     const job = await this.jobsService.findWithDetails(jobId);
     if (!job) return;
 
@@ -113,7 +123,7 @@ export class AssignmentEngineService {
   }
 
   private async assignJobToTechnician(job: JobWithDetails, technician: any): Promise<void> {
-    await this.assignmentsRepository.create({ jobId: job.id, technicianId: technician.id });
+    await this.assignmentsRepository.upsertForJob({ jobId: job.id, technicianId: technician.id });
     await this.jobsService.updateStatus(job.id, JobStatus.ASSIGNED);
     await this.techniciansRepository.updateStatus(technician.id, TechnicianStatus.BUSY);
 
