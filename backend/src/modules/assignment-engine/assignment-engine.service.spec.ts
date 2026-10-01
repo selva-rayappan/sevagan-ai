@@ -159,6 +159,27 @@ describe('AssignmentEngineService', () => {
       expect(savedSession.offerSentAt).toBeDefined();
     });
 
+    it('clears stale escalation-call tracking from a previous job before offering a new one', async () => {
+      mockTechSessionService.getSession.mockResolvedValue({
+        state: TechnicianConversationState.IDLE,
+        phone: '919876543210',
+        language: Language.EN,
+        escalationCallSentAt: '2026-06-01T00:00:00.000Z',
+        escalationCallAttempts: 5,
+        updatedAt: '2026-06-01T00:00:00.000Z',
+      });
+      let savedSession: any;
+      mockTechSessionService.saveSession.mockImplementation((s: any) => {
+        savedSession = s;
+        return Promise.resolve();
+      });
+
+      await service.tryAssignJob('job-1', '919876543210');
+
+      expect(savedSession.escalationCallSentAt).toBeUndefined();
+      expect(savedSession.escalationCallAttempts).toBeUndefined();
+    });
+
     it('notifies customer when no technician is available', async () => {
       mockTechniciansRepo.findBestAvailable.mockResolvedValue(null);
 

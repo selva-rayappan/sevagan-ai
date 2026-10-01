@@ -5,6 +5,10 @@ import { RedisService } from '../../../infrastructure/cache/redis.service';
 import { TechnicianSessionService } from './technician-session.service';
 import { TechnicianConversationState } from './technician-session.types';
 import { VOICE_CALL_PROVIDER } from '../../../infrastructure/telephony/voice-call.provider.interface';
+import { WHATSAPP_PROVIDER } from '../../../infrastructure/messaging/whatsapp.provider.interface';
+import { TranslationService } from '../../../infrastructure/i18n/translation.service';
+import { TechniciansRepository } from '../../technicians/technicians.repository';
+import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
 import { Language } from '../../../domain/enums';
 
 const mockScan = jest.fn();
@@ -18,6 +22,18 @@ const mockTechSessionService = { saveSession: mockSaveSession, getSession: mockG
 
 const mockPlaceCall = jest.fn().mockResolvedValue(undefined);
 const mockVoiceCallProvider = { placeCall: mockPlaceCall };
+
+const mockSendText = jest.fn().mockResolvedValue(undefined);
+const mockWhatsapp = { sendText: mockSendText };
+
+const mockTranslate = jest.fn((key: string) => key);
+const mockTranslationService = { translate: mockTranslate };
+
+const mockFindByPhone = jest.fn().mockResolvedValue({ id: 'tech-1', phone: '919626191907' });
+const mockTechniciansRepository = { findByPhone: mockFindByPhone };
+
+const mockTriggerReassignment = jest.fn().mockResolvedValue(undefined);
+const mockAssignmentEngine = { triggerReassignment: mockTriggerReassignment };
 
 const mockConfigGet = jest.fn((key: string, fallback?: string) => {
   if (key === 'voice.webhookToken') return 'test-token';
@@ -54,7 +70,11 @@ describe('TechnicianOfferEscalationService', () => {
         { provide: RedisService, useValue: mockRedisService },
         { provide: TechnicianSessionService, useValue: mockTechSessionService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: TranslationService, useValue: mockTranslationService },
+        { provide: TechniciansRepository, useValue: mockTechniciansRepository },
+        { provide: AssignmentEngineService, useValue: mockAssignmentEngine },
         { provide: VOICE_CALL_PROVIDER, useValue: mockVoiceCallProvider },
+        { provide: WHATSAPP_PROVIDER, useValue: mockWhatsapp },
       ],
     }).compile();
 
@@ -161,6 +181,62 @@ describe('TechnicianOfferEscalationService', () => {
     await expect(service.checkPendingOffers()).resolves.not.toThrow();
 
     expect(mockPlaceCall).toHaveBeenCalledTimes(2);
+  });
+
+  describe('reassignment when the full offer window expires with no response at all', () => {
+    it('reassigns the job once offerExpiresAt has passed, even if an escalation call was already placed', async () => {
+      mockSingleSession(
+        baseSession({ offerExpiresAt: secondsAgo(1), escalationCallSentAt: minutesAgo(10) }),
+      );
+
+      await service.checkPendingOffers();
+
+      expect(mockPlaceCall).not.toHaveBeenCalled();
+      expect(mockFindByPhone).toHaveBeenCalledWith('919626191907');
+      expect(mockTriggerReassignment).toHaveBeenCalledWith('job-1', 'tech-1');
+    });
+
+    it('notifies the technician and resets their session to IDLE', async () => {
+      mockSingleSession(baseSession({ offerExpiresAt: secondsAgo(1) }));
+
+      await service.checkPendingOffers();
+
+      expect(mockSendText).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '919626191907', text: 'technician.offer_expired' }),
+      );
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          state: TechnicianConversationState.IDLE,
+          activeJobId: undefined,
+          offerExpiresAt: undefined,
+        }),
+      );
+    });
+
+    it('does not reassign before offerExpiresAt has passed', async () => {
+      mockSingleSession(baseSession({ offerExpiresAt: secondsAgo(-60) }));
+
+      await service.checkPendingOffers();
+
+      expect(mockTriggerReassignment).not.toHaveBeenCalled();
+    });
+
+    it('does nothing (not even a crash) if the expired session has no technician record', async () => {
+      mockFindByPhone.mockResolvedValueOnce(null);
+      mockSingleSession(baseSession({ offerExpiresAt: secondsAgo(1) }));
+
+      await expect(service.checkPendingOffers()).resolves.not.toThrow();
+
+      expect(mockTriggerReassignment).not.toHaveBeenCalled();
+    });
+
+    it('still works through escalateOnDeliveryFailure-created sessions — expiry wins even with attempts already exhausted', async () => {
+      mockSingleSession(baseSession({ offerExpiresAt: secondsAgo(1), escalationCallAttempts: 5 }));
+
+      await service.checkPendingOffers();
+
+      expect(mockTriggerReassignment).toHaveBeenCalledWith('job-1', 'tech-1');
+    });
   });
 
   describe('retry cap on a persistently failing provider', () => {

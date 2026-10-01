@@ -128,6 +128,7 @@ export class AssignmentEngineService {
     session.offerExpiresAt = new Date(Date.now() + OFFER_TTL_MS).toISOString();
     session.offerSentAt = new Date().toISOString();
     session.escalationCallSentAt = undefined;
+    session.escalationCallAttempts = undefined;
     await this.technicianSessionService.saveSession(session);
 
     const lang = technician.language as Language;

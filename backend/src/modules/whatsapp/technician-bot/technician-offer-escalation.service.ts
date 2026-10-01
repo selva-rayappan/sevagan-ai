@@ -5,6 +5,13 @@ import {
   VOICE_CALL_PROVIDER,
   VoiceCallProvider,
 } from '../../../infrastructure/telephony/voice-call.provider.interface';
+import {
+  WHATSAPP_PROVIDER,
+  WhatsAppProvider,
+} from '../../../infrastructure/messaging/whatsapp.provider.interface';
+import { TranslationService } from '../../../infrastructure/i18n/translation.service';
+import { TechniciansRepository } from '../../technicians/technicians.repository';
+import { AssignmentEngineService } from '../../assignment-engine/assignment-engine.service';
 import { TechnicianSessionService } from './technician-session.service';
 import { TechnicianSession, TechnicianConversationState } from './technician-session.types';
 
@@ -31,7 +38,11 @@ export class TechnicianOfferEscalationService implements OnModuleInit, OnModuleD
     private readonly redis: RedisService,
     private readonly techSessionService: TechnicianSessionService,
     private readonly configService: ConfigService,
+    private readonly translation: TranslationService,
+    private readonly techniciansRepository: TechniciansRepository,
+    private readonly assignmentEngine: AssignmentEngineService,
     @Inject(VOICE_CALL_PROVIDER) private readonly voiceCall: VoiceCallProvider,
+    @Inject(WHATSAPP_PROVIDER) private readonly whatsapp: WhatsAppProvider,
   ) {}
 
   onModuleInit(): void {
@@ -75,13 +86,64 @@ export class TechnicianOfferEscalationService implements OnModuleInit, OnModuleD
 
   private async processSession(session: TechnicianSession, now: number): Promise<void> {
     if (session.state !== TechnicianConversationState.JOB_OFFER_PENDING) return;
-    if (!session.offerSentAt || session.escalationCallSentAt) return;
+    if (!session.offerSentAt) return;
+
+    // Whether or not an escalation call was ever placed, a technician who
+    // neither taps a WhatsApp button nor presses a DTMF digit within the full
+    // offer window never generates any event that would otherwise trigger
+    // reassignment — handleOfferResponse()'s own expiry check only runs when
+    // the technician sends something. Found live 2026-10-01: a job sat
+    // assigned to a silent technician indefinitely. Check this before the
+    // escalation-call logic below — once the offer is gone, there's no point
+    // still trying to reach this technician about it.
+    if (session.offerExpiresAt && now > new Date(session.offerExpiresAt).getTime()) {
+      await this.reassignExpiredOffer(session);
+      return;
+    }
+
+    if (session.escalationCallSentAt) return;
     if ((session.escalationCallAttempts ?? 0) >= MAX_ESCALATION_ATTEMPTS) return;
 
     const elapsedMs = now - new Date(session.offerSentAt).getTime();
     if (elapsedMs < ESCALATION_AFTER_MS) return;
 
     await this.placeEscalationCall(session);
+  }
+
+  /**
+   * Mirrors the reset TechnicianBotService.handleOfferResponse() performs
+   * when a technician messages in *after* their offer already expired — this
+   * is the same outcome, just reached proactively instead of reactively, for
+   * the technician who never sends anything at all.
+   */
+  private async reassignExpiredOffer(session: TechnicianSession): Promise<void> {
+    const jobId = session.activeJobId;
+    if (!jobId) return;
+
+    await this.whatsapp
+      .sendText({
+        to: session.phone,
+        text: this.translation.translate('technician.offer_expired', session.language),
+      })
+      .catch((err: Error) => {
+        this.logger.error(`Failed to notify ${session.phone} of offer expiry: ${err.message}`);
+      });
+
+    session.state = TechnicianConversationState.IDLE;
+    session.activeJobId = undefined;
+    session.activeJobNumber = undefined;
+    session.activeAssignmentId = undefined;
+    session.customerPhone = undefined;
+    session.offerExpiresAt = undefined;
+    await this.techSessionService.saveSession(session);
+
+    const technician = await this.techniciansRepository.findByPhone(session.phone);
+    if (!technician) {
+      this.logger.error(`Cannot reassign job ${jobId}: no technician record for ${session.phone}`);
+      return;
+    }
+
+    await this.assignmentEngine.triggerReassignment(jobId, technician.id);
   }
 
   /**
